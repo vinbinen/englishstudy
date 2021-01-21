@@ -27,7 +27,7 @@
 
       text-align: center;
 
-      bottom:15px;
+      bottom:5px;
 
       position:fixed;
 
@@ -105,13 +105,13 @@
             //document.body.style.background = 'hsl(' + (video.playbackRate * 180) + ', 50%, 15%)';
         };
         
-        //video.onmouseover = function(event){
-        //video.controls = true;
-        //};
+        video.onmouseover = function(event){
+        video.controls = true;
+        };
         
-        //video.onmouseout = function(event){
-        //video.controls = false;
-        //};
+        video.onmouseout = function(event){
+        video.controls = false;
+        };
         
         
         rateOutput.textContent = rateSlider.value;
