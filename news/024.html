@@ -39,7 +39,8 @@
 </head>
 
 <body aria-hidden="false" class="hypothesis-highlights-always-on">
-   <div class="fix-box" id="showornot"><audio id="my-audio-stream" controlsList="nodownload fullscreen" oncontextmenu="return false" controls>
+<div class="Moveout" id="Moveout" onmouseover="Moveoutsover()" onmouseout="MoveoutSout()">
+   <div class="fix-box" id="content"><audio id="my-audio-stream" controlsList="nodownload fullscreen" oncontextmenu="return false" controls>
 
 <!--   <source src="https://res.wx.qq.com/voice/getvoice?mediaid=MzI5MTIxMjM5MV81MDQwMDg4MTg=.mp3" type="audio/mpeg" > -->
             <source src="https://res.wx.qq.com/voice/getvoice?mediaid=MzI5MTIxMjM5MV81MDQwMDg4MTg=" type="audio/mpeg" >
@@ -51,6 +52,7 @@
             <label>倍数播放: <input type="range" step="0.1" min="0.5" max="2" value="1" id="rateSlider"></label> <span id="rateOutput" aria-live="polite"></span>
         </p>
         </div>
+      </div>
         <outline-app>
 
     <outline-article>
@@ -82,7 +84,8 @@
     // Inline code is for educational purposes. Best practice is to put your scripts in external files.
     (function() {
         'use strict';
-        var showhide=document.getElementById("showornot");
+        var Moveout = document.getElementById("Moveout");
+            var content = document.getElementById("content");
         var video = document.getElementById("my-audio-stream");
         var rateOutput = document.getElementById('rateOutput');
         var rateSlider = document.getElementById('rateSlider');
@@ -106,13 +109,27 @@
             //document.body.style.background = 'hsl(' + (video.playbackRate * 180) + ', 50%, 15%)';
         };
         
-       showhide.onmouseover = function(event){
-        showhide.style = "visibility:visible;"
-        };
+           //鼠标移入显示
+        Moveout.onmouseover = function () {
+            content.style.display = "block";
+        }
+        function Moveoutsover() {
+            content.style.display = "block";
+        }
+        //鼠标移出隐藏
+        Moveout.onmouseout = function () {
+            content.style.display = "none";
+        }              
+        function MoveoutSout() {
+            content.style.display = "none";
+        }
+//        showhide.onmouseover = function(event){
+//         showhide.style = "visibility:visible;"
+//         };
         
-        showhide.onmouseout = function(event){
-        showhide.style = "visibility:hidden;"
-        };
+//         showhide.onmouseout = function(event){
+//         showhide.style = "visibility:hidden;"
+//         };
         
 //         video.ontouchstart = function(event){
 //         video.controls = true;
