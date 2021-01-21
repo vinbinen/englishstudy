@@ -39,14 +39,14 @@
 </head>
 
 <body aria-hidden="false" class="hypothesis-highlights-always-on">
-   <div class="fix-box"><video id="my-audio-stream" controlsList="nodownload fullscreen" oncontextmenu="return false" controls>
+   <div class="fix-box" id="showornot"><audio id="my-audio-stream" controlsList="nodownload fullscreen" oncontextmenu="return false" controls>
 
 <!--   <source src="https://res.wx.qq.com/voice/getvoice?mediaid=MzI5MTIxMjM5MV81MDQwMDg4MTg=.mp3" type="audio/mpeg" > -->
-            <source src="https://res.wx.qq.com/voice/getvoice?mediaid=MzI5MTIxMjM5MV81MDQwMDg4MTg=.mp4" type="video/mp4" >
+            <source src="https://res.wx.qq.com/voice/getvoice?mediaid=MzI5MTIxMjM5MV81MDQwMDg4MTg=" type="audio/mpeg" >
 
 您的浏览器不支持 audio 元素。
 
-</video>
+</audio>
         <p class="controls">
             <label>倍数播放: <input type="range" step="0.1" min="0.5" max="2" value="1" id="rateSlider"></label> <span id="rateOutput" aria-live="polite"></span>
         </p>
@@ -82,7 +82,7 @@
     // Inline code is for educational purposes. Best practice is to put your scripts in external files.
     (function() {
         'use strict';
-        
+        var showhide=document.getElementById("showornot");
         var video = document.getElementById("my-audio-stream");
         var rateOutput = document.getElementById('rateOutput');
         var rateSlider = document.getElementById('rateSlider');
@@ -106,11 +106,11 @@
             //document.body.style.background = 'hsl(' + (video.playbackRate * 180) + ', 50%, 15%)';
         };
         
-       video.onmouseover = function(event){
+       showhide.onmouseover = function(event){
         video.controls = true;
         };
         
-        video.onmouseout = function(event){
+        showhide.onmouseout = function(event){
         video.controls = false;
         };
         
