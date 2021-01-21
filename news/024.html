@@ -34,6 +34,8 @@
       z-index:100;
 
    }
+             
+   .Moveout:hover #content{ display:block;}
  
 
 </style>
@@ -42,7 +44,7 @@
 <body aria-hidden="false" class="hypothesis-highlights-always-on">
 <div class="fix-box" id="Moveout" onmouseover="Moveoutsover()" onmouseout="MoveoutSout()">
         <img src="https://mmbiz.qpic.cn/mmbiz_png/k5mbJrKrj07ibqDcSiaN4xH4Gbv7CplOiahVoSKcMibCCp4TcXS6Ls7XCgKSNtGHSEUia15l04ESbrwk4V2wcVJ9azw/0?wx_fmt=png" align="left"  alt="显示音频" />
-   <div id="content"><audio id="my-audio-stream" controlsList="nodownload fullscreen" oncontextmenu="return false" controls>
+   <div class="contenter" id="content"><audio id="my-audio-stream" controlsList="nodownload fullscreen" oncontextmenu="return false" controls>
 
 <!--   <source src="https://res.wx.qq.com/voice/getvoice?mediaid=MzI5MTIxMjM5MV81MDQwMDg4MTg=.mp3" type="audio/mpeg" > -->
             <source src="https://res.wx.qq.com/voice/getvoice?mediaid=MzI5MTIxMjM5MV81MDQwMDg4MTg=" type="audio/mpeg" >
@@ -111,27 +113,23 @@
             //document.body.style.background = 'hsl(' + (video.playbackRate * 180) + ', 50%, 15%)';
         };
         
-           //鼠标移入显示
-        Moveout.onmouseover = function () {
-            content.style.display = "block";
-        }
-        function Moveoutsover() {
-            content.style.display = "block";
-        }
-        //鼠标移出隐藏
-        Moveout.onmouseout = function () {
-            content.style.display = "none";
-        }              
-        function MoveoutSout() {
-            content.style.display = "none";
-        }
-//        showhide.onmouseover = function(event){
-//         showhide.style = "visibility:visible;"
-//         };
-        
-//         showhide.onmouseout = function(event){
-//         showhide.style = "visibility:hidden;"
-//         };
+//            //鼠标移入显示
+//         Moveout.onmouseover = function () {
+//             content.style.display = "block";
+//         }
+//         function Moveoutsover() {
+//             content.style.display = "block";
+//         }
+//         //鼠标移出隐藏
+//         Moveout.onmouseout = function () {
+//             content.style.display = "none";
+//         }              
+//         function MoveoutSout() {
+//             content.style.display = "none";
+//         }
+            
+            
+
         
 //         video.ontouchstart = function(event){
 //         video.controls = true;
