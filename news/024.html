@@ -39,13 +39,17 @@
 </head>
 
 <body aria-hidden="false" class="hypothesis-highlights-always-on">
-   <div class="fix-box"><video  controlsList="fullscreen nodownload" oncontextmenu="return false" controls>
+   <div class="fix-box"><video id="my-audio-stream" controlsList="fullscreen nodownload" oncontextmenu="return false" controls>
 
   <source src="https://res.wx.qq.com/voice/getvoice?mediaid=MzI5MTIxMjM5MV81MDQwMDg4MTg=" >
 
 您的浏览器不支持 audio 元素。
 
-</video></div>
+</video>
+        <p class="controls">
+            <label>倍数播放: <input type="range" step="0.1" min="0.5" max="2" value="1" id="rateSlider"></label> <span id="rateOutput" aria-live="polite"></span>
+        </p>
+        </div>
         <outline-app>
 
     <outline-article>
@@ -73,5 +77,46 @@
 <p>This article appeared in the Science &amp; technology section of the print edition under the headline "A pair of aces"</p>
     </div>
 
+     <script>
+    // Inline code is for educational purposes. Best practice is to put your scripts in external files.
+    (function() {
+        'use strict';
+        
+        var video = document.getElementById("my-audio-stream");
+        var rateOutput = document.getElementById('rateOutput');
+        var rateSlider = document.getElementById('rateSlider');
+       
+        
+        rateSlider.onchange = function(event) {
+            // When the slider is moved, changed the video's playback rate
+            video.playbackRate = rateSlider.value;
+        };
+        
+        video.onplay = function(event) {
+            // We can only change the playbackRate once the video has started playing
+            video.playbackRate = rateSlider.value;
+        };
+        
+        video.onratechange = function(event) {
+            // When the playback rate changes, display the new value
+            rateOutput.textContent = video.playbackRate;
+            
+            // And let's have some colourful fun while we're here
+            //document.body.style.background = 'hsl(' + (video.playbackRate * 180) + ', 50%, 15%)';
+        };
+        
+        video.onmouseover = function(event){
+        video.controls = true;
+        };
+        
+        video.onmouseout = function(event){
+        video.controls = false;
+        };
+        
+        
+        rateOutput.textContent = rateSlider.value;
+    })();
+    </script>
+       
 </body>
     </html>
