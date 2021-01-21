@@ -105,21 +105,21 @@
             //document.body.style.background = 'hsl(' + (video.playbackRate * 180) + ', 50%, 15%)';
         };
         
-       //video.onmouseover = function(event){
-        //video.controls = true;
-        //};
-        
-        //video.onmouseout = function(event){
-        //video.controls = false;
-        //};
-        
-        video.ontouchstart = function(event){
+       video.onmouseover = function(event){
         video.controls = true;
-         };
-            
-        video.ontouchend = function(event){
+        };
+        
+        video.onmouseout = function(event){
         video.controls = false;
-       };
+        };
+        
+//         video.ontouchstart = function(event){
+//         video.controls = true;
+//          };
+            
+//         video.ontouchend = function(event){
+//         video.controls = false;
+//        };
         
         rateOutput.textContent = rateSlider.value;
     })();
