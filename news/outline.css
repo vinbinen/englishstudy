@@ -1289,12 +1289,13 @@ hypothesis-adder.hidden {
 
 .yue {
   font: var(--base-font-weight) var(--base-font-size) var(--base-font-family), sans-serif;
-  color: var(--base-color);
+  /*color: var(--base-color);*/
   font-variant-ligatures: common-ligatures;
   font-variant-numeric: oldstyle-nums;
   -moz-font-feature-settings: "liga", "clig", "onum";
   -webkit-font-feature-settings: "liga", "clig", "onum";
    font-feature-settings: "liga", "clig", "onum";
+   color: var(--emphasis-color);
 }
 
 .yue h1,
