@@ -26,4 +26,6 @@ Inscrutable一词源自于拉丁语inscrutabilis，由否定前缀in-加上scrut
 近义词<br/>
 enigmatic, unreadable, impenetrable, mysterious
 
-> 本文字为本人学习经济学人所做笔记，仅供免费学习使用。版权归相关权利人所有。 若因客观原因无意中侵犯了您的版权，请发邮件留言告知。平台将立即删除。<an769982466@outlook.com>
+> 本文字为本人学习经济学人所做笔记，仅供免费学习使用。版权归相关权利人所有。 若因客观原因无意中侵犯了您的版权，请发邮件留言告知。平台将立即删除。
+
+<an769982466@outlook.com>
