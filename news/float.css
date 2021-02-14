@@ -1,0 +1,23 @@
+   .fix-box{
+
+      text-align: center;
+
+      bottom:5px;
+
+      position:fixed;
+
+      z-index:100;
+
+   }
+   
+      .fix-box2{
+
+      text-align: center;
+
+     top:5px;
+
+      position:fixed;
+
+      z-index:100;
+
+   }
