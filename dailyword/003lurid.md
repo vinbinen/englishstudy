@@ -18,7 +18,7 @@ Mr Leith encounters Jordan Belfort, a former stockbroker and the author of “Th
 
 释义
 
-[adjective] Presented in vividly shocking or sensational terms
+[adjective] Presented in vividly shocking or sensational terms<br/>
 [形容词] 以令人震惊或耸人听闻的说法呈现的
 
 解读
@@ -28,3 +28,5 @@ Lurid一词源自于拉丁语luridus（浅黄色、土黄色），它强调的�
 近义词
 
 melodramatic, exaggerated, overdramatized
+
+> 本文字为本人学习经济学人所做笔记，仅供免费学习使用。版权归相关权利人所有。 若因客观原因无意中侵犯了您的版权，请发邮件留言告知。平台将立即删除。<an769982466@outlook.com>
