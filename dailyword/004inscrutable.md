@@ -1,3 +1,5 @@
+ <link href="../css.css" rel="stylesheet">
+
 # 每日一词 004
 
 ## inscrutable
