@@ -102,10 +102,12 @@
                                   strs = str.split("/");   //用等号进行分隔 （因为知道只有一个参数 所以直接用等号进分隔 如果有多个参数 要用&号分隔 再用等号进行分隔）
                                         //alert(strs[4]);  
                                                 //直接弹出第一个参数 （如果有多个参数 还要进行循环的）
-			      var decodeUri=decodeURI(strs[8]);
-                                          document.title=decodeUri.slice(0,13);
+			      var decodeUri=decodeURI(strs[8]).split(".");
+			      
+			      
+                                          document.title=decodeUri[0];
 			      var myaudio=document.getElementById("myAudio");
-			      myaudio.src="https://cdn.jsdelivr.net/gh/vinbinen/englishstudy/childeng/pdf/"+ decodeUri.slice(0,13) +".mp3";
+			      myaudio.src="https://cdn.jsdelivr.net/gh/vinbinen/englishstudy/childeng/pdf/"+ decodeUri[0] +".mp3";
 //                                           alert(myaudio.src);
 		      }
             };
