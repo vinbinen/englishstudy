@@ -70,6 +70,20 @@
 
 		</div>
 		<div id="demo"></div>
+		  <link rel="stylesheet" href="float.css" />
+
+                  <div class="fix-box" id="Moveout" onmouseover="Moveoutsover()" onmouseout="MoveoutSout()">
+                  <div>🎧</div>
+                   <div class="contenter" id="content">
+                   <audio id="my-audio-stream" controlsList="nodownload fullscreen" oncontextmenu="return false" preload="auto" controls="">
+                    <source src="https://" type="audio/mpeg" />
+                      您的浏览器不支持 audio 元素。
+                      </audio>
+                       <p class="controls" style="color:red;">
+                     <label>playback speed:<input type="range" step="0.1" min="0.5" max="3" value="1" id="rateSlider" /></label> <span id="rateOutput" aria-live="polite"></span>
+                      </p>
+                     </div>
+                  </div>
 	<!-- 	<div id="demo2"></div>
 		<div id="demo3"></div> -->
 		<script src="js/pdf.js"></script>
