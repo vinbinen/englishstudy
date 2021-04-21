@@ -77,7 +77,7 @@
                   <div>🎧</div>
                    <div class="contenter" id="content">
                    <audio id="my-audio-stream" controlsList="nodownload fullscreen" oncontextmenu="return false" preload="auto" controls="">
-                    <source src="https://cdn.jsdelivr.net/gh/vinbinen/englishstudy/childeng/pdf/A Bee Like Me/A Bee Like Me.mp3" type="audio/mpeg" />
+                    <source id="myAudio" src="" type="audio/mpeg" />
                       您的浏览器不支持 audio 元素。
                       </audio>
                        <p class="controls" style="color:red;">
@@ -102,7 +102,10 @@
                                   strs = str.split("/");   //用等号进行分隔 （因为知道只有一个参数 所以直接用等号进分隔 如果有多个参数 要用&号分隔 再用等号进行分隔）
                                         //alert(strs[4]);  
                                                 //直接弹出第一个参数 （如果有多个参数 还要进行循环的）
-                                          document.title=decodeURI(strs[5]);
+			      var decodeUri=decodeURI(strs[5]);
+                                          document.title=decodeUri;
+			      var myaudio=document.getElementById("myAudio");
+			      myaudio.src="https://cdn.jsdelivr.net/gh/vinbinen/englishstudy/childeng/pdf/"+ decodeUri +"/"+ decodeUri +".mp3";
                                            }
             };
 
