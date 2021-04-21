@@ -117,7 +117,7 @@
 			$(function() {
 				$("#app").remove()
 				$("#demo").show()
-               localStorage.pass=prompt("请输入密码",localStorage.pass);
+//                localStorage.pass=prompt("请输入密码",localStorage.pass);
 				pdfh5 = new Pdfh5('#demo', {
 					pdfurl: "https://cdn.jsdelivr.net/gh/vinbinen/englishstudy/childeng/pdf/A Bee Like Me.pdf",
 					renderType:"svg",
@@ -129,7 +129,7 @@
 					// },
 					URIenable:true,
                             //开启浏览器地址栏file参数获取
-                             password:localStorage.pass
+//                              password:localStorage.pass
 				});
 				// new Pdfh5('#demo2', {
 				// 	pdfurl: "222.pdf"
