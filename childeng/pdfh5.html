@@ -103,11 +103,11 @@
                                         //alert(strs[4]);  
                                                 //直接弹出第一个参数 （如果有多个参数 还要进行循环的）
 			      var decodeUri=decodeURI(strs[8]).split(".");
+			      var titlelink = decodeUri[0];
 			      
-			      
-                                          document.title=decodeUri[0];
+                                          document.title=titlelink;
 			      var myaudio=document.getElementById("myAudio");
-			      myaudio.src="https://cdn.jsdelivr.net/gh/vinbinen/englishstudy/childeng/pdf/"+ decodeUri[0] +".mp3";
+			      myaudio.src="https://cdn.jsdelivr.net/gh/vinbinen/englishstudy/childeng/pdf/"+ titlelink +".mp3";
 //                                           alert(myaudio.src);
 		      }
             };
