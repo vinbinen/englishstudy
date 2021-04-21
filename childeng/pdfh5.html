@@ -105,7 +105,7 @@
 			      var decodeUri=decodeURI(strs[6]);
                                           document.title=decodeUri;
 			      var myaudio=document.getElementById("myAudio");
-			      myaudio.src="https://cdn.jsdelivr.net/gh/vinbinen/englishstudy/childeng/pdf/"+ decodeUri +".mp3";
+			      myaudio.src="https://cdn.jsdelivr.net/gh/vinbinen/englishstudy/childeng/pdf/"+ decodeUri.slice(0,12) +".mp3";
                                           alert(myaudio.src);
 		      }
             };
