@@ -1,0 +1,25 @@
+   .fix-box{
+
+             
+
+                   bottom:5px;
+
+                         position:fixed;
+
+                               z-index:100;
+
+   }
+      
+            .fix-box2{
+
+                      
+
+                           top:5px;
+
+                                 position:fixed;
+
+                                       z-index:100;
+
+            }
+            
+   
