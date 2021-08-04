@@ -126,7 +126,8 @@ function GetRequest() {
 //                localStorage.pass=prompt("请输入密码",localStorage.pass);
 				pdfh5 = new Pdfh5('#demo', {
 					pdfurl: "https://cdn.jsdelivr.net/gh/vinbinen/englishstudy/childeng/pdf/A Bee Like Me.pdf",
-					renderType:"svg",
+					renderType:"canvas",
+                                        textLayer:true,
                     // background:{
 					// 	image:"url('pdfh5.png')",
 					// 	repeat:"no-repeat",
