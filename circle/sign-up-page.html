@@ -97,7 +97,7 @@
         if (index < message.length) {
             output.innerHTML += message.charAt(index);
             index++;
-            setTimeout(typeWriter, 900); // 每900毫秒打印一个字符
+            setTimeout(typeWriter, 600); // 每600毫秒打印一个字符
         } else {
             // 当打印完成后，重置index并清空输出，然后重新开始打印
             index = 0;
