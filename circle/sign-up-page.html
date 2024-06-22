@@ -58,19 +58,24 @@
 
 </body>
 <script>
-        var message = "大化二中等你来，我们不见不散！";
-        var index = 0;
-        var output = document.getElementById('output');
+    var message = "大化二中等你来，我们不见不散！";
+    var index = 0;
+    var output = document.getElementById('output');
 
-        function typeWriter() {
-            if (index < message.length) {
-                output.innerHTML += message.charAt(index);
-                index++;
-                setTimeout(typeWriter, 100); // 每100毫秒打印一个字符
-            }
+    function typeWriter() {
+        if (index < message.length) {
+            output.innerHTML += message.charAt(index);
+            index++;
+            setTimeout(typeWriter, 100); // 每100毫秒打印一个字符
+        } else {
+            // 当打印完成后，重置index并清空输出，然后重新开始打印
+            index = 0;
+            output.innerHTML = ''; // 清空输出
+            setTimeout(typeWriter, 500); // 在打印完成后稍作延迟再重新开始
         }
+    }
 
-        typeWriter();
+    typeWriter();
 </script>
     
 </html>
