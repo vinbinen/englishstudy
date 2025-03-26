@@ -213,11 +213,6 @@
         const cellX = idBoxX + i * cellWidth;
         // 绘制框格
         ctx.strokeRect(cellX, idBoxY, cellWidth, idBoxHeight);
-        // 填涂框格内的数字
-        ctx.font = "20px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText((i + 1).toString(), cellX + cellWidth / 2, idBoxY + idBoxHeight / 2);
         
         // 添加数字列（0-9）
         const digitColumnX = cellX + cellWidth / 2 - 5; // 数字列的x坐标，居中
