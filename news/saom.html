@@ -121,7 +121,7 @@
     
     <!-- 答题卡模板预览 -->
     <div id="answerSheetContainer">
-      <canvas id="answerSheetCanvas" width="600" height="800"></canvas>
+      <canvas id="answerSheetCanvas" width="800" height="1000"></canvas>
     </div>
     
     <!-- 摄像头区域 -->
@@ -223,11 +223,23 @@
       ctx.font = "14px Arial";
       ctx.fillText("填写说明：请使用黑色中性笔填写，保持填写清晰", containerWidth / 2 - ctx.measureText("填写说明：请使用黑色中性笔填写，保持填写清晰").width / 2, 70);
       
-      // 绘制准考证号区域
+      // 绘制左边个人信息区域
+      const leftSectionWidth = containerWidth / 3; // 左边区域宽度占总宽度的1/3
+      const rightSectionX = leftSectionWidth + 20; // 右边答题区域的起始X坐标
+      
+      // 绘制姓名区域
       ctx.font = "16px Arial";
-      ctx.fillText("准考证号:", 20, 100);
-      const totalIdAreaWidth = studentIdDigits * 50; // 每个框的宽度增加以容纳数字列
-      const idBoxX = 20, idBoxY = 120, idBoxHeight = 40;
+      ctx.fillText("姓名:", 20, 120);
+      ctx.strokeRect(20, 140, leftSectionWidth - 40, 30);
+      
+      // 绘制班级区域
+      ctx.fillText("班级:", 20, 190);
+      ctx.strokeRect(20, 210, leftSectionWidth - 40, 30);
+      
+      // 绘制准考证号区域
+      ctx.fillText("准考证号:", 20, 260);
+      const totalIdAreaWidth = leftSectionWidth - 40; // 准考证号区域宽度
+      const idBoxX = 20, idBoxY = 280, idBoxHeight = 40;
       ctx.strokeRect(idBoxX, idBoxY, totalIdAreaWidth, idBoxHeight);
       let cellWidth = totalIdAreaWidth / studentIdDigits;
       
@@ -251,12 +263,21 @@
         }
       }
       
+      // 绘制注意事项
+      ctx.font = "12px Arial";
+      ctx.fillText("注意事项：", 20, 400);
+      ctx.fillText("1. 请使用黑色中性笔填写个人信息和答案。", 40, 420);
+      ctx.fillText("2. 填写时请保持字迹清晰，避免涂改。", 40, 440);
+      ctx.fillText("3. 请在规定区域内填写，超出区域的内容可能无法识别。", 40, 460);
+      
       // 绘制答题区域
       ctx.font = "16px Arial";
-      ctx.fillText("答题区域:", 20, 220); // 调整起始位置
-      const startX = 20, startY = 250, boxSize = 20;
+      ctx.fillText("答题区域:", rightSectionX, 120);
+      const startX = rightSectionX;
+      const startY = 150;
+      const boxSize = 20;
       // 根据容器宽度动态计算选项间隔
-      const spacing = (containerWidth - startX * 2 - optionCount * (boxSize + 10)) / (optionCount - 1);
+      const spacing = (containerWidth - rightSectionX - 20 - optionCount * (boxSize + 10)) / (optionCount - 1);
       
       for (let i = 0; i < questionCount; i++) {
         let yPos = startY + i * 35;
@@ -370,7 +391,7 @@
         let cx = rect.x + rect.width / 2;
         let cy = rect.y + rect.height / 2;
         // 根据答题卡模板绘制时的起始位置和行间距确定题号
-        let questionIndex = Math.floor((cy - 250) / 35);
+        let questionIndex = Math.floor((cy - 150) / 35);
         if (questionIndex < 0 || questionIndex >= questionCount) continue;
         // 根据起始 x 坐标（20）和估算选项区域确定选项索引
         let optionIndex = Math.floor((cx - 20) / (20 + ((canvas.width / (window.devicePixelRatio || 1) - 20 * 2 - optionCount * 20) / (optionCount - 1))));
