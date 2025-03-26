@@ -217,7 +217,7 @@
       ctx.fillText(title, canvas.width / 2 - ctx.measureText(title).width / 2, 40);
       
       // 绘制左边个人信息区域
-      const leftSectionWidth = 250; // 左边区域固定宽度
+      const leftSectionWidth = 200; // 左边区域固定宽度
       const rightSectionX = leftSectionWidth + 20; // 右边答题区域的起始X坐标
       
       // 绘制姓名区域
@@ -274,7 +274,7 @@
       const questionsPerColumn = 25; // 每列题目数量
       
       const columns = Math.ceil(questionCount / questionsPerColumn); // 计算需要的列数
-      const columnWidth = 250; // 每列的宽度
+      const columnWidth = 200; // 每列的宽度
       
       for (let i = 0; i < questionCount; i++) {
         const column = Math.floor(i / questionsPerColumn); // 确定当前题所在的列
