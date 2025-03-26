@@ -109,10 +109,10 @@
     
     <!-- 参数设置区域 -->
     <div class="config-panel">
-      <input type="number" id="questionCount" placeholder="题目总数" value="10">
-      <input type="number" id="optionCount" placeholder="每题选项数" value="4">
-      <input type="number" id="studentIdDigits" placeholder="准考证号位数" value="10">
-      <input type="number" id="scorePerQuestion" placeholder="每题分值" value="10">
+      <input type="number" id="questionCount" placeholder="题目总数" value="10" min="1" max="100">
+      <input type="number" id="optionCount" placeholder="每题选项数" value="4" min="2" max="10">
+      <input type="number" id="studentIdDigits" placeholder="准考证号位数" value="10" min="1" max="20">
+      <input type="number" id="scorePerQuestion" placeholder="每题分值" value="10" min="1">
       <button onclick="generateAnswerSheet()">生成答题卡</button>
       <button onclick="showAnswerKeyInput()">输入标准答案</button>
       <button class="export-btn" onclick="exportAnswerSheet()">导出答题卡</button>
@@ -176,76 +176,85 @@
       generateAnswerSheet();
     });
     
-    // 生成答题卡模板（重新设计布局）
+    // 生成答题卡模板（自适应布局绘制到 canvas）
     function generateAnswerSheet() {
+      // 参数验证
+      const questionCount = parseInt(document.getElementById('questionCount').value);
+      const optionCount = parseInt(document.getElementById('optionCount').value);
+      const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value);
+      const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value);
+      
+      if (!questionCount || questionCount < 1 || questionCount > 100) {
+        alert('题目数量必须为1到100之间的整数');
+        return;
+      }
+      if (!optionCount || optionCount < 2 || optionCount > 10) {
+        alert('每题选项数必须为2到10之间的整数');
+        return;
+      }
+      if (!studentIdDigits || studentIdDigits < 1 || studentIdDigits > 20) {
+        alert('准考证号位数必须为1到20之间的整数');
+        return;
+      }
+      if (!scorePerQuestion || scorePerQuestion < 1) {
+        alert('每题分值必须为大于0的整数');
+        return;
+      }
+      
       const canvas = document.getElementById('answerSheetCanvas');
       const ctx = canvas.getContext('2d');
       const containerWidth = canvas.clientWidth;
       const containerHeight = canvas.clientHeight;
+      // 为了高清显示
       const dpi = window.devicePixelRatio || 1;
       canvas.width = containerWidth * dpi;
       canvas.height = containerHeight * dpi;
       ctx.scale(dpi, dpi);
       
-      // 获取配置参数
-      const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-      const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
-      const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value) || 10;
-      
-      // 清空画布
       ctx.clearRect(0, 0, containerWidth, containerHeight);
       
-      // 绘制标题（答题卡名称）
+      // 绘制标题
       ctx.font = "24px Arial";
-      const title = "答题卡";
-      ctx.fillText(title, containerWidth/2 - ctx.measureText(title).width/2, 30);
+      let title = "答题卡";
+      ctx.fillText(title, containerWidth / 2 - ctx.measureText(title).width / 2, 40);
       
-      // ****************** 准考证号区域 ******************
+      // 绘制准考证号区域
       ctx.font = "16px Arial";
-      // “准考证号:”标签
-      ctx.fillText("准考证号:", 20, 70);
+      ctx.fillText("准考证号:", 20, 80);
+      const totalIdAreaWidth = studentIdDigits * 40; // 每个框的宽度增加以容纳数字列
+      const idBoxX = 20, idBoxY = 90, idBoxHeight = 40;
+      ctx.strokeRect(idBoxX, idBoxY, totalIdAreaWidth, idBoxHeight);
+      let cellWidth = totalIdAreaWidth / studentIdDigits;
       
-      // 绘制准考证号矩形区域
-      const candidateStartX = 20;
-      const candidateStartY = 80;
-      const candidateBoxWidth = 30;    // 每个准考证号框宽度
-      const candidateBoxHeight = 40;   // 框高度
-      const candidateTotalWidth = studentIdDigits * candidateBoxWidth;
-      ctx.strokeRect(candidateStartX, candidateStartY, candidateTotalWidth, candidateBoxHeight);
-      
-      // 在每个准考证号框下方绘制数字选择列（0-9）
-      const digitCellSize = 15;        // 数字小框尺寸
-      const digitSpacing = 5;          // 框间间距
-      const digitStartY = candidateStartY + candidateBoxHeight + 10; // 数字列起始y坐标
+      // 填涂数字和添加数字列
       for (let i = 0; i < studentIdDigits; i++) {
-        let cellX = candidateStartX + i * candidateBoxWidth;
-        // 计算当前列的中心 x 坐标（用于绘制数字时居中）
-        const digitCenterX = cellX + candidateBoxWidth / 2;
+        const cellX = idBoxX + i * cellWidth;
+        // 绘制框格
+        ctx.strokeRect(cellX, idBoxY, cellWidth, idBoxHeight);
+        
+        // 添加数字列（0-9）
+        const digitColumnX = cellX + cellWidth / 2 - 5; // 数字列的x坐标，居中
+        const digitColumnY = idBoxY + idBoxHeight + 10; // 数字列的起始y坐标
+        const digitCellSize = 15; // 每个数字单元格的大小
+        const digitSpacing = 2; // 数字之间的间距
+        
+        // 绘制数字列的边框
         for (let j = 0; j < 10; j++) {
-          let cellY = digitStartY + j * (digitCellSize + digitSpacing);
-          ctx.strokeRect(digitCenterX - digitCellSize/2, cellY, digitCellSize, digitCellSize);
-          ctx.fillText(j.toString(), digitCenterX - 4, cellY + digitCellSize/2 + 4);
+          const digitY = digitColumnY + j * (digitCellSize + digitSpacing);
+          ctx.strokeRect(digitColumnX - digitCellSize / 2, digitY, digitCellSize, digitCellSize);
+          ctx.fillText(j.toString(), digitColumnX, digitY + digitCellSize / 2 + 4);
         }
       }
-      // 计算准考证号区域底部 y 坐标
-      const candidateSectionBottom = digitStartY + 10 * (digitCellSize + digitSpacing);
       
-      // ****************** 答题区域 ******************
-      // 留出适当间距后绘制“答题区域:”标题
-      const questionAreaTitleY = candidateSectionBottom + 20;
-      ctx.fillText("答题区域:", 20, questionAreaTitleY);
-      
-      // 题目区域起始坐标（题目文本及选项框）
-      // 例如：在标题下方30像素开始
-      const questionStartY = questionAreaTitleY + 30;
-      const boxSize = 20;  // 选项框尺寸
-      const startX = 20;
-      // 根据容器宽度计算选项间的间距
+      // 绘制答题区域
+      ctx.font = "16px Arial";
+      ctx.fillText("答题区域:", 20, 150);
+      const startX = 20, startY = 180, boxSize = 20;
+      // 根据容器宽度动态计算选项间隔
       const spacing = (containerWidth - startX * 2 - optionCount * boxSize) / (optionCount - 1);
       
       for (let i = 0; i < questionCount; i++) {
-        let yPos = questionStartY + i * 30;
-        // 绘制题号文本，如 "Q1:"
+        let yPos = startY + i * 30;
         ctx.fillText(`Q${i+1}:`, startX - 40, yPos + boxSize / 2 + 5);
         for (let j = 0; j < optionCount; j++) {
           let xPos = startX + j * (boxSize + spacing);
@@ -254,7 +263,7 @@
         }
       }
       
-      // 显示答题卡预览，隐藏其他区域
+      // 隐藏其他区域
       document.getElementById('answerSheetContainer').style.display = 'block';
       document.getElementById('cameraContainer').classList.add('hide');
       document.getElementById('results').classList.add('hide');
@@ -275,8 +284,10 @@
     function exportAnswerSheet() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
+      // 获取 canvas 图片数据
       const canvas = document.getElementById('answerSheetCanvas');
-      const imgData = canvas.toDataURL("image/png", 0.5);
+      const imgData = canvas.toDataURL("image/png", 0.5); // 压缩图像
+      // 添加标题和图片到 PDF
       doc.text("答题卡", doc.internal.pageSize.getWidth() / 2 - 20, 20);
       doc.addImage(imgData, 'PNG', 20, 30, 170, 220);
       doc.save("answer_sheet.pdf");
@@ -333,32 +344,20 @@
       
       const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
       const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
-      // 初始化每题答案候选
+      // 初始化每题答案候选，记录 { answer: null, area: 0 }
       studentAnswers = Array(questionCount).fill(null).map(() => ({ answer: null, area: 0 }));
-      
-      // 计算答题区域起始 y 坐标（与 generateAnswerSheet 中保持一致）
-      // 根据本设计，答题区域起始：候选区域底部为330，再加20+30 = 350+30 = 380
-      const questionStartY = 380;
-      // 根据 canvas 宽度计算选项间间距
-      const containerWidth = canvas.width / (window.devicePixelRatio || 1);
-      const startX = 20;
-      const boxSize = 20;
-      const spacing = (containerWidth - startX * 2 - optionCount * boxSize) / (optionCount - 1);
       
       for (let i = 0; i < contours.size(); i++) {
         let contour = contours.get(i);
         let rect = cv.boundingRect(contour);
-        // 忽略噪点及过大区域
         if (rect.width < 10 || rect.height < 10 || rect.width > 100 || rect.height > 100) continue;
         let cx = rect.x + rect.width / 2;
         let cy = rect.y + rect.height / 2;
-        // 若检测区域在题目区域上方则跳过
-        if(cy < questionStartY) continue;
-        // 根据答题区域起始位置与行间距计算题号
-        let questionIndex = Math.floor((cy - questionStartY) / 30);
+        // 根据答题卡模板绘制时的起始位置和行间距确定题号
+        let questionIndex = Math.floor((cy - 180) / 30);
         if (questionIndex < 0 || questionIndex >= questionCount) continue;
-        // 根据起始 x 坐标与框宽、间距计算选项索引
-        let optionIndex = Math.floor((cx - startX) / (boxSize + spacing));
+        // 根据起始 x 坐标（20）和估算选项区域确定选项索引
+        let optionIndex = Math.floor((cx - 20) / (20 + ((canvas.width / (window.devicePixelRatio || 1) - 20 * 2 - optionCount * 20) / (optionCount - 1))));
         if (optionIndex < 0 || optionIndex >= optionCount) continue;
         let area = rect.width * rect.height;
         if (area > studentAnswers[questionIndex].area) {
@@ -370,7 +369,7 @@
       calculateScore();
     }
     
-    // 计算单份扫描成绩，并显示结果
+    // 计算单份扫描成绩，并显示单个学生成绩
     function calculateScore() {
       if (answerKey.length === 0) {
         alert('请先设置标准答案');
@@ -390,6 +389,7 @@
           correctAnswer: answerKey[i]
         });
       }
+      // 显示单个扫描结果
       document.getElementById('totalScore').textContent = totalScore;
       const container = document.getElementById('questionStats');
       container.innerHTML = '';
@@ -402,7 +402,7 @@
       document.getElementById('results').classList.remove('hide');
     }
     
-    // 保存当前扫描的学生结果
+    // 保存当前扫描的学生结果到全局数组
     function saveCurrentResult() {
       if (studentAnswers.length === 0) {
         alert('无有效扫描结果');
@@ -420,7 +420,7 @@
       alert('成绩已保存，目前累计 ' + allStudentResults.length + ' 份答题卡');
     }
     
-    // 显示所有答题卡的统计结果
+    // 统计所有保存的答题卡中，每题的正确率
     function displayAggregateStats() {
       if (allStudentResults.length === 0) {
         alert('尚未保存任何扫描结果');
@@ -428,11 +428,13 @@
       }
       const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
       let stats = Array(questionCount).fill(0);
+      // 统计所有答题卡中每题正确的次数
       allStudentResults.forEach(result => {
         result.answers.forEach((ans, index) => {
           if (ans === answerKey[index]) stats[index]++;
         });
       });
+      // 计算正确率并显示
       const aggregateContainer = document.getElementById('aggregateStats');
       aggregateContainer.innerHTML = '';
       for (let i = 0; i < questionCount; i++) {
