@@ -115,7 +115,8 @@
       <input type="number" id="scorePerQuestion" placeholder="每题分值" value="10" min="1">
       <button onclick="generateAnswerSheet()">生成答题卡</button>
       <button onclick="showAnswerKeyInput()">输入标准答案</button>
-      <button class="export-btn" onclick="exportAnswerSheet()">导出答题卡</button>
+      <button class="export-btn" onclick="exportAnswerSheet()">导出答题卡为PDF</button>
+      <button class="export-btn" onclick="exportAnswerSheetAsImage()">导出答题卡为图片</button>
     </div>
     
     <!-- 答题卡模板预览 -->
@@ -238,7 +239,7 @@
         
         // 添加数字列（0-9）
         const digitColumnX = cellX + cellWidth / 2 - 5; // 数字列的x坐标，居中
-        const digitColumnY = idBoxY + idBoxHeight + 10; // 数字列的起始y坐标
+        const digitColumnY = idBoxY + idBoxHeight + 20; // 数字列的起始y坐标，增加间距
         const digitCellSize = 15; // 每个数字单元格的大小
         const digitSpacing = 3; // 数字之间的间距
         
@@ -252,8 +253,8 @@
       
       // 绘制答题区域
       ctx.font = "16px Arial";
-      ctx.fillText("答题区域:", 20, 180);
-      const startX = 20, startY = 210, boxSize = 20;
+      ctx.fillText("答题区域:", 20, 200);
+      const startX = 20, startY = 230, boxSize = 20;
       // 根据容器宽度动态计算选项间隔
       const spacing = (containerWidth - startX * 2 - optionCount * (boxSize + 10)) / (optionCount - 1);
       
@@ -295,6 +296,17 @@
       doc.text("答题卡", doc.internal.pageSize.getWidth() / 2 - 20, 20);
       doc.addImage(imgData, 'PNG', 20, 30, 170, 220);
       doc.save("answer_sheet.pdf");
+    }
+    
+    // 导出答题卡为图片
+    function exportAnswerSheetAsImage() {
+      const canvas = document.getElementById('answerSheetCanvas');
+      const imgData = canvas.toDataURL("image/png", 0.5); // 压缩图像
+      // 创建一个隐藏的<a>元素用于下载
+      const link = document.createElement('a');
+      link.download = 'answer_sheet.png';
+      link.href = imgData;
+      link.click();
     }
     
     // 切换到摄像头视图
@@ -358,7 +370,7 @@
         let cx = rect.x + rect.width / 2;
         let cy = rect.y + rect.height / 2;
         // 根据答题卡模板绘制时的起始位置和行间距确定题号
-        let questionIndex = Math.floor((cy - 210) / 35);
+        let questionIndex = Math.floor((cy - 230) / 35);
         if (questionIndex < 0 || questionIndex >= questionCount) continue;
         // 根据起始 x 坐标（20）和估算选项区域确定选项索引
         let optionIndex = Math.floor((cx - 20) / (20 + ((canvas.width / (window.devicePixelRatio || 1) - 20 * 2 - optionCount * 20) / (optionCount - 1))));
