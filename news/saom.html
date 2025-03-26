@@ -121,7 +121,7 @@
     
     <!-- 答题卡模板预览 -->
     <div id="answerSheetContainer">
-      <canvas id="answerSheetCanvas" width="800" height="1000"></canvas>
+      <canvas id="answerSheetCanvas" width="1000" height="1000"></canvas>
     </div>
     
     <!-- 摄像头区域 -->
@@ -274,12 +274,17 @@
       const startY = 110;
       const boxSize = 20;
       const spacing = 10;
+      const column1QuestionCount = 25; // 第一列题目数量
       
       for (let i = 0; i < questionCount; i++) {
-        let yPos = startY + i * 35;
-        ctx.fillText(`${i + 1}.`, startX, yPos + boxSize / 2 + 5);
+        let yPos = startY + (i % column1QuestionCount) * 35;
+        let currentX = startX;
+        if (i >= column1QuestionCount) {
+          currentX += 250; // 第二列的偏移量
+        }
+        ctx.fillText(`${i + 1}.`, currentX, yPos + boxSize / 2 + 5);
         for (let j = 0; j < optionCount; j++) {
-          let xPos = startX + 40 + j * (boxSize + spacing);
+          let xPos = currentX + 40 + j * (boxSize + spacing);
           ctx.strokeRect(xPos, yPos, boxSize, boxSize);
           ctx.fillText(String.fromCharCode(65 + j), xPos + 5, yPos + boxSize / 2 + 5);
         }
