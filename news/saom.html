@@ -111,7 +111,7 @@
     <div class="config-panel">
       <input type="number" id="questionCount" placeholder="题目总数" value="10">
       <input type="number" id="optionCount" placeholder="每题选项数" value="4">
-      <input type="number" id="studentIdDigits" placeholder="准考证号位数" value="8">
+      <input type="number" id="studentIdDigits" placeholder="准考证号位数" value="10">
       <input type="number" id="scorePerQuestion" placeholder="每题分值" value="10">
       <button onclick="generateAnswerSheet()">生成答题卡</button>
       <button onclick="showAnswerKeyInput()">输入标准答案</button>
@@ -191,7 +191,7 @@
       // 获取配置参数
       const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
       const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
-      const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value) || 8;
+      const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value) || 10;
       
       ctx.clearRect(0, 0, containerWidth, containerHeight);
       
@@ -203,19 +203,34 @@
       // 绘制准考证号区域
       ctx.font = "16px Arial";
       ctx.fillText("准考证号:", 20, 80);
-      const totalIdAreaWidth = studentIdDigits * 30;
+      const totalIdAreaWidth = studentIdDigits * 40; // 每个框的宽度增加以容纳数字列
       const idBoxX = 20, idBoxY = 90, idBoxHeight = 40;
       ctx.strokeRect(idBoxX, idBoxY, totalIdAreaWidth, idBoxHeight);
       let cellWidth = totalIdAreaWidth / studentIdDigits;
       
-      // 填涂数字
+      // 填涂数字和添加数字列
       for (let i = 0; i < studentIdDigits; i++) {
         const cellX = idBoxX + i * cellWidth;
+        // 绘制框格
         ctx.strokeRect(cellX, idBoxY, cellWidth, idBoxHeight);
+        // 填涂框格内的数字
         ctx.font = "20px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText((i + 1).toString(), cellX + cellWidth / 2, idBoxY + idBoxHeight / 2);
+        
+        // 添加数字列（0-9）
+        const digitColumnX = cellX + cellWidth / 2 - 5; // 数字列的x坐标，居中
+        const digitColumnY = idBoxY + idBoxHeight + 10; // 数字列的起始y坐标
+        const digitCellSize = 15; // 每个数字单元格的大小
+        const digitSpacing = 2; // 数字之间的间距
+        
+        // 绘制数字列的边框
+        for (let j = 0; j < 10; j++) {
+          const digitY = digitColumnY + j * (digitCellSize + digitSpacing);
+          ctx.strokeRect(digitColumnX - digitCellSize / 2, digitY, digitCellSize, digitCellSize);
+          ctx.fillText(j.toString(), digitColumnX, digitY + digitCellSize / 2 + 4);
+        }
       }
       
       // 绘制答题区域
@@ -258,7 +273,7 @@
       const doc = new jsPDF();
       // 获取 canvas 图片数据
       const canvas = document.getElementById('answerSheetCanvas');
-      const imgData = canvas.toDataURL("image/png");
+      const imgData = canvas.toDataURL("image/png", 0.5); // 压缩图像
       // 添加标题和图片到 PDF
       doc.text("答题卡", doc.internal.pageSize.getWidth() / 2 - 20, 20);
       doc.addImage(imgData, 'PNG', 20, 30, 170, 220);
