@@ -236,10 +236,18 @@
       ctx.fillText("班级:", 20, 190);
       ctx.strokeRect(20, 210, leftSectionWidth - 40, 30);
       
+      // 绘制注意事项
+      ctx.font = "12px Arial";
+      ctx.fillText("注意事项：", 20, 260);
+      ctx.fillText("1. 请使用黑色中性笔填写个人信息和答案。", 40, 280);
+      ctx.fillText("2. 填写时请保持字迹清晰，避免涂改。", 40, 300);
+      ctx.fillText("3. 请在规定区域内填写，超出区域的内容可能无法识别。", 40, 320);
+      
       // 绘制准考证号区域
-      ctx.fillText("准考证号:", 20, 260);
+      ctx.font = "16px Arial";
+      ctx.fillText("准考证号:", 20, 360);
       const totalIdAreaWidth = leftSectionWidth - 40; // 准考证号区域宽度
-      const idBoxX = 20, idBoxY = 280, idBoxHeight = 40;
+      const idBoxX = 20, idBoxY = 380, idBoxHeight = 40;
       ctx.strokeRect(idBoxX, idBoxY, totalIdAreaWidth, idBoxHeight);
       let cellWidth = totalIdAreaWidth / studentIdDigits;
       
@@ -262,13 +270,6 @@
           ctx.fillText(j.toString(), digitColumnX, digitY + digitCellSize / 2 + 4);
         }
       }
-      
-      // 绘制注意事项
-      ctx.font = "12px Arial";
-      ctx.fillText("注意事项：", 20, 400);
-      ctx.fillText("1. 请使用黑色中性笔填写个人信息和答案。", 40, 420);
-      ctx.fillText("2. 填写时请保持字迹清晰，避免涂改。", 40, 440);
-      ctx.fillText("3. 请在规定区域内填写，超出区域的内容可能无法识别。", 40, 460);
       
       // 绘制答题区域
       ctx.font = "16px Arial";
