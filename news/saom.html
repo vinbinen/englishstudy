@@ -1,190 +1,164 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>答题卡扫描系统</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .config-panel {
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #f9f9f9;
-            border-radius: 5px;
-        }
-
-        .config-panel input {
-            width: 120px;
-            margin: 5px;
-            padding: 5px;
-        }
-
-        .config-panel button {
-            padding: 5px 15px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            margin-right: 5px;
-        }
-
-        .config-panel button:hover {
-            background-color: #45a049;
-        }
-
-        .controls {
-            margin-top: 10px;
-            text-align: center;
-        }
-
-        button {
-            padding: 8px 16px;
-            margin: 5px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .start-btn {
-            background-color: #4CAF50;
-            color: white;
-        }
-
-        .capture-btn {
-            background-color: #2196F3;
-            color: white;
-        }
-
-        .stop-btn {
-            background-color: #f44336;
-            color: white;
-        }
-
-        .scan-save-btn {
-            background-color: #FF9800;
-            color: white;
-        }
-
-        .stats-btn {
-            background-color: #9C27B0;
-            color: white;
-        }
-
-        .export-btn {
-            background-color: #FF9800;
-            color: white;
-        }
-
-        .hide {
-            display: none;
-        }
-
-        /* 答题卡预览区域 */
-        #answerSheetContainer {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        canvas {
-            border: 1px solid #ccc;
-            margin-bottom: 10px;
-        }
-
-        /* 统计区域 */
-        .question-item, .aggregate-item {
-            margin: 5px;
-            padding: 5px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-            min-width: 100px;
-        }
-
-        .correct {
-            color: green;
-        }
-
-        .incorrect {
-            color: red;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>答题卡扫描系统</title>
+  <!-- jsPDF 库 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .config-panel {
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-radius: 5px;
+    }
+    .config-panel input {
+      width: 120px;
+      margin: 5px;
+      padding: 5px;
+    }
+    .config-panel button {
+      padding: 5px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    .config-panel button:hover {
+      background-color: #45a049;
+    }
+    .controls {
+      margin-top: 10px;
+      text-align: center;
+    }
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .start-btn {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .capture-btn {
+      background-color: #2196F3;
+      color: white;
+    }
+    .stop-btn {
+      background-color: #f44336;
+      color: white;
+    }
+    .scan-save-btn {
+      background-color: #FF9800;
+      color: white;
+    }
+    .stats-btn {
+      background-color: #9C27B0;
+      color: white;
+    }
+    .export-btn {
+      background-color: #FF9800;
+      color: white;
+    }
+    .hide {
+      display: none;
+    }
+    /* 答题卡预览区域 */
+    #answerSheetContainer {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    canvas {
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+    /* 统计区域 */
+    .question-item, .aggregate-item {
+      margin: 5px;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      min-width: 100px;
+    }
+    .correct { color: green; }
+    .incorrect { color: red; }
+  </style>
 </head>
 <body>
-<div class="container">
+  <div class="container">
     <h1>答题卡扫描系统</h1>
-
+    
+    <!-- 参数设置区域 -->
     <div class="config-panel">
-        <input type="number" id="questionCount" placeholder="题目总数" value="10">
-        <input type="number" id="optionCount" placeholder="每题选项数" value="4">
-        <input type="number" id="studentIdDigits" placeholder="准考证号位数" value="10">
-        <input type="number" id="scorePerQuestion" placeholder="每题分值" value="10">
-        <button onclick="generateAnswerSheet()">生成答题卡</button>
-        <button onclick="showAnswerKeyInput()">输入标准答案</button>
-        <button class="export-btn" onclick="exportAnswerSheet()">导出答题卡</button>
+      <input type="number" id="questionCount" placeholder="题目总数" value="10">
+      <input type="number" id="optionCount" placeholder="每题选项数" value="4">
+      <input type="number" id="studentIdDigits" placeholder="准考证号位数" value="10">
+      <input type="number" id="scorePerQuestion" placeholder="每题分值" value="10">
+      <button onclick="generateAnswerSheet()">生成答题卡</button>
+      <button onclick="showAnswerKeyInput()">输入标准答案</button>
+      <button class="export-btn" onclick="exportAnswerSheet()">导出答题卡</button>
     </div>
-
+    
+    <!-- 答题卡模板预览 -->
     <div id="answerSheetContainer">
-        <canvas id="answerSheetCanvas" width="600" height="800"></canvas>
+      <canvas id="answerSheetCanvas" width="600" height="800"></canvas>
     </div>
-
+    
+    <!-- 摄像头区域 -->
     <div id="cameraContainer">
-        <video id="cameraPreview" autoplay style="width:100%;height:400px;background:#000;"></video>
-        <canvas id="captureCanvas" width="640" height="480" class="hide"></canvas>
-        <div class="controls">
-            <button class="start-btn" onclick="startCamera()">开启摄像头</button>
-            <button class="capture-btn" onclick="captureFrame()">拍照识别</button>
-            <button class="stop-btn" onclick="stopCamera()">关闭摄像头</button>
-        </div>
+      <video id="cameraPreview" autoplay style="width:100%;height:400px;background:#000;"></video>
+      <canvas id="captureCanvas" width="640" height="480" class="hide"></canvas>
+      <div class="controls">
+        <button class="start-btn" onclick="startCamera()">开启摄像头</button>
+        <button class="capture-btn" onclick="captureFrame()">拍照识别</button>
+        <button class="stop-btn" onclick="stopCamera()">关闭摄像头</button>
+      </div>
     </div>
-
+    
+    <!-- 单个学生扫描结果显示 -->
     <div id="results" class="hide" style="margin-top:20px; padding:15px; background:#f9f9f9; border-radius:5px;">
-        <div class="score-display">单份总分: <span id="totalScore">0</span></div>
-        <div id="questionStats" style="display:flex; flex-wrap:wrap;"></div>
-        <button class="scan-save-btn" onclick="saveCurrentResult()">保存此份成绩</button>
+      <div class="score-display">单份总分: <span id="totalScore">0</span></div>
+      <div id="questionStats" style="display:flex; flex-wrap:wrap;"></div>
+      <button class="scan-save-btn" onclick="saveCurrentResult()">保存此份成绩</button>
     </div>
-
+    
+    <!-- 多份答题卡统计结果 -->
     <div id="aggregate" class="hide" style="margin-top:20px; padding:15px; background:#f9f9f9; border-radius:5px;">
-        <h3>各题正确率统计</h3>
-        <div id="aggregateStats" style="display:flex; flex-wrap:wrap;"></div>
-        <button class="stats-btn" onclick="hideAggregateStats()">关闭统计</button>
+      <h3>各题正确率统计</h3>
+      <div id="aggregateStats" style="display:flex; flex-wrap:wrap;"></div>
+      <button class="stats-btn" onclick="hideAggregateStats()">关闭统计</button>
     </div>
-
+    
+    <!-- 其他操作按钮 -->
     <div class="controls">
-        <button onclick="showCamera()">切换到摄像头</button>
-        <button onclick="displayAggregateStats()">显示所有答题卡统计</button>
+      <button onclick="showCamera()">切换到摄像头</button>
+      <button onclick="displayAggregateStats()">显示所有答题卡统计</button>
     </div>
-</div>
-
-<script async src="https://docs.opencv.org/4.5.3/opencv.js"></script>
-
-<script>
-    // 全局配置，方便调整
-    const answerSheetConfig = {
-        title: "答题卡",
-        studentIdLabel: "准考证号:",
-        questionLabelPrefix: "Q",
-        optionLabels: ["A", "B", "C", "D", "E"], // 可以根据需要调整
-        margins: {left: 20, top: 20, right: 20, bottom: 20},
-        studentIdArea: {height: 50, boxSize: 20, digitSpacing: 5, numberColumn: {size: 15, spacing: 2}},
-        questionArea: {boxSize: 20, verticalSpacing: 30, horizontalSpacing: 40}
-    };
-
+  </div>
+  
+  <!-- OpenCV.js -->
+  <script async src="https://docs.opencv.org/4.5.3/opencv.js"></script>
+  
+  <script>
     // 全局变量
     let videoStream = null;
     let answerKey = []; // 标准答案数组
@@ -195,355 +169,283 @@
     let allStudentResults = [];
 
     // 页面加载后初始化
-    document.addEventListener('DOMContentLoaded', function () {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert('您的浏览器不支持摄像头功能');
-        }
-        generateAnswerSheet();
+    document.addEventListener('DOMContentLoaded', function() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('您的浏览器不支持摄像头功能');
+      }
+      generateAnswerSheet();
     });
-
-    // 生成答题卡模板（使用更灵活的方式绘制到 Canvas）
+    
+    // 生成答题卡模板（自适应布局绘制到 canvas）
     function generateAnswerSheet() {
-    const canvas = document.getElementById('answerSheetCanvas');
-    const ctx = canvas.getContext('2d');
-    const containerWidth = canvas.clientWidth;
-    const containerHeight = canvas.clientHeight;
-    // 为了高清显示
-    const dpi = window.devicePixelRatio || 1;
-    canvas.width = containerWidth * dpi;
-    canvas.height = containerHeight * dpi;
-    ctx.scale(dpi, dpi);
-
-    const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-    const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
-    const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value) || 10;
-
-    ctx.clearRect(0, 0, containerWidth, containerHeight);
-
-    ctx.font = "24px Arial";
-    let title = "答题卡";
-    ctx.fillText(title, containerWidth / 2 - ctx.measureText(title).width / 2, 40);
-
-    ctx.font = "16px Arial";
-    ctx.fillText("准考证号:", 20, 80);
-    const totalIdAreaWidth = studentIdDigits * 40;
-    const idBoxX = 20, idBoxY = 90, idBoxHeight = 40;
-    ctx.strokeRect(idBoxX, idBoxY, totalIdAreaWidth, idBoxHeight);
-    let cellWidth = totalIdAreaWidth / studentIdDigits;
-
-    // 填涂数字和添加数字列
-    for (let i = 0; i < studentIdDigits; i++) {
+      const canvas = document.getElementById('answerSheetCanvas');
+      const ctx = canvas.getContext('2d');
+      const containerWidth = canvas.clientWidth;
+      const containerHeight = canvas.clientHeight;
+      // 为了高清显示
+      const dpi = window.devicePixelRatio || 1;
+      canvas.width = containerWidth * dpi;
+      canvas.height = containerHeight * dpi;
+      ctx.scale(dpi, dpi);
+      
+      // 获取配置参数
+      const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+      const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
+      const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value) || 10;
+      
+      ctx.clearRect(0, 0, containerWidth, containerHeight);
+      
+      // 绘制标题
+      ctx.font = "24px Arial";
+      let title = "答题卡";
+      ctx.fillText(title, containerWidth / 2 - ctx.measureText(title).width / 2, 40);
+      
+      // 绘制准考证号区域
+      ctx.font = "16px Arial";
+      ctx.fillText("准考证号:", 20, 80);
+      const totalIdAreaWidth = studentIdDigits * 40; // 每个框的宽度增加以容纳数字列
+      const idBoxX = 20, idBoxY = 90, idBoxHeight = 40;
+      ctx.strokeRect(idBoxX, idBoxY, totalIdAreaWidth, idBoxHeight);
+      let cellWidth = totalIdAreaWidth / studentIdDigits;
+      
+      // 为后续计算预留变量：数字单元格大小和间距
+      const digitCellSize = 15; // 每个数字单元格的大小
+      const digitSpacing = 2; // 数字之间的间距
+      
+      // 绘制每个数字列
+      for (let i = 0; i < studentIdDigits; i++) {
         const cellX = idBoxX + i * cellWidth;
         // 绘制框格
         ctx.strokeRect(cellX, idBoxY, cellWidth, idBoxHeight);
-
-        // 添加数字列（0 - 9）
-        const digitColumnX = cellX + cellWidth / 2 - 5;
-        const digitColumnY = idBoxY + idBoxHeight + 10;
-        const digitCellSize = 15;
-        const digitSpacing = 2;
-
-        // 绘制数字列的边框
+        
+        // 添加数字列（0-9）
+        const digitColumnX = cellX + cellWidth / 2 - 5; // 数字列的x坐标，居中
+        const digitColumnY = idBoxY + idBoxHeight + 10; // 数字列的起始y坐标
         for (let j = 0; j < 10; j++) {
-            const digitY = digitColumnY + j * (digitCellSize + digitSpacing);
-            ctx.strokeRect(digitColumnX - digitCellSize / 2, digitY, digitCellSize, digitCellSize);
-            ctx.fillText(j.toString(), digitColumnX, digitY + digitCellSize / 2 + 4);
+          const digitY = digitColumnY + j * (digitCellSize + digitSpacing);
+          ctx.strokeRect(digitColumnX - digitCellSize / 2, digitY, digitCellSize, digitCellSize);
+          ctx.fillText(j.toString(), digitColumnX, digitY + digitCellSize / 2 + 4);
         }
-    }
-
-    // 增加准考证号区域和答题区域的间距
-    const spacingBetweenIdAndQuestions = 50; 
-
-    ctx.font = "16px Arial";
-    ctx.fillText("答题区域:", 20, idBoxY + idBoxHeight + spacingBetweenIdAndQuestions);
-    const startX = 20, startY = idBoxY + idBoxHeight + spacingBetweenIdAndQuestions + 30;
-    const boxSize = 20;
-    // 根据容器宽度动态计算选项间隔
-    const spacing = (containerWidth - startX * 2 - optionCount * boxSize) / (optionCount - 1);
-
-    for (let i = 0; i < questionCount; i++) {
+      }
+      
+      // 计算准考证号区域底部位置
+      const candidateBottom = idBoxY + idBoxHeight + 10 + 10 * (digitCellSize + digitSpacing);
+      // 绘制答题区域，将其下移到准考证号区域完全结束之后
+      const questionTitleY = candidateBottom + 10; // 例如设置为 candidateBottom+10
+      ctx.fillText("答题区域:", 20, questionTitleY);
+      const startX = 20, startY = questionTitleY + 30, boxSize = 20;
+      // 根据容器宽度动态计算选项间隔
+      const spacing = (containerWidth - startX * 2 - optionCount * boxSize) / (optionCount - 1);
+      
+      for (let i = 0; i < questionCount; i++) {
         let yPos = startY + i * 30;
-        ctx.fillText(`Q${i + 1}:`, startX - 40, yPos + boxSize / 2 + 5);
+        ctx.fillText(`Q${i+1}:`, startX - 40, yPos + boxSize / 2 + 5);
         for (let j = 0; j < optionCount; j++) {
-            let xPos = startX + j * (boxSize + spacing);
-            ctx.strokeRect(xPos, yPos, boxSize, boxSize);
-            ctx.fillText(String.fromCharCode(65 + j), xPos + 5, yPos + boxSize / 2 + 5);
+          let xPos = startX + j * (boxSize + spacing);
+          ctx.strokeRect(xPos, yPos, boxSize, boxSize);
+          ctx.fillText(String.fromCharCode(65 + j), xPos + 5, yPos + boxSize / 2 + 5);
         }
+      }
+      
+      // 显示答题卡预览区域，隐藏其他区域
+      document.getElementById('answerSheetContainer').style.display = 'block';
+      document.getElementById('cameraContainer').classList.add('hide');
+      document.getElementById('results').classList.add('hide');
+      document.getElementById('aggregate').classList.add('hide');
     }
-
-    document.getElementById('answerSheetContainer').style.display = 'block';
-    document.getElementById('cameraContainer').classList.add('hide');
-    document.getElementById('results').classList.add('hide');
-    document.getElementById('aggregate').classList.add('hide');
-}    
-
+    
     // 输入标准答案
     function showAnswerKeyInput() {
-        const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-        let input = prompt(`请输入标准答案（例如：A,B,C,A,...，共${questionCount}题）：`);
-        if (input) {
-            answerKey = input.toUpperCase().split(',').slice(0, questionCount);
-            alert('标准答案已设置');
-        }
+      const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+      let input = prompt(`请输入标准答案（例如：A,B,C,A,...，共${questionCount}题）：`);
+      if (input) {
+        answerKey = input.toUpperCase().split(',').slice(0, questionCount);
+        alert('标准答案已设置');
+      }
     }
-
-    // 导出答题卡为 PDF（使用 jsPDF 直接绘制）
+    
+    // 导出答题卡为 PDF（使用 jsPDF）
     function exportAnswerSheet() {
-        const {jsPDF} = window.jspdf;
-        const doc = new jsPDF();
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const {title, studentIdLabel, questionLabelPrefix, optionLabels, margins, studentIdArea, questionArea} = answerSheetConfig;
-        const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-        const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
-        const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value) || 10;
-
-        doc.setFontSize(24);
-        const titleWidth = doc.getTextWidth(title);
-        doc.text(title, pageWidth / 2 - titleWidth / 2, margins.top + 10);
-
-        doc.setFontSize(16);
-        let currentY = margins.top + 40;
-
-        // 绘制准考证号区域
-        doc.text(studentIdLabel, margins.left, currentY + 15);
-        currentY += 20;
-
-        const idAreaX = margins.left;
-        const idAreaY = currentY;
-        const idBoxSize = studentIdArea.boxSize;
-        const idDigitSpacing = studentIdArea.digitSpacing;
-        const numberColumnSize = studentIdArea.numberColumn.size;
-        const numberColumnSpacing = studentIdArea.numberColumn.spacing;
-
-        for (let i = 0; i < studentIdDigits; i++) {
-            const boxX = idAreaX + i * (idBoxSize + idDigitSpacing);
-            doc.rect(boxX, idAreaY, idBoxSize, idBoxSize);
-
-            // 添加数字列
-            const digitColumnX = boxX + idBoxSize + idDigitSpacing / 2;
-            const digitColumnY = idAreaY;
-            doc.setFontSize(10);
-            for (let j = 0; j < 10; j++) {
-                const digitY = digitColumnY + j * (numberColumnSize + numberColumnSpacing) + idBoxSize + 5;
-                doc.rect(digitColumnX - numberColumnSize / 2, digitY, numberColumnSize, numberColumnSize);
-                doc.text(j.toString(), digitColumnX - 2, digitY + numberColumnSize - 1);
-            }
-            doc.setFontSize(16);
-        }
-
-        currentY += studentIdArea.height + 10;
-
-        // 绘制答题区域
-        doc.text("答题区域:", margins.left, currentY + 15);
-        currentY += 20;
-
-        const startX = margins.left;
-        let questionY = currentY;
-        const optionSpacing = questionArea.horizontalSpacing;
-        const optionBoxSize = questionArea.boxSize;
-
-        for (let i = 0; i < questionCount; i++) {
-            doc.text(`<span class="math-inline">\{questionLabelPrefix\}</span>{i + 1}:`, startX - 30, questionY + optionBoxSize / 2 + 5);
-            let optionX = startX;
-            for (let j = 0; j < optionCount; j++) {
-                doc.rect(optionX, questionY, optionBoxSize, optionBoxSize);
-                doc.text(optionLabels[j], optionX + 5, questionY + optionBoxSize / 2 + 5);
-                optionX += optionBoxSize + optionSpacing;
-            }
-            questionY += questionArea.verticalSpacing;
-            if (questionY > pageHeight - margins.bottom - optionBoxSize) {
-                doc.addPage();
-                questionY = margins.top + 40 + studentIdArea.height + 20 + 30; // 调整新页面的起始 Y 坐标
-            }
-        }
-
-        doc.save("answer_sheet.pdf");
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      // 获取 canvas 图片数据
+      const canvas = document.getElementById('answerSheetCanvas');
+      const imgData = canvas.toDataURL("image/png", 0.5); // 压缩图像
+      // 添加标题和图片到 PDF
+      doc.text("答题卡", doc.internal.pageSize.getWidth() / 2 - 20, 20);
+      doc.addImage(imgData, 'PNG', 20, 30, 170, 220);
+      doc.save("answer_sheet.pdf");
     }
-
+    
     // 切换到摄像头视图
     function showCamera() {
-        document.getElementById('cameraContainer').classList.remove('hide');
+      document.getElementById('cameraContainer').classList.remove('hide');
     }
-
+    
     // 开启摄像头
     async function startCamera() {
-        if (isCameraActive) return;
-        const video = document.getElementById('cameraPreview');
-        try {
-            videoStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}});
-            video.srcObject = videoStream;
-            isCameraActive = true;
-            document.getElementById('cameraContainer').classList.remove('hide');
-        } catch (err) {
-            console.error("摄像头访问失败:", err);
-            alert('摄像头访问失败，请检查权限');
-        }
+      if (isCameraActive) return;
+      const video = document.getElementById('cameraPreview');
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = videoStream;
+        isCameraActive = true;
+        document.getElementById('cameraContainer').classList.remove('hide');
+      } catch (err) {
+        console.error("摄像头访问失败:", err);
+        alert('摄像头访问失败，请检查权限');
+      }
     }
-
+    
     // 捕获视频帧并处理
     function captureFrame() {
-        if (!isCameraActive) {
-            alert('请先开启摄像头');
-            return;
-        }
-        const video = document.getElementById('cameraPreview');
-        const captureCanvas = document.getElementById('captureCanvas');
-        const ctx = captureCanvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-        processImage(captureCanvas);
+      if (!isCameraActive) {
+        alert('请先开启摄像头');
+        return;
+      }
+      const video = document.getElementById('cameraPreview');
+      const captureCanvas = document.getElementById('captureCanvas');
+      const ctx = captureCanvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+      processImage(captureCanvas);
     }
-
+    
     // 使用 OpenCV.js 处理图像，采用自适应阈值与候选区域面积判断
     function processImage(canvas) {
-        if (typeof cv === 'undefined') {
-            alert('OpenCV.js 尚未加载，请稍后再试');
-            return;
+      if (typeof cv === 'undefined') {
+        alert('OpenCV.js 尚未加载，请稍后再试');
+        return;
+      }
+      let src = cv.imread(canvas);
+      let gray = new cv.Mat();
+      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+      let thresh = new cv.Mat();
+      cv.adaptiveThreshold(gray, thresh, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 15, 10);
+      
+      let contours = new cv.MatVector();
+      let hierarchy = new cv.Mat();
+      cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+      
+      const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+      const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
+      // 初始化每题答案候选，记录 { answer: null, area: 0 }
+      studentAnswers = Array(questionCount).fill(null).map(() => ({ answer: null, area: 0 }));
+      
+      for (let i = 0; i < contours.size(); i++) {
+        let contour = contours.get(i);
+        let rect = cv.boundingRect(contour);
+        if (rect.width < 10 || rect.height < 10 || rect.width > 100 || rect.height > 100) continue;
+        let cx = rect.x + rect.width / 2;
+        let cy = rect.y + rect.height / 2;
+        // 根据答题卡模板绘制时的起始位置和行间距确定题号
+        let questionIndex = Math.floor((cy - (90 + 40 + 10 + 10 * (15 + 2) + 10 + 30)) / 30);
+        if (questionIndex < 0 || questionIndex >= questionCount) continue;
+        // 根据起始 x 坐标（20）和估算选项区域确定选项索引
+        let optionIndex = Math.floor((cx - 20) / (20 + ((canvas.width / (window.devicePixelRatio || 1) - 20 * 2 - optionCount * 20) / (optionCount - 1))));
+        if (optionIndex < 0 || optionIndex >= optionCount) continue;
+        let area = rect.width * rect.height;
+        if (area > studentAnswers[questionIndex].area) {
+          studentAnswers[questionIndex] = { answer: String.fromCharCode(65 + optionIndex), area: area };
         }
-        let src = cv.imread(canvas);
-        let gray = new cv.Mat();
-        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-        let thresh = new cv.Mat();
-        cv.adaptiveThreshold(gray, thresh, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 15, 10);
-
-        let contours = new cv.MatVector();
-        let hierarchy = new cv.Mat();
-        cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-        const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-        const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
-        // 初始化每题答案候选，记录 { answer: null, area: 0 }
-        studentAnswers = Array(questionCount).fill(null).map(() => ({answer: null, area: 0}));
-
-        // 估算答题区域的起始 Y 坐标
-        const answerAreaStartYEstimate = answerSheetConfig.margins.top + 40 + answerSheetConfig.studentIdArea.height + 20 + 30;
-        // 估算选项的水平间距
-        const optionSpacingEstimate = answerSheetConfig.questionArea.horizontalSpacing;
-        const optionBoxSizeEstimate = answerSheetConfig.questionArea.boxSize;
-        const answerAreaStartXEstimate = answerSheetConfig.margins.left;
-
-        for (let i = 0; i < contours.size(); i++) {
-            let contour = contours.get(i);
-            let rect = cv.boundingRect(contour);
-            if (rect.width < 10 || rect.height < 10 || rect.width > 100 || rect.height > 100) continue;
-            let cx = rect.x + rect.width / 2;
-            let cy = rect.y + rect.height / 2;
-
-            // 根据答题卡模板绘制时的起始位置和行间距确定题号
-            const questionIndex = Math.floor((cy - answerAreaStartYEstimate) / answerSheetConfig.questionArea.verticalSpacing);
-            if (questionIndex < 0 || questionIndex >= questionCount) continue;
-
-            // 根据起始 x 坐标和估算选项区域确定选项索引
-            const optionIndex = Math.floor((cx - answerAreaStartXEstimate) / (optionBoxSizeEstimate + optionSpacingEstimate));
-            if (optionIndex < 0 || optionIndex >= optionCount) continue;
-
-            let area = rect.width * rect.height;
-            if (area > studentAnswers[questionIndex].area) {
-                studentAnswers[questionIndex] = {answer: String.fromCharCode(65 + optionIndex), area: area};
-            }
-        }
-
-        src.delete();
-        gray.delete();
-        thresh.delete();
-        contours.delete();
-        hierarchy.delete();
-        calculateScore();
+      }
+      
+      src.delete(); gray.delete(); thresh.delete(); contours.delete(); hierarchy.delete();
+      calculateScore();
     }
-
+    
     // 计算单份扫描成绩，并显示单个学生成绩
     function calculateScore() {
-        if (answerKey.length === 0) {
-            alert('请先设置标准答案');
-            return;
-        }
-        const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
-        let totalScore = 0;
-        let stats = [];
-        for (let i = 0; i < studentAnswers.length; i++) {
-            let selected = studentAnswers[i].answer || '未作答';
-            let isCorrect = selected === answerKey[i];
-            if (isCorrect) totalScore += scorePerQuestion;
-            stats.push({
-                question: i + 1,
-                correct: isCorrect,
-                selected: selected,
-                correctAnswer: answerKey[i]
-            });
-        }
-        // 显示单个扫描结果
-        document.getElementById('totalScore').textContent = totalScore;
-        const container = document.getElementById('questionStats');
-        container.innerHTML = '';
-        stats.forEach(item => {
-            let div = document.createElement('div');
-            div.className = `question-item ${item.correct ? 'correct' : 'incorrect'}`;
-            div.innerHTML = `Q${item.question}: ${item.selected} ${item.correct ? '✓' : '✗'} (正确答案: ${item.correctAnswer})`;
-            container.appendChild(div);
+      if (answerKey.length === 0) {
+        alert('请先设置标准答案');
+        return;
+      }
+      const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
+      let totalScore = 0;
+      let stats = [];
+      for (let i = 0; i < studentAnswers.length; i++) {
+        let selected = studentAnswers[i].answer || '未作答';
+        let isCorrect = selected === answerKey[i];
+        if (isCorrect) totalScore += scorePerQuestion;
+        stats.push({
+          question: i + 1,
+          correct: isCorrect,
+          selected: selected,
+          correctAnswer: answerKey[i]
         });
-        document.getElementById('results').classList.remove('hide');
+      }
+      // 显示单个扫描结果
+      document.getElementById('totalScore').textContent = totalScore;
+      const container = document.getElementById('questionStats');
+      container.innerHTML = '';
+      stats.forEach(item => {
+        let div = document.createElement('div');
+        div.className = `question-item ${item.correct ? 'correct' : 'incorrect'}`;
+        div.innerHTML = `Q${item.question}: ${item.selected} ${item.correct ? '✓' : '✗'} (正确答案: ${item.correctAnswer})`;
+        container.appendChild(div);
+      });
+      document.getElementById('results').classList.remove('hide');
     }
-
+    
     // 保存当前扫描的学生结果到全局数组
     function saveCurrentResult() {
-        if (studentAnswers.length === 0) {
-            alert('无有效扫描结果');
-            return;
-        }
-        const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
-        let totalScore = 0;
-        let answers = [];
-        for (let i = 0; i < studentAnswers.length; i++) {
-            let selected = studentAnswers[i].answer || '未作答';
-            answers.push(selected);
-            if (selected === answerKey[i]) totalScore += scorePerQuestion;
-        }
-        allStudentResults.push({answers: answers, totalScore: totalScore});
-        alert('成绩已保存，目前累计 ' + allStudentResults.length + ' 份答题卡');
+      if (studentAnswers.length === 0) {
+        alert('无有效扫描结果');
+        return;
+      }
+      const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
+      let totalScore = 0;
+      let answers = [];
+      for (let i = 0; i < studentAnswers.length; i++) {
+        let selected = studentAnswers[i].answer || '未作答';
+        answers.push(selected);
+        if (selected === answerKey[i]) totalScore += scorePerQuestion;
+      }
+      allStudentResults.push({ answers: answers, totalScore: totalScore });
+      alert('成绩已保存，目前累计 ' + allStudentResults.length + ' 份答题卡');
     }
-
+    
     // 统计所有保存的答题卡中，每题的正确率
     function displayAggregateStats() {
-        if (allStudentResults.length === 0) {
-            alert('尚未保存任何扫描结果');
-            return;
-        }
-        const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-        let stats = Array(questionCount).fill(0);
-        // 统计所有答题卡中每题正确的次数
-        allStudentResults.forEach(result => {
-            result.answers.forEach((ans, index) => {
-                if (ans === answerKey[index]) stats[index]++;
-            });
+      if (allStudentResults.length === 0) {
+        alert('尚未保存任何扫描结果');
+        return;
+      }
+      const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+      let stats = Array(questionCount).fill(0);
+      // 统计所有答题卡中每题正确的次数
+      allStudentResults.forEach(result => {
+        result.answers.forEach((ans, index) => {
+          if (ans === answerKey[index]) stats[index]++;
         });
-        // 计算正确率并显示
-        const aggregateContainer = document.getElementById('aggregateStats');
-        aggregateContainer.innerHTML = '';
-        for (let i = 0; i < questionCount; i++) {
-            let correctCount = stats[i];
-            let rate = ((correctCount / allStudentResults.length) * 100).toFixed(1);
-            let div = document.createElement('div');
-            div.className = 'aggregate-item';
-            div.innerHTML = `Q${i + 1}: ${rate}% (${correctCount}/${allStudentResults.length})`;
-            aggregateContainer.appendChild(div);
-        }
-        document.getElementById('aggregate').classList.remove('hide');
+      });
+      // 计算正确率并显示
+      const aggregateContainer = document.getElementById('aggregateStats');
+      aggregateContainer.innerHTML = '';
+      for (let i = 0; i < questionCount; i++) {
+        let correctCount = stats[i];
+        let rate = ((correctCount / allStudentResults.length) * 100).toFixed(1);
+        let div = document.createElement('div');
+        div.className = 'aggregate-item';
+        div.innerHTML = `Q${i+1}: ${rate}% (${correctCount}/${allStudentResults.length})`;
+        aggregateContainer.appendChild(div);
+      }
+      document.getElementById('aggregate').classList.remove('hide');
     }
-
+    
     // 隐藏统计结果区域
     function hideAggregateStats() {
-        document.getElementById('aggregate').classList.add('hide');
+      document.getElementById('aggregate').classList.add('hide');
     }
-
+    
     // 关闭摄像头
     function stopCamera() {
-        if (videoStream) {
-            videoStream.getTracks().forEach(track => track.stop());
-            videoStream = null;
-            isCameraActive = false;
-        }
-        document.getElementById('cameraPreview').srcObject = null;
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+        isCameraActive = false;
+      }
+      document.getElementById('cameraPreview').srcObject = null;
     }
-</script>
+  </script>
 </body>
 </html>
