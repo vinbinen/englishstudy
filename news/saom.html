@@ -204,79 +204,78 @@
 
     // 生成答题卡模板（使用更灵活的方式绘制到 Canvas）
     function generateAnswerSheet() {
-        const canvas = document.getElementById('answerSheetCanvas');
-        const ctx = canvas.getContext('2d');
-        const containerWidth = canvas.clientWidth;
-        const containerHeight = canvas.clientHeight;
-        const dpi = window.devicePixelRatio || 1;
-        canvas.width = containerWidth * dpi;
-        canvas.height = containerHeight * dpi;
-        ctx.scale(dpi, dpi);
+    const canvas = document.getElementById('answerSheetCanvas');
+    const ctx = canvas.getContext('2d');
+    const containerWidth = canvas.clientWidth;
+    const containerHeight = canvas.clientHeight;
+    // 为了高清显示
+    const dpi = window.devicePixelRatio || 1;
+    canvas.width = containerWidth * dpi;
+    canvas.height = containerHeight * dpi;
+    ctx.scale(dpi, dpi);
 
-        const {title, studentIdLabel, questionLabelPrefix, optionLabels, margins, studentIdArea, questionArea} = answerSheetConfig;
-        const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-        const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
-        const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value) || 10;
+    const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+    const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
+    const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value) || 10;
 
-        ctx.clearRect(0, 0, containerWidth, containerHeight);
-        ctx.font = "24px Arial";
+    ctx.clearRect(0, 0, containerWidth, containerHeight);
 
-        // 绘制标题
-        const titleX = containerWidth / 2 - ctx.measureText(title).width / 2;
-        ctx.fillText(title, titleX, margins.top + 20);
+    ctx.font = "24px Arial";
+    let title = "答题卡";
+    ctx.fillText(title, containerWidth / 2 - ctx.measureText(title).width / 2, 40);
 
-        let currentY = margins.top + 50;
+    ctx.font = "16px Arial";
+    ctx.fillText("准考证号:", 20, 80);
+    const totalIdAreaWidth = studentIdDigits * 40;
+    const idBoxX = 20, idBoxY = 90, idBoxHeight = 40;
+    ctx.strokeRect(idBoxX, idBoxY, totalIdAreaWidth, idBoxHeight);
+    let cellWidth = totalIdAreaWidth / studentIdDigits;
 
-        // 绘制准考证号区域
-        ctx.font = "16px Arial";
-        ctx.fillText(studentIdLabel, margins.left, currentY + 20);
-        currentY += 30;
+    // 填涂数字和添加数字列
+    for (let i = 0; i < studentIdDigits; i++) {
+        const cellX = idBoxX + i * cellWidth;
+        // 绘制框格
+        ctx.strokeRect(cellX, idBoxY, cellWidth, idBoxHeight);
 
-        const idAreaX = margins.left;
-        const idAreaY = currentY;
-        const totalIdAreaWidth = studentIdDigits * (studentIdArea.boxSize + studentIdArea.digitSpacing);
+        // 添加数字列（0 - 9）
+        const digitColumnX = cellX + cellWidth / 2 - 5;
+        const digitColumnY = idBoxY + idBoxHeight + 10;
+        const digitCellSize = 15;
+        const digitSpacing = 2;
 
-        for (let i = 0; i < studentIdDigits; i++) {
-            const boxX = idAreaX + i * (studentIdArea.boxSize + studentIdArea.digitSpacing);
-            ctx.strokeRect(boxX, idAreaY, studentIdArea.boxSize, studentIdArea.boxSize);
-
-            // 添加数字列
-            const digitColumnX = boxX + studentIdArea.boxSize + studentIdArea.digitSpacing / 2;
-            const digitColumnY = idAreaY;
-            for (let j = 0; j < 10; j++) {
-                const digitY = digitColumnY + j * (studentIdArea.numberColumn.size + studentIdArea.numberColumn.spacing) + studentIdArea.boxSize + 10;
-                ctx.strokeRect(digitColumnX - studentIdArea.numberColumn.size / 2, digitY, studentIdArea.numberColumn.size, studentIdArea.numberColumn.size);
-                ctx.fillText(j.toString(), digitColumnX - 3, digitY + studentIdArea.numberColumn.size - 2);
-            }
+        // 绘制数字列的边框
+        for (let j = 0; j < 10; j++) {
+            const digitY = digitColumnY + j * (digitCellSize + digitSpacing);
+            ctx.strokeRect(digitColumnX - digitCellSize / 2, digitY, digitCellSize, digitCellSize);
+            ctx.fillText(j.toString(), digitColumnX, digitY + digitCellSize / 2 + 4);
         }
-
-        currentY += studentIdArea.height + 20;
-
-        // 绘制答题区域
-        ctx.fillText("答题区域:", margins.left, currentY + 20);
-        currentY += 30;
-
-        const startX = margins.left;
-        let questionY = currentY;
-        const optionSpacing = questionArea.horizontalSpacing;
-
-        for (let i = 0; i < questionCount; i++) {
-            ctx.fillText(`<span class="math-inline">\{questionLabelPrefix\}</span>{i + 1}:`, startX - 30, questionY + questionArea.boxSize / 2 + 5);
-            let optionX = startX;
-            for (let j = 0; j < optionCount; j++) {
-                ctx.strokeRect(optionX, questionY, questionArea.boxSize, questionArea.boxSize);
-                ctx.fillText(optionLabels[j], optionX + 5, questionY + questionArea.boxSize / 2 + 5);
-                optionX += questionArea.boxSize + optionSpacing;
-            }
-            questionY += questionArea.verticalSpacing;
-        }
-
-        // 隐藏其他区域
-        document.getElementById('answerSheetContainer').style.display = 'block';
-        document.getElementById('cameraContainer').classList.add('hide');
-        document.getElementById('results').classList.add('hide');
-        document.getElementById('aggregate').classList.add('hide');
     }
+
+    // 增加准考证号区域和答题区域的间距
+    const spacingBetweenIdAndQuestions = 50; 
+
+    ctx.font = "16px Arial";
+    ctx.fillText("答题区域:", 20, idBoxY + idBoxHeight + spacingBetweenIdAndQuestions);
+    const startX = 20, startY = idBoxY + idBoxHeight + spacingBetweenIdAndQuestions + 30;
+    const boxSize = 20;
+    // 根据容器宽度动态计算选项间隔
+    const spacing = (containerWidth - startX * 2 - optionCount * boxSize) / (optionCount - 1);
+
+    for (let i = 0; i < questionCount; i++) {
+        let yPos = startY + i * 30;
+        ctx.fillText(`Q${i + 1}:`, startX - 40, yPos + boxSize / 2 + 5);
+        for (let j = 0; j < optionCount; j++) {
+            let xPos = startX + j * (boxSize + spacing);
+            ctx.strokeRect(xPos, yPos, boxSize, boxSize);
+            ctx.fillText(String.fromCharCode(65 + j), xPos + 5, yPos + boxSize / 2 + 5);
+        }
+    }
+
+    document.getElementById('answerSheetContainer').style.display = 'block';
+    document.getElementById('cameraContainer').classList.add('hide');
+    document.getElementById('results').classList.add('hide');
+    document.getElementById('aggregate').classList.add('hide');
+}    
 
     // 输入标准答案
     function showAnswerKeyInput() {
