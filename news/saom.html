@@ -235,16 +235,16 @@
       
       // 绘制注意事项
       ctx.font = "12px Arial";
-      ctx.fillText("注意事项：", 20, 260);
-      ctx.fillText("1. 用黑色中性笔涂黑对应选项", 40, 280);
-      ctx.fillText("2. 答题卡保持平整清洁，不可弯折", 40, 300);
-      ctx.fillText("3. 边角处请勿涂抹", 40, 320);
+      ctx.fillText("注意事项：", 20, 140);
+      ctx.fillText("1. 用黑色中性笔涂黑对应选项", 40, 140);
+      ctx.fillText("2. 答题卡保持平整清洁，不可弯折", 40, 140);
+      ctx.fillText("3. 边角处请勿涂抹", 40, 140);
       
       // 绘制准考证号区域
       ctx.font = "16px Arial";
-      ctx.fillText("准考证号:", 20, 360);
+      ctx.fillText("准考证号:", 20,1405);
       const totalIdAreaWidth = 140; // 准考证号区域宽度
-      const idBoxX = 20, idBoxY = 380, idBoxHeight = 380;
+      const idBoxX = 20, idBoxY = 380, idBoxHeight = 300;
       ctx.strokeRect(idBoxX, idBoxY, totalIdAreaWidth, idBoxHeight);
       
       // 绘制准考证号数字列
