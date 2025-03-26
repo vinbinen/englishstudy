@@ -121,7 +121,7 @@
     
     <!-- 答题卡模板预览 -->
     <div id="answerSheetContainer">
-      <canvas id="answerSheetCanvas" width="1200" height="1000"></canvas>
+      <canvas id="answerSheetCanvas" width="595" height="842"></canvas>
     </div>
     
     <!-- 摄像头区域 -->
@@ -204,20 +204,17 @@
       
       const canvas = document.getElementById('answerSheetCanvas');
       const ctx = canvas.getContext('2d');
-      const containerWidth = canvas.clientWidth;
-      const containerHeight = canvas.clientHeight;
-      // 为了高清显示
-      const dpi = window.devicePixelRatio || 1;
-      canvas.width = containerWidth * dpi;
-      canvas.height = containerHeight * dpi;
-      ctx.scale(dpi, dpi);
+      // 设置Canvas尺寸为A4纸张大小（595x842像素）
+      canvas.width = 595;
+      canvas.height = 842;
+      ctx.scale(1, 1);
       
-      ctx.clearRect(0, 0, containerWidth, containerHeight);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       
       // 绘制标题
       ctx.font = "24px Arial";
       let title = "答题卡模板";
-      ctx.fillText(title, containerWidth / 2 - ctx.measureText(title).width / 2, 40);
+      ctx.fillText(title, canvas.width / 2 - ctx.measureText(title).width / 2, 40);
       
       // 绘制左边个人信息区域
       const leftSectionWidth = 250; // 左边区域固定宽度
@@ -293,7 +290,7 @@
       }
       
       // 绘制答题卡边框
-      ctx.strokeRect(0, 0, containerWidth, containerHeight);
+      ctx.strokeRect(0, 0, canvas.width, canvas.height);
       
       // 隐藏其他区域
       document.getElementById('answerSheetContainer').style.display = 'block';
