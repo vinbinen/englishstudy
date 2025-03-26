@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>答题卡生成器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        #answerSheet {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .question {
+            margin-bottom: 10px;
+        }
+
+        .option {
+            margin-right: 10px;
+        }
+
+        .hide {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>答题卡生成器</h1>
+    <label for="questionCount">题目总数：</label>
+    <input type="text" id="questionCount" value="10">
+    <label for="optionCount">每题选项数：</label>
+    <input type="text" id="optionCount" value="4">
+    <label for="studentIdDigits">准考证号位数：</label>
+    <input type="text" id="studentIdDigits" value="8">
+    <button onclick="generateAnswerSheet()">生成答题卡</button>
+    <button onclick="showAnswerKeyInput()">设置标准答案</button>
+    <button onclick="startCamera()">开启摄像头</button>
+    <button onclick="stopCamera()">关闭摄像头</button>
+    <div id="answerSheet"></div>
+    <div id="cameraContainer" class="hide">
+        <video id="cameraPreview" width="320" height="240" autoplay></video>
+    </div>
+    <script>
+        let answerKey = [];
+        let videoStream;
+        let isCameraActive = false;
+
+        function generateAnswerSheet() {
+            const questionCountInput = document.getElementById('questionCount').value;
+            const optionCountInput = document.getElementById('optionCount').value;
+            const studentIdDigitsInput = document.getElementById('studentIdDigits').value;
+
+            const questionCount = parseInt(questionCountInput);
+            const optionCount = parseInt(optionCountInput);
+            const studentIdDigits = parseInt(studentIdDigitsInput);
+
+            if (isNaN(questionCount) || questionCount <= 0) {
+                alert('题目总数必须为正整数');
+                return;
+            }
+            if (isNaN(optionCount) || optionCount <= 0) {
+                alert('每题选项数必须为正整数');
+                return;
+            }
+            if (isNaN(studentIdDigits) || studentIdDigits <= 0) {
+                alert('准考证号位数必须为正整数');
+                return;
+            }
+
+            const answerSheet = document.getElementById('answerSheet');
+            answerSheet.innerHTML = '';
+
+            // 准考证号填写区域
+            const studentIdSection = document.createElement('div');
+            studentIdSection.innerHTML = `<p>准考证号：</p>`;
+            for (let i = 0; i < studentIdDigits; i++) {
+                const digitInput = document.createElement('input');
+                digitInput.type = 'number';
+                digitInput.min = 0;
+                digitInput.max = 9;
+                studentIdSection.appendChild(digitInput);
+            }
+            answerSheet.appendChild(studentIdSection);
+
+            // 题目区域
+            for (let i = 1; i <= questionCount; i++) {
+                const questionDiv = document.createElement('div');
+                questionDiv.classList.add('question');
+                questionDiv.innerHTML = `<p>第${i}题：</p>`;
+                for (let j = 0; j < optionCount; j++) {
+                    const optionLabel = String.fromCharCode(65 + j);
+                    const optionInput = document.createElement('input');
+                    optionInput.type = 'radio';
+                    optionInput.name = `question${i}`;
+                    optionInput.value = optionLabel;
+                    const optionSpan = document.createElement('span');
+                    optionSpan.classList.add('option');
+                    optionSpan.appendChild(optionInput);
+                    optionSpan.innerHTML += optionLabel;
+                    questionDiv.appendChild(optionSpan);
+                }
+                answerSheet.appendChild(questionDiv);
+            }
+        }
+
+        function showAnswerKeyInput() {
+            const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+            let input = prompt(`请输入标准答案（例如：A,B,C,A,...，共${questionCount}题）：`);
+            if (input) {
+                const answers = input.toUpperCase().split(',');
+                if (answers.length!== questionCount) {
+                    alert(`输入的答案数量必须为${questionCount}个`);
+                    return;
+                }
+                const validOptions = ['A', 'B', 'C', 'D', 'E', 'F'];
+                for (let i = 0; i < answers.length; i++) {
+                    if (!validOptions.includes(answers[i])) {
+                        alert(`第${i + 1}个答案必须为 A - F 之间的字母`);
+                        return;
+                    }
+                }
+                answerKey = answers;
+                alert('标准答案已设置');
+            }
+        }
+
+        async function startCamera() {
+            if (isCameraActive) return;
+            const video = document.getElementById('cameraPreview');
+            try {
+                const constraints = { video: { facingMode: "environment" } };
+                const getUserMedia = navigator.mediaDevices.getUserMedia ||
+                    navigator.mediaDevices.webkitGetUserMedia ||
+                    navigator.mediaDevices.mozGetUserMedia ||
+                    navigator.mediaDevices.msGetUserMedia;
+
+                if (!getUserMedia) {
+                    alert('您的浏览器不支持摄像头功能');
+                    return;
+                }
+
+                videoStream = await getUserMedia(constraints);
+                video.srcObject = videoStream;
+                isCameraActive = true;
+                document.getElementById('cameraContainer').classList.remove('hide');
+            } catch (err) {
+                console.error("摄像头访问失败:", err);
+            }
+        }
+
+        function stopCamera() {
+            if (isCameraActive) {
+                if (videoStream) {
+                    const tracks = videoStream.getTracks();
+                    tracks.forEach(track => track.stop());
+                    videoStream = null;
+                }
+                const video = document.getElementById('cameraPreview');
+                video.srcObject = null;
+                isCameraActive = false;
+            }
+        }
+    </script>
+</body>
+
+</html>    
