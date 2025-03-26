@@ -217,21 +217,21 @@
       ctx.fillText(title, canvas.width / 2 - ctx.measureText(title).width / 2, 40);
       
       // 绘制左边个人信息区域
-      const leftSectionWidth = 200; // 左边区域固定宽度
+      const leftSectionWidth = 150; // 左边区域固定宽度
       const rightSectionX = leftSectionWidth + 20; // 右边答题区域的起始X坐标
       
       // 绘制姓名区域
       ctx.font = "16px Arial";
       ctx.fillText("姓名:", 20, 80);
-      ctx.strokeRect(20, 100, 200, 30);
+      ctx.strokeRect(20, 100, 140, 30);
       
       // 绘制班级区域
       ctx.fillText("班级:", 20, 140);
-      ctx.strokeRect(20, 160, 200, 30);
+      ctx.strokeRect(20, 160, 140, 30);
       
       // 绘制学号区域
       ctx.fillText("学号:", 20, 200);
-      ctx.strokeRect(20, 220, 200, 30);
+      ctx.strokeRect(20, 220, 140, 30);
       
       // 绘制注意事项
       ctx.font = "12px Arial";
@@ -243,8 +243,8 @@
       // 绘制准考证号区域
       ctx.font = "16px Arial";
       ctx.fillText("准考证号:", 20, 360);
-      const totalIdAreaWidth = 200; // 准考证号区域宽度
-      const idBoxX = 20, idBoxY = 380, idBoxHeight = 180;
+      const totalIdAreaWidth = 140; // 准考证号区域宽度
+      const idBoxX = 20, idBoxY = 380, idBoxHeight = 380;
       ctx.strokeRect(idBoxX, idBoxY, totalIdAreaWidth, idBoxHeight);
       
       // 绘制准考证号数字列
