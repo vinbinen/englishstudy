@@ -218,11 +218,15 @@
       let title = "答题卡";
       ctx.fillText(title, containerWidth / 2 - ctx.measureText(title).width / 2, 40);
       
+      // 绘制填写说明
+      ctx.font = "14px Arial";
+      ctx.fillText("填写说明：请使用黑色中性笔填写，保持填写清晰", containerWidth / 2 - ctx.measureText("填写说明：请使用黑色中性笔填写，保持填写清晰").width / 2, 70);
+      
       // 绘制准考证号区域
       ctx.font = "16px Arial";
-      ctx.fillText("准考证号:", 20, 80);
-      const totalIdAreaWidth = studentIdDigits * 40; // 每个框的宽度增加以容纳数字列
-      const idBoxX = 20, idBoxY = 90, idBoxHeight = 40;
+      ctx.fillText("准考证号:", 20, 100);
+      const totalIdAreaWidth = studentIdDigits * 50; // 每个框的宽度增加以容纳数字列
+      const idBoxX = 20, idBoxY = 120, idBoxHeight = 40;
       ctx.strokeRect(idBoxX, idBoxY, totalIdAreaWidth, idBoxHeight);
       let cellWidth = totalIdAreaWidth / studentIdDigits;
       
@@ -236,7 +240,7 @@
         const digitColumnX = cellX + cellWidth / 2 - 5; // 数字列的x坐标，居中
         const digitColumnY = idBoxY + idBoxHeight + 10; // 数字列的起始y坐标
         const digitCellSize = 15; // 每个数字单元格的大小
-        const digitSpacing = 2; // 数字之间的间距
+        const digitSpacing = 3; // 数字之间的间距
         
         // 绘制数字列的边框
         for (let j = 0; j < 10; j++) {
@@ -248,16 +252,16 @@
       
       // 绘制答题区域
       ctx.font = "16px Arial";
-      ctx.fillText("答题区域:", 20, 150);
-      const startX = 20, startY = 180, boxSize = 20;
+      ctx.fillText("答题区域:", 20, 180);
+      const startX = 20, startY = 210, boxSize = 20;
       // 根据容器宽度动态计算选项间隔
-      const spacing = (containerWidth - startX * 2 - optionCount * boxSize) / (optionCount - 1);
+      const spacing = (containerWidth - startX * 2 - optionCount * (boxSize + 10)) / (optionCount - 1);
       
       for (let i = 0; i < questionCount; i++) {
-        let yPos = startY + i * 30;
+        let yPos = startY + i * 35;
         ctx.fillText(`Q${i+1}:`, startX - 40, yPos + boxSize / 2 + 5);
         for (let j = 0; j < optionCount; j++) {
-          let xPos = startX + j * (boxSize + spacing);
+          let xPos = startX + j * (boxSize + 10 + spacing);
           ctx.strokeRect(xPos, yPos, boxSize, boxSize);
           ctx.fillText(String.fromCharCode(65 + j), xPos + 5, yPos + boxSize / 2 + 5);
         }
@@ -354,7 +358,7 @@
         let cx = rect.x + rect.width / 2;
         let cy = rect.y + rect.height / 2;
         // 根据答题卡模板绘制时的起始位置和行间距确定题号
-        let questionIndex = Math.floor((cy - 180) / 30);
+        let questionIndex = Math.floor((cy - 210) / 35);
         if (questionIndex < 0 || questionIndex >= questionCount) continue;
         // 根据起始 x 坐标（20）和估算选项区域确定选项索引
         let optionIndex = Math.floor((cx - 20) / (20 + ((canvas.width / (window.devicePixelRatio || 1) - 20 * 2 - optionCount * 20) / (optionCount - 1))));
