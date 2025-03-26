@@ -121,7 +121,7 @@
     
     <!-- 答题卡模板预览 -->
     <div id="answerSheetContainer">
-      <canvas id="answerSheetCanvas" width="1000" height="1000"></canvas>
+      <canvas id="answerSheetCanvas" width="1200" height="1000"></canvas>
     </div>
     
     <!-- 摄像头区域 -->
@@ -274,17 +274,19 @@
       const startY = 110;
       const boxSize = 20;
       const spacing = 10;
-      const column1QuestionCount = 25; // 第一列题目数量
+      const questionsPerColumn = 25; // 每列题目数量
+      
+      const columns = Math.ceil(questionCount / questionsPerColumn); // 计算需要的列数
+      const columnWidth = 250; // 每列的宽度
       
       for (let i = 0; i < questionCount; i++) {
-        let yPos = startY + (i % column1QuestionCount) * 35;
-        let currentX = startX;
-        if (i >= column1QuestionCount) {
-          currentX += 250; // 第二列的偏移量
-        }
+        const column = Math.floor(i / questionsPerColumn); // 确定当前题所在的列
+        const currentX = startX + column * columnWidth; // 当前列的起始X坐标
+        const yPos = startY + (i % questionsPerColumn) * 35; // 当前题的Y坐标
+        
         ctx.fillText(`${i + 1}.`, currentX, yPos + boxSize / 2 + 5);
         for (let j = 0; j < optionCount; j++) {
-          let xPos = currentX + 40 + j * (boxSize + spacing);
+          const xPos = currentX + 40 + j * (boxSize + spacing);
           ctx.strokeRect(xPos, yPos, boxSize, boxSize);
           ctx.fillText(String.fromCharCode(65 + j), xPos + 5, yPos + boxSize / 2 + 5);
         }
