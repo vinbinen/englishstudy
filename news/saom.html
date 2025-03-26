@@ -217,7 +217,7 @@
       ctx.fillText(title, canvas.width / 2 - ctx.measureText(title).width / 2, 40);
       
       // 绘制左边个人信息区域
-      const leftSectionWidth = 150; // 左边区域固定宽度
+      const leftSectionWidth = 250; // 左边区域固定宽度
       const rightSectionX = leftSectionWidth + 20; // 右边答题区域的起始X坐标
       
       // 绘制姓名区域
@@ -236,15 +236,15 @@
       // 绘制注意事项
       ctx.font = "12px Arial";
       ctx.fillText("注意事项：", 20, 260);
-      ctx.fillText("1. 用黑色中性笔涂黑对应选项", 20, 280);
-      ctx.fillText("2. 答题卡保持平整清洁，不可弯折", 20, 300);
-      ctx.fillText("3. 边角处请勿涂抹", 20, 320);
+      ctx.fillText("1. 用黑色中性笔涂黑对应选项", 40, 280);
+      ctx.fillText("2. 答题卡保持平整清洁，不可弯折", 40, 300);
+      ctx.fillText("3. 边角处请勿涂抹", 40, 320);
       
       // 绘制准考证号区域
       ctx.font = "16px Arial";
-      ctx.fillText("准考证号:", 20,360);
-      const totalIdAreaWidth = 140; // 准考证号区域宽度
-      const idBoxX = 20, idBoxY = 380, idBoxHeight = 300;
+      ctx.fillText("准考证号:", 20, 360);
+      const totalIdAreaWidth = 200; // 准考证号区域宽度
+      const idBoxX = 20, idBoxY = 380, idBoxHeight = 180;
       ctx.strokeRect(idBoxX, idBoxY, totalIdAreaWidth, idBoxHeight);
       
       // 绘制准考证号数字列
@@ -274,7 +274,7 @@
       const questionsPerColumn = 25; // 每列题目数量
       
       const columns = Math.ceil(questionCount / questionsPerColumn); // 计算需要的列数
-      const columnWidth = 200; // 每列的宽度
+      const columnWidth = 200; // 每列的宽度，减小列宽以增加列数
       
       for (let i = 0; i < questionCount; i++) {
         const column = Math.floor(i / questionsPerColumn); // 确定当前题所在的列
@@ -317,7 +317,7 @@
       const canvas = document.getElementById('answerSheetCanvas');
       const imgData = canvas.toDataURL("image/png", 0.5); // 压缩图像
       // 添加标题和图片到 PDF
-      doc.text("答题卡", doc.internal.pageSize.getWidth() / 2 - 20, 20);
+      doc.text("答题卡", doc.internalPageSize.getWidth() / 2 - 20, 20);
       doc.addImage(imgData, 'PNG', 20, 30, 170, 220);
       doc.save("answer_sheet.pdf");
     }
