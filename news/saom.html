@@ -207,11 +207,19 @@
       const idBoxX = 20, idBoxY = 90, idBoxHeight = 40;
       ctx.strokeRect(idBoxX, idBoxY, totalIdAreaWidth, idBoxHeight);
       let cellWidth = totalIdAreaWidth / studentIdDigits;
+      
+      // 填涂数字
       for (let i = 0; i < studentIdDigits; i++) {
-        ctx.strokeRect(idBoxX + i * cellWidth, idBoxY, cellWidth, idBoxHeight);
+        const cellX = idBoxX + i * cellWidth;
+        ctx.strokeRect(cellX, idBoxY, cellWidth, idBoxHeight);
+        ctx.font = "20px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText((i + 1).toString(), cellX + cellWidth / 2, idBoxY + idBoxHeight / 2);
       }
       
       // 绘制答题区域
+      ctx.font = "16px Arial";
       ctx.fillText("答题区域:", 20, 150);
       const startX = 20, startY = 180, boxSize = 20;
       // 根据容器宽度动态计算选项间隔
