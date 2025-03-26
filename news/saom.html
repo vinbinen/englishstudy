@@ -109,7 +109,7 @@
     
     <!-- 参数设置区域 -->
     <div class="config-panel">
-      <input type="number" id="questionCount" placeholder="题目总数" value="10" min="1" max="100">
+      <input type="number" id="questionCount" placeholder="题目总数" value="25" min="1" max="100">
       <input type="number" id="optionCount" placeholder="每题选项数" value="4" min="2" max="10">
       <input type="number" id="studentIdDigits" placeholder="准考证号位数" value="10" min="1" max="20">
       <input type="number" id="scorePerQuestion" placeholder="每题分值" value="10" min="1">
@@ -216,79 +216,77 @@
       
       // 绘制标题
       ctx.font = "24px Arial";
-      let title = "答题卡";
+      let title = "答题卡模板";
       ctx.fillText(title, containerWidth / 2 - ctx.measureText(title).width / 2, 40);
       
-      // 绘制填写说明
-      ctx.font = "14px Arial";
-      ctx.fillText("填写说明：请使用黑色中性笔填写，保持填写清晰", containerWidth / 2 - ctx.measureText("填写说明：请使用黑色中性笔填写，保持填写清晰").width / 2, 70);
-      
       // 绘制左边个人信息区域
-      const leftSectionWidth = containerWidth / 3; // 左边区域宽度占总宽度的1/3
+      const leftSectionWidth = 250; // 左边区域固定宽度
       const rightSectionX = leftSectionWidth + 20; // 右边答题区域的起始X坐标
       
       // 绘制姓名区域
       ctx.font = "16px Arial";
-      ctx.fillText("姓名:", 20, 120);
-      ctx.strokeRect(20, 140, leftSectionWidth - 40, 30);
+      ctx.fillText("姓名:", 20, 80);
+      ctx.strokeRect(20, 100, 200, 30);
       
       // 绘制班级区域
-      ctx.fillText("班级:", 20, 190);
-      ctx.strokeRect(20, 210, leftSectionWidth - 40, 30);
+      ctx.fillText("班级:", 20, 140);
+      ctx.strokeRect(20, 160, 200, 30);
+      
+      // 绘制学号区域
+      ctx.fillText("学号:", 20, 200);
+      ctx.strokeRect(20, 220, 200, 30);
       
       // 绘制注意事项
       ctx.font = "12px Arial";
       ctx.fillText("注意事项：", 20, 260);
-      ctx.fillText("1. 请使用黑色中性笔填写个人信息和答案。", 40, 280);
-      ctx.fillText("2. 填写时请保持字迹清晰，避免涂改。", 40, 300);
-      ctx.fillText("3. 请在规定区域内填写，超出区域的内容可能无法识别。", 40, 320);
+      ctx.fillText("1. 用黑色中性笔涂黑对应选项", 40, 280);
+      ctx.fillText("2. 答题卡保持平整清洁，不可弯折", 40, 300);
+      ctx.fillText("3. 边角处请勿涂抹", 40, 320);
       
       // 绘制准考证号区域
       ctx.font = "16px Arial";
       ctx.fillText("准考证号:", 20, 360);
-      const totalIdAreaWidth = leftSectionWidth - 40; // 准考证号区域宽度
-      const idBoxX = 20, idBoxY = 380, idBoxHeight = 40;
+      const totalIdAreaWidth = 200; // 准考证号区域宽度
+      const idBoxX = 20, idBoxY = 380, idBoxHeight = 180;
       ctx.strokeRect(idBoxX, idBoxY, totalIdAreaWidth, idBoxHeight);
-      let cellWidth = totalIdAreaWidth / studentIdDigits;
       
-      // 填涂数字和添加数字列
-      for (let i = 0; i < studentIdDigits; i++) {
-        const cellX = idBoxX + i * cellWidth;
-        // 绘制框格
-        ctx.strokeRect(cellX, idBoxY, cellWidth, idBoxHeight);
-        
-        // 添加数字列（0-9）
-        const digitColumnX = cellX + cellWidth / 2 - 5; // 数字列的x坐标，居中
-        const digitColumnY = idBoxY + idBoxHeight + 30; // 数字列的起始y坐标，增加间距
-        const digitCellSize = 15; // 每个数字单元格的大小
-        const digitSpacing = 3; // 数字之间的间距
-        
-        // 绘制数字列的边框
-        for (let j = 0; j < 10; j++) {
-          const digitY = digitColumnY + j * (digitCellSize + digitSpacing);
-          ctx.strokeRect(digitColumnX - digitCellSize / 2, digitY, digitCellSize, digitCellSize);
-          ctx.fillText(j.toString(), digitColumnX, digitY + digitCellSize / 2 + 4);
-        }
+      // 绘制准考证号数字列
+      const digitCellSize = 20; // 每个数字单元格的大小
+      const digitSpacing = 2; // 数字之间的间距
+      const digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+      
+      for (let i = 0; i < digits.length; i++) {
+        const digitY = idBoxY + 10 + i * (digitCellSize + digitSpacing);
+        ctx.strokeRect(idBoxX + 20, digitY, digitCellSize, digitCellSize);
+        ctx.strokeRect(idBoxX + 50, digitY, digitCellSize, digitCellSize);
+        ctx.strokeRect(idBoxX + 80, digitY, digitCellSize, digitCellSize);
+        ctx.strokeRect(idBoxX + 110, digitY, digitCellSize, digitCellSize);
+        ctx.fillText(digits[i], idBoxX + 25, digitY + digitCellSize / 2 + 4);
+        ctx.fillText(digits[i], idBoxX + 55, digitY + digitCellSize / 2 + 4);
+        ctx.fillText(digits[i], idBoxX + 85, digitY + digitCellSize / 2 + 4);
+        ctx.fillText(digits[i], idBoxX + 115, digitY + digitCellSize / 2 + 4);
       }
       
       // 绘制答题区域
       ctx.font = "16px Arial";
-      ctx.fillText("答题区域:", rightSectionX, 120);
+      ctx.fillText("答题区域:", rightSectionX, 80);
       const startX = rightSectionX;
-      const startY = 150;
+      const startY = 110;
       const boxSize = 20;
-      // 根据容器宽度动态计算选项间隔
-      const spacing = (containerWidth - rightSectionX - 20 - optionCount * (boxSize + 10)) / (optionCount - 1);
+      const spacing = 10;
       
       for (let i = 0; i < questionCount; i++) {
         let yPos = startY + i * 35;
-        ctx.fillText(`Q${i+1}:`, startX - 40, yPos + boxSize / 2 + 5);
+        ctx.fillText(`${i + 1}.`, startX, yPos + boxSize / 2 + 5);
         for (let j = 0; j < optionCount; j++) {
-          let xPos = startX + j * (boxSize + 10 + spacing);
+          let xPos = startX + 40 + j * (boxSize + spacing);
           ctx.strokeRect(xPos, yPos, boxSize, boxSize);
           ctx.fillText(String.fromCharCode(65 + j), xPos + 5, yPos + boxSize / 2 + 5);
         }
       }
+      
+      // 绘制答题卡边框
+      ctx.strokeRect(0, 0, containerWidth, containerHeight);
       
       // 隐藏其他区域
       document.getElementById('answerSheetContainer').style.display = 'block';
@@ -392,7 +390,7 @@
         let cx = rect.x + rect.width / 2;
         let cy = rect.y + rect.height / 2;
         // 根据答题卡模板绘制时的起始位置和行间距确定题号
-        let questionIndex = Math.floor((cy - 150) / 35);
+        let questionIndex = Math.floor((cy - 110) / 35);
         if (questionIndex < 0 || questionIndex >= questionCount) continue;
         // 根据起始 x 坐标（20）和估算选项区域确定选项索引
         let optionIndex = Math.floor((cx - 20) / (20 + ((canvas.width / (window.devicePixelRatio || 1) - 20 * 2 - optionCount * 20) / (optionCount - 1))));
