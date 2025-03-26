@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>答题卡扫描系统 - 优化版</title>
+  <!-- jsPDF 库 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .config-panel {
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-radius: 5px;
+    }
+    .config-panel input {
+      width: 120px;
+      margin: 5px;
+      padding: 5px;
+    }
+    .config-panel button {
+      padding: 5px 15px;
+      background-color: #4CAF50;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    .config-panel button:hover {
+      background-color: #45a049;
+    }
+    .controls {
+      margin-top: 10px;
+      text-align: center;
+    }
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .start-btn { background-color: #4CAF50; color: #fff; }
+    .capture-btn { background-color: #2196F3; color: #fff; }
+    .stop-btn { background-color: #f44336; color: #fff; }
+    .scan-save-btn { background-color: #FF9800; color: #fff; }
+    .stats-btn { background-color: #9C27B0; color: #fff; }
+    .export-btn { background-color: #FF9800; color: #fff; }
+    .hide { display: none; }
+    #answerSheetContainer { text-align: center; margin-bottom: 20px; }
+    canvas { border: 1px solid #ccc; margin-bottom: 10px; }
+    .question-item, .aggregate-item {
+      margin: 5px;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      min-width: 100px;
+    }
+    .correct { color: green; }
+    .incorrect { color: red; }
+    /* 响应式适配 */
+    @media (max-width: 600px) {
+      .config-panel input { width: 80px; }
+      canvas { width: 100%; height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>答题卡扫描系统 - 优化版</h1>
+    
+    <!-- 参数设置区域 -->
+    <div class="config-panel">
+      <input type="number" id="questionCount" placeholder="题目总数" value="25" min="1" max="100">
+      <input type="number" id="optionCount" placeholder="每题选项数" value="4" min="2" max="10">
+      <input type="number" id="studentIdDigits" placeholder="准考证号位数" value="10" min="1" max="20">
+      <input type="number" id="scorePerQuestion" placeholder="每题分值" value="10" min="1">
+      <button id="generateBtn">生成答题卡</button>
+      <button id="setAnswerKeyBtn">输入标准答案</button>
+      <button class="export-btn" id="exportPdfBtn">导出答题卡为PDF</button>
+      <button class="export-btn" id="exportImgBtn">导出答题卡为图片</button>
+    </div>
+    
+    <!-- 答题卡模板预览 -->
+    <div id="answerSheetContainer">
+      <canvas id="answerSheetCanvas" width="595" height="842"></canvas>
+    </div>
+    
+    <!-- 摄像头区域 -->
+    <div id="cameraContainer">
+      <video id="cameraPreview" autoplay style="width:100%; height:400px; background:#000;"></video>
+      <canvas id="captureCanvas" width="640" height="480" class="hide"></canvas>
+      <div class="controls">
+        <button class="start-btn" id="startCameraBtn">开启摄像头</button>
+        <button class="capture-btn" id="captureBtn">拍照识别</button>
+        <button class="stop-btn" id="stopCameraBtn">关闭摄像头</button>
+      </div>
+    </div>
+    
+    <!-- 单个学生扫描结果显示 -->
+    <div id="results" class="hide" style="margin-top:20px; padding:15px; background:#f9f9f9; border-radius:5px;">
+      <div class="score-display">单份总分: <span id="totalScore">0</span></div>
+      <div id="questionStats" style="display:flex; flex-wrap:wrap;"></div>
+      <button class="scan-save-btn" id="saveResultBtn">保存此份成绩</button>
+    </div>
+    
+    <!-- 多份答题卡统计结果 -->
+    <div id="aggregate" class="hide" style="margin-top:20px; padding:15px; background:#f9f9f9; border-radius:5px;">
+      <h3>各题正确率统计</h3>
+      <div id="aggregateStats" style="display:flex; flex-wrap:wrap;"></div>
+      <button class="stats-btn" id="hideAggregateBtn">关闭统计</button>
+    </div>
+    
+    <!-- 其他操作按钮 -->
+    <div class="controls">
+      <button id="showCameraBtn">切换到摄像头</button>
+      <button id="showAggregateBtn">显示所有答题卡统计</button>
+    </div>
+  </div>
+  
+  <!-- OpenCV.js -->
+  <script async src="https://docs.opencv.org/4.5.3/opencv.js"></script>
+  
+  <script>
+    "use strict";
+    // 全局变量
+    let videoStream = null;
+    let isCameraActive = false;
+    let answerKey = []; // 标准答案数组
+    // 单次扫描结果：每题记录 { answer: 'A', area: 数值 }
+    let studentAnswers = [];
+    // 保存所有扫描的学生结果，每个元素为 { answers: [...], totalScore: number }
+    let allStudentResults = [];
+
+    // DOM 加载完成后初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('您的浏览器不支持摄像头功能');
+      }
+      // 绑定事件
+      document.getElementById('generateBtn').addEventListener('click', generateAnswerSheet);
+      document.getElementById('setAnswerKeyBtn').addEventListener('click', showAnswerKeyInput);
+      document.getElementById('exportPdfBtn').addEventListener('click', exportAnswerSheet);
+      document.getElementById('exportImgBtn').addEventListener('click', exportAnswerSheetAsImage);
+      document.getElementById('startCameraBtn').addEventListener('click', startCamera);
+      document.getElementById('captureBtn').addEventListener('click', captureFrame);
+      document.getElementById('stopCameraBtn').addEventListener('click', stopCamera);
+      document.getElementById('saveResultBtn').addEventListener('click', saveCurrentResult);
+      document.getElementById('showCameraBtn').addEventListener('click', showCamera);
+      document.getElementById('showAggregateBtn').addEventListener('click', displayAggregateStats);
+      document.getElementById('hideAggregateBtn').addEventListener('click', hideAggregateStats);
+      
+      generateAnswerSheet();
+    });
+    
+    /**
+     * 生成答题卡模板，基于用户参数在 Canvas 上绘制。
+     */
+    function generateAnswerSheet() {
+      const questionCount = parseInt(document.getElementById('questionCount').value);
+      const optionCount = parseInt(document.getElementById('optionCount').value);
+      const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value);
+      const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value);
+      
+      // 参数验证
+      if (!questionCount || questionCount < 1 || questionCount > 100) {
+        alert('题目数量必须为1到100之间的整数');
+        return;
+      }
+      if (!optionCount || optionCount < 2 || optionCount > 10) {
+        alert('每题选项数必须为2到10之间的整数');
+        return;
+      }
+      if (!studentIdDigits || studentIdDigits < 1 || studentIdDigits > 20) {
+        alert('准考证号位数必须为1到20之间的整数');
+        return;
+      }
+      if (!scorePerQuestion || scorePerQuestion < 1) {
+        alert('每题分值必须为大于0的整数');
+        return;
+      }
+      
+      const canvas = document.getElementById('answerSheetCanvas');
+      const ctx = canvas.getContext('2d');
+      // 设置A4尺寸（595x842像素）并清除画布
+      canvas.width = 595;
+      canvas.height = 842;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // 绘制标题
+      ctx.font = "24px Arial";
+      const title = "答题卡模板";
+      ctx.fillText(title, canvas.width / 2 - ctx.measureText(title).width / 2, 40);
+      
+      // 左侧个人信息区域
+      const leftSectionWidth = 250;
+      const rightSectionX = leftSectionWidth + 20;
+      ctx.font = "16px Arial";
+      // 姓名
+      ctx.fillText("姓名:", 20, 80);
+      ctx.strokeRect(20, 100, 200, 30);
+      // 班级
+      ctx.fillText("班级:", 20, 140);
+      ctx.strokeRect(20, 160, 200, 30);
+      // 学号
+      ctx.fillText("学号:", 20, 200);
+      ctx.strokeRect(20, 220, 200, 30);
+      
+      // 注意事项
+      ctx.font = "12px Arial";
+      ctx.fillText("注意事项：", 20, 260);
+      ctx.fillText("1. 用黑色中性笔涂黑对应选项", 40, 280);
+      ctx.fillText("2. 答题卡保持平整清洁，不可弯折", 40, 300);
+      ctx.fillText("3. 边角处请勿涂抹", 40, 320);
+      
+      // 准考证号区域
+      ctx.font = "16px Arial";
+      ctx.fillText("准考证号:", 20, 360);
+      const idBoxX = 20, idBoxY = 380, idBoxWidth = 200, idBoxHeight = 180;
+      ctx.strokeRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight);
+      
+      // 绘制数字列（这里只绘制4列示例，可根据需要扩展）
+      const digitCellSize = 20;
+      const digitSpacing = 2;
+      const digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+      for (let i = 0; i < digits.length; i++) {
+        const digitY = idBoxY + 10 + i * (digitCellSize + digitSpacing);
+        // 绘制4个单元格
+        [20, 50, 80, 110].forEach((offsetX, index) => {
+          ctx.strokeRect(idBoxX + offsetX, digitY, digitCellSize, digitCellSize);
+          ctx.fillText(digits[i], idBoxX + offsetX + 5, digitY + digitCellSize/2 + 4);
+        });
+      }
+      
+      // 答题区域
+      ctx.font = "16px Arial";
+      ctx.fillText("答题区域:", rightSectionX, 80);
+      const startX = rightSectionX;
+      const startY = 110;
+      const boxSize = 15;
+      const spacing = 8;
+      const questionsPerColumn = 25;
+      const columns = Math.ceil(questionCount / questionsPerColumn);
+      const columnWidth = 200;
+      
+      for (let i = 0; i < questionCount; i++) {
+        const column = Math.floor(i / questionsPerColumn);
+        const currentX = startX + column * columnWidth;
+        const yPos = startY + (i % questionsPerColumn) * 30;
+        ctx.fillText(`${i + 1}.`, currentX, yPos + boxSize / 2 + 5);
+        for (let j = 0; j < optionCount; j++) {
+          const xPos = currentX + 30 + j * (boxSize + spacing);
+          ctx.strokeRect(xPos, yPos, boxSize, boxSize);
+          ctx.fillText(String.fromCharCode(65 + j), xPos + 3, yPos + boxSize / 2 + 5);
+        }
+      }
+      
+      // 整体边框
+      ctx.strokeRect(0, 0, canvas.width, canvas.height);
+      
+      // 显示答题卡区域，隐藏其他区域
+      document.getElementById('answerSheetContainer').style.display = 'block';
+      document.getElementById('cameraContainer').classList.add('hide');
+      document.getElementById('results').classList.add('hide');
+      document.getElementById('aggregate').classList.add('hide');
+    }
+    
+    /**
+     * 输入标准答案，并更新全局 answerKey 数组
+     */
+    function showAnswerKeyInput() {
+      const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+      const input = prompt(`请输入标准答案（例如：A,B,C,A,...，共${questionCount}题）：`);
+      if (input) {
+        answerKey = input.toUpperCase().split(',').slice(0, questionCount);
+        alert('标准答案已设置');
+      }
+    }
+    
+    /**
+     * 导出答题卡为 PDF，使用 jsPDF 库
+     */
+    function exportAnswerSheet() {
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const canvas = document.getElementById('answerSheetCanvas');
+        const imgData = canvas.toDataURL("image/png", 0.5);
+        doc.text("答题卡", doc.internal.pageSize.getWidth() / 2 - 20, 20);
+        doc.addImage(imgData, 'PNG', 20, 30, 170, 220);
+        doc.save("answer_sheet.pdf");
+      } catch (error) {
+        console.error("导出 PDF 出错：", error);
+        alert("导出 PDF 失败！");
+      }
+    }
+    
+    /**
+     * 导出答题卡为图片
+     */
+    function exportAnswerSheetAsImage() {
+      const canvas = document.getElementById('answerSheetCanvas');
+      const imgData = canvas.toDataURL("image/png", 0.5);
+      const link = document.createElement('a');
+      link.download = 'answer_sheet.png';
+      link.href = imgData;
+      link.click();
+    }
+    
+    /**
+     * 切换到摄像头视图
+     */
+    function showCamera() {
+      document.getElementById('cameraContainer').classList.remove('hide');
+    }
+    
+    /**
+     * 开启摄像头，并处理错误
+     */
+    async function startCamera() {
+      if (isCameraActive) return;
+      const video = document.getElementById('cameraPreview');
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = videoStream;
+        isCameraActive = true;
+        document.getElementById('cameraContainer').classList.remove('hide');
+      } catch (err) {
+        console.error("摄像头访问失败:", err);
+        alert('摄像头访问失败，请检查权限');
+      }
+    }
+    
+    /**
+     * 捕获摄像头当前帧，并调用图像处理函数
+     */
+    function captureFrame() {
+      if (!isCameraActive) {
+        alert('请先开启摄像头');
+        return;
+      }
+      const video = document.getElementById('cameraPreview');
+      const captureCanvas = document.getElementById('captureCanvas');
+      const ctx = captureCanvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+      processImage(captureCanvas);
+    }
+    
+    /**
+     * 使用 OpenCV.js 处理图像，识别答题卡区域
+     * 1. 将图像转灰度
+     * 2. 自适应阈值处理
+     * 3. 查找轮廓，依据区域面积确定最优答案
+     */
+    function processImage(canvas) {
+      if (typeof cv === 'undefined') {
+        alert('OpenCV.js 尚未加载，请稍后再试');
+        return;
+      }
+      try {
+        let src = cv.imread(canvas);
+        let gray = new cv.Mat();
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+        let thresh = new cv.Mat();
+        cv.adaptiveThreshold(gray, thresh, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 15, 10);
+        
+        let contours = new cv.MatVector();
+        let hierarchy = new cv.Mat();
+        cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+        
+        const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+        const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
+        // 初始化学生答案数组
+        studentAnswers = Array.from({length: questionCount}, () => ({ answer: null, area: 0 }));
+        
+        // 遍历所有轮廓
+        for (let i = 0; i < contours.size(); i++) {
+          let contour = contours.get(i);
+          let rect = cv.boundingRect(contour);
+          // 筛除不符合大小的区域
+          if (rect.width < 10 || rect.height < 10 || rect.width > 100 || rect.height > 100) {
+            continue;
+          }
+          let cx = rect.x + rect.width / 2;
+          let cy = rect.y + rect.height / 2;
+          // 根据答题卡绘制区域的起始位置和行间距计算题号
+          let questionIndex = Math.floor((cy - 110) / 30);
+          if (questionIndex < 0 || questionIndex >= questionCount) continue;
+          // 根据 x 坐标估算选项索引（这里根据模板中 x 起始值20）
+          let optionIndex = Math.floor((cx - 20) / (20 + ((canvas.width - 40 - optionCount * 15) / (optionCount - 1))));
+          if (optionIndex < 0 || optionIndex >= optionCount) continue;
+          let area = rect.width * rect.height;
+          if (area > studentAnswers[questionIndex].area) {
+            studentAnswers[questionIndex] = { answer: String.fromCharCode(65 + optionIndex), area: area };
+          }
+        }
+        // 释放 OpenCV 内存
+        src.delete(); gray.delete(); thresh.delete(); contours.delete(); hierarchy.delete();
+        calculateScore();
+      } catch (error) {
+        console.error("图像处理出错：", error);
+        alert("图像处理失败，请重试！");
+      }
+    }
+    
+    /**
+     * 计算当前扫描的成绩，并在页面显示详细信息
+     */
+    function calculateScore() {
+      if (answerKey.length === 0) {
+        alert('请先设置标准答案');
+        return;
+      }
+      const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
+      let totalScore = 0;
+      const stats = [];
+      studentAnswers.forEach((item, index) => {
+        const selected = item.answer || '未作答';
+        const isCorrect = selected === answerKey[index];
+        if (isCorrect) totalScore += scorePerQuestion;
+        stats.push({
+          question: index + 1,
+          correct: isCorrect,
+          selected: selected,
+          correctAnswer: answerKey[index]
+        });
+      });
+      
+      document.getElementById('totalScore').textContent = totalScore;
+      const container = document.getElementById('questionStats');
+      container.innerHTML = '';
+      stats.forEach(item => {
+        const div = document.createElement('div');
+        div.className = `question-item ${item.correct ? 'correct' : 'incorrect'}`;
+        div.innerHTML = `Q${item.question}: ${item.selected} ${item.correct ? '✓' : '✗'} (正确答案: ${item.correctAnswer})`;
+        container.appendChild(div);
+      });
+      document.getElementById('results').classList.remove('hide');
+    }
+    
+    /**
+     * 保存当前扫描的结果到全局数组，便于后续统计
+     */
+    function saveCurrentResult() {
+      if (studentAnswers.length === 0) {
+        alert('无有效扫描结果');
+        return;
+      }
+      const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
+      let totalScore = 0;
+      const answers = studentAnswers.map((item, index) => {
+        const selected = item.answer || '未作答';
+        if (selected === answerKey[index]) totalScore += scorePerQuestion;
+        return selected;
+      });
+      allStudentResults.push({ answers, totalScore });
+      alert(`成绩已保存，目前累计 ${allStudentResults.length} 份答题卡`);
+    }
+    
+    /**
+     * 统计所有保存的答题卡，显示每题正确率
+     */
+    function displayAggregateStats() {
+      if (allStudentResults.length === 0) {
+        alert('尚未保存任何扫描结果');
+        return;
+      }
+      const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+      const stats = Array(questionCount).fill(0);
+      allStudentResults.forEach(result => {
+        result.answers.forEach((ans, index) => {
+          if (ans === answerKey[index]) stats[index]++;
+        });
+      });
+      const aggregateContainer = document.getElementById('aggregateStats');
+      aggregateContainer.innerHTML = '';
+      for (let i = 0; i < questionCount; i++) {
+        const correctCount = stats[i];
+        const rate = ((correctCount / allStudentResults.length) * 100).toFixed(1);
+        const div = document.createElement('div');
+        div.className = 'aggregate-item';
+        div.innerHTML = `Q${i+1}: ${rate}% (${correctCount}/${allStudentResults.length})`;
+        aggregateContainer.appendChild(div);
+      }
+      document.getElementById('aggregate').classList.remove('hide');
+    }
+    
+    /**
+     * 隐藏答题卡统计区域
+     */
+    function hideAggregateStats() {
+      document.getElementById('aggregate').classList.add('hide');
+    }
+    
+    /**
+     * 关闭摄像头，释放媒体流
+     */
+    function stopCamera() {
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+        isCameraActive = false;
+      }
+      document.getElementById('cameraPreview').srcObject = null;
+    }
+  </script>
+</body>
+</html>
