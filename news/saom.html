@@ -239,7 +239,7 @@
         
         // 添加数字列（0-9）
         const digitColumnX = cellX + cellWidth / 2 - 5; // 数字列的x坐标，居中
-        const digitColumnY = idBoxY + idBoxHeight + 20; // 数字列的起始y坐标，增加间距
+        const digitColumnY = idBoxY + idBoxHeight + 30; // 数字列的起始y坐标，增加间距
         const digitCellSize = 15; // 每个数字单元格的大小
         const digitSpacing = 3; // 数字之间的间距
         
@@ -253,8 +253,8 @@
       
       // 绘制答题区域
       ctx.font = "16px Arial";
-      ctx.fillText("答题区域:", 20, 200);
-      const startX = 20, startY = 230, boxSize = 20;
+      ctx.fillText("答题区域:", 20, 220); // 调整起始位置
+      const startX = 20, startY = 250, boxSize = 20;
       // 根据容器宽度动态计算选项间隔
       const spacing = (containerWidth - startX * 2 - optionCount * (boxSize + 10)) / (optionCount - 1);
       
@@ -370,7 +370,7 @@
         let cx = rect.x + rect.width / 2;
         let cy = rect.y + rect.height / 2;
         // 根据答题卡模板绘制时的起始位置和行间距确定题号
-        let questionIndex = Math.floor((cy - 230) / 35);
+        let questionIndex = Math.floor((cy - 250) / 35);
         if (questionIndex < 0 || questionIndex >= questionCount) continue;
         // 根据起始 x 坐标（20）和估算选项区域确定选项索引
         let optionIndex = Math.floor((cx - 20) / (20 + ((canvas.width / (window.devicePixelRatio || 1) - 20 * 2 - optionCount * 20) / (optionCount - 1))));
