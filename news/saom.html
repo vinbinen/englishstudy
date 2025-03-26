@@ -269,8 +269,8 @@
       ctx.fillText("答题区域:", rightSectionX, 80);
       const startX = rightSectionX;
       const startY = 110;
-      const boxSize = 20;
-      const spacing = 10;
+      const boxSize = 15; // 减小选项框的大小
+      const spacing = 8; // 减小选项之间的间距
       const questionsPerColumn = 25; // 每列题目数量
       
       const columns = Math.ceil(questionCount / questionsPerColumn); // 计算需要的列数
@@ -279,13 +279,13 @@
       for (let i = 0; i < questionCount; i++) {
         const column = Math.floor(i / questionsPerColumn); // 确定当前题所在的列
         const currentX = startX + column * columnWidth; // 当前列的起始X坐标
-        const yPos = startY + (i % questionsPerColumn) * 35; // 当前题的Y坐标
+        const yPos = startY + (i % questionsPerColumn) * 30; // 减小题目之间的垂直间距
         
         ctx.fillText(`${i + 1}.`, currentX, yPos + boxSize / 2 + 5);
         for (let j = 0; j < optionCount; j++) {
-          const xPos = currentX + 40 + j * (boxSize + spacing);
+          const xPos = currentX + 30 + j * (boxSize + spacing); // 调整选项的起始位置和间距
           ctx.strokeRect(xPos, yPos, boxSize, boxSize);
-          ctx.fillText(String.fromCharCode(65 + j), xPos + 5, yPos + boxSize / 2 + 5);
+          ctx.fillText(String.fromCharCode(65 + j), xPos + 3, yPos + boxSize / 2 + 5);
         }
       }
       
@@ -394,10 +394,10 @@
         let cx = rect.x + rect.width / 2;
         let cy = rect.y + rect.height / 2;
         // 根据答题卡模板绘制时的起始位置和行间距确定题号
-        let questionIndex = Math.floor((cy - 110) / 35);
+        let questionIndex = Math.floor((cy - 110) / 30);
         if (questionIndex < 0 || questionIndex >= questionCount) continue;
         // 根据起始 x 坐标（20）和估算选项区域确定选项索引
-        let optionIndex = Math.floor((cx - 20) / (20 + ((canvas.width / (window.devicePixelRatio || 1) - 20 * 2 - optionCount * 20) / (optionCount - 1))));
+        let optionIndex = Math.floor((cx - 20) / (20 + ((canvas.width / (window.devicePixelRatio || 1) - 20 * 2 - optionCount * 15) / (optionCount - 1))));
         if (optionIndex < 0 || optionIndex >= optionCount) continue;
         let area = rect.width * rect.height;
         if (area > studentAnswers[questionIndex].area) {
