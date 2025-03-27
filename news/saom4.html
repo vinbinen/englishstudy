@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>答题卡扫描系统 - 透视校正版</title>
+  <title>答题卡扫描系统 - 优化版</title>
   <!-- jsPDF 库 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
@@ -32,7 +32,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>答题卡扫描系统 - 透视校正版</h1>
+    <h1>答题卡扫描系统 - 优化版</h1>
     
     <!-- 参数设置区域 -->
     <div class="config-panel">
@@ -91,9 +91,7 @@
     let videoStream = null;
     let isCameraActive = false;
     let answerKey = []; // 标准答案数组
-    // 每题结果：记录 { answer: 'A', area: 数值 }
     let studentAnswers = [];
-    // 保存所有扫描结果，每个元素为 { answers: [...], totalScore: number }
     let allStudentResults = [];
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -115,7 +113,6 @@
       generateAnswerSheet();
     });
 
-    // 生成答题卡模板，并在四角添加黑色标记块用于后续透视校正
     function generateAnswerSheet() {
       const questionCount = parseInt(document.getElementById('questionCount').value);
       const optionCount = parseInt(document.getElementById('optionCount').value);
@@ -202,7 +199,7 @@
         }
       }
       
-      // 在四角添加黑色标记块（用于透视校正），例如放置在 (5,5), (canvas.width-15,5), (5,canvas.height-15), (canvas.width-15,canvas.height-15)
+      // 在四角添加黑色标记块（用于透视校正）
       ctx.fillStyle = "black";
       ctx.fillRect(5,5,10,10);
       ctx.fillRect(canvas.width-15,5,10,10);
@@ -281,12 +278,6 @@
       processImage(captureCanvas);
     }
     
-    /**
-     * 图像处理流程：
-     * 1. 将拍摄图像进行灰度、高斯模糊和阈值处理；
-     * 2. 检测四角标记（黑色块），若检测到则进行透视校正；
-     * 3. 按照预定义模板区域（答题区域网格）分割，每个单元格统计黑色像素比例判断填涂。
-     */
     function processImage(canvas) {
       if (typeof cv === 'undefined') {
         alert('OpenCV.js 尚未加载，请稍后再试');
@@ -299,13 +290,12 @@
         cv.GaussianBlur(processed, processed, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
         cv.threshold(processed, processed, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
 
-        // 尝试检测四角标记
+        // 改进后的四角标记检测逻辑
         let contours = new cv.MatVector();
         let hierarchy = new cv.Mat();
         cv.findContours(processed, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
         let markerPoints = [];
-        // 遍历所有轮廓，筛选近似正方形且面积合适的候选块
         for (let i = 0; i < contours.size(); i++) {
           let cnt = contours.get(i);
           let approx = new cv.Mat();
@@ -313,7 +303,6 @@
           if (approx.rows === 4) {
             let rect = cv.boundingRect(approx);
             if (rect.width > 8 && rect.height > 8 && rect.width < 30 && rect.height < 30) {
-              // 保存中心点坐标
               markerPoints.push({ x: rect.x + rect.width/2, y: rect.y + rect.height/2 });
             }
           }
@@ -325,7 +314,6 @@
         
         // 若检测到四个以上候选点，则选择最靠近图像四角的四个
         if (markerPoints.length >= 4) {
-          // 分别计算与图像四角的距离
           const imgW = processed.cols, imgH = processed.rows;
           function distance(p, x, y) { return Math.sqrt((p.x - x)**2 + (p.y - y)**2); }
           let tl = markerPoints.reduce((prev, p) => distance(p, 0, 0) < distance(prev, 0, 0) ? p : prev);
@@ -339,7 +327,6 @@
             br.x, br.y,
             bl.x, bl.y
           ]);
-          // 目标区域坐标，根据生成模板时的标记位置： (5,5), (canvas.width-15,5), (canvas.width-15,canvas.height-15), (5,canvas.height-15)
           let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
             5, 5,
             src.cols - 15, 5,
@@ -349,7 +336,6 @@
           let M = cv.getPerspectiveTransform(srcTri, dstTri);
           let warped = new cv.Mat();
           cv.warpPerspective(src, warped, M, new cv.Size(src.cols, src.rows));
-          // 用透视校正后的图像继续后续处理
           src.delete();
           src = warped;
           srcTri.delete();
@@ -359,33 +345,27 @@
           console.warn("未检测到足够的标记，透视校正跳过");
         }
         
-        // 对校正后图像重新转换为灰度和二值图（可根据需要调整预处理）
+        // 改进后的选项识别逻辑
         let gray = new cv.Mat();
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
         cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
         let binary = new cv.Mat();
         cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
 
-        // 固定 ROI 分割：已知答题区域起点和网格（根据模板绘制时的设置）
-        // 模板设定：答题区域起点：rightSectionX = 250+20, startY = 110; 每题垂直间距 30, 每个选项区域 boxSize=15, 横向间距 spacing=8
         const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
         const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
         studentAnswers = Array.from({length: questionCount}, () => ({ answer: null, score: 0 }));
-        // 注意：这里的坐标需要根据实际扫描后图像尺寸调整，假设扫描图像与模板大致一致
         const rightSectionX = 270, startY = 110, boxSize = 15, spacing = 8;
-        const perQuestionHeight = 30;
         for (let i = 0; i < questionCount; i++) {
-          let y = startY + i * perQuestionHeight;
+          let y = startY + i * 30;
           let detected = null, maxBlackRatio = 0;
           for (let j = 0; j < optionCount; j++) {
             let x = rightSectionX + 30 + j * (boxSize + spacing);
-            // 裁剪该选项区域
             let roi = binary.roi(new cv.Rect(x, y, boxSize, boxSize));
             let total = roi.cols * roi.rows;
             let count = cv.countNonZero(roi);
             roi.delete();
             let ratio = count / total;
-            // 根据黑色像素比例判断是否填涂（阈值可调，建议 0.5-0.7之间）
             if (ratio > maxBlackRatio && ratio > 0.6) {
               maxBlackRatio = ratio;
               detected = j;
@@ -396,7 +376,6 @@
           }
         }
         
-        // 释放内存
         gray.delete();
         binary.delete();
         src.delete();
@@ -427,71 +406,91 @@
           correctAnswer: answerKey[index]
         });
       });
-      document.getElementById('totalScore').textContent = totalScore;
-      const container = document.getElementById('questionStats');
-      container.innerHTML = '';
-      stats.forEach(item => {
-        const div = document.createElement('div');
-        div.className = `question-item ${item.correct ? 'correct' : 'incorrect'}`;
-        div.innerHTML = `Q${item.question}: ${item.selected} ${item.correct ? '✓' : '✗'} (正确答案: ${item.correctAnswer})`;
-        container.appendChild(div);
-      });
-      document.getElementById('results').classList.remove('hide');
-    }
-    
-    function saveCurrentResult() {
-      if (studentAnswers.length === 0) {
-        alert('无有效扫描结果');
-        return;
-      }
-      const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
-      let totalScore = 0;
-      const answers = studentAnswers.map((item, index) => {
-        const selected = item.answer || '未作答';
-        if (selected === answerKey[index]) totalScore += scorePerQuestion;
-        return selected;
-      });
-      allStudentResults.push({ answers, totalScore });
-      alert(`成绩已保存，目前累计 ${allStudentResults.length} 份答题卡`);
-    }
-    
-    function displayAggregateStats() {
-      if (allStudentResults.length === 0) {
-        alert('尚未保存任何扫描结果');
-        return;
-      }
-      const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-      const stats = Array(questionCount).fill(0);
-      allStudentResults.forEach(result => {
-        result.answers.forEach((ans, index) => {
-          if (ans === answerKey[index]) stats[index]++;
-        });
-      });
-      const aggregateContainer = document.getElementById('aggregateStats');
-      aggregateContainer.innerHTML = '';
-      for (let i = 0; i < questionCount; i++) {
-        const correctCount = stats[i];
-        const rate = ((correctCount / allStudentResults.length) * 100).toFixed(1);
-        const div = document.createElement('div');
-        div.className = 'aggregate-item';
-        div.innerHTML = `Q${i+1}: ${rate}% (${correctCount}/${allStudentResults.length})`;
-        aggregateContainer.appendChild(div);
-      }
-      document.getElementById('aggregate').classList.remove('hide');
-    }
-    
-    function hideAggregateStats() {
-      document.getElementById('aggregate').classList.add('hide');
-    }
-    
-    function stopCamera() {
-      if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
-        videoStream = null;
-        isCameraActive = false;
-      }
-      document.getElementById('cameraPreview').srcObject = null;
-    }
+      document.getElementById('totalScore').textContent = total
+function calculateScore() {
+  if (answerKey.length === 0) {
+    alert('请先设置标准答案');
+    return;
+  }
+  const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
+  let totalScore = 0;
+  const stats = [];
+  studentAnswers.forEach((item, index) => {
+    const selected = item.answer || '未作答';
+    const isCorrect = selected === answerKey[index];
+    if (isCorrect) totalScore += scorePerQuestion;
+    stats.push({
+      question: index + 1,
+      correct: isCorrect,
+      selected: selected,
+      correctAnswer: answerKey[index]
+    });
+  });
+  document.getElementById('totalScore').textContent = totalScore;
+  const container = document.getElementById('questionStats');
+  container.innerHTML = '';
+  stats.forEach(item => {
+    const div = document.createElement('div');
+    div.className = `question-item ${item.correct ? 'correct' : 'incorrect'}`;
+    div.innerHTML = `Q${item.question}: ${item.selected} ${item.correct ? '✓' : '✗'} (正确答案: ${item.correctAnswer})`;
+    container.appendChild(div);
+  });
+  document.getElementById('results').classList.remove('hide');
+}
+
+function saveCurrentResult() {
+  if (studentAnswers.length === 0) {
+    alert('无有效扫描结果');
+    return;
+  }
+  const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
+  let totalScore = 0;
+  const answers = studentAnswers.map((item, index) => {
+    const selected = item.answer || '未作答';
+    if (selected === answerKey[index]) totalScore += scorePerQuestion;
+    return selected;
+  });
+  allStudentResults.push({ answers, totalScore });
+  alert(`成绩已保存，目前累计 ${allStudentResults.length} 份答题卡`);
+}
+
+function displayAggregateStats() {
+  if (allStudentResults.length === 0) {
+    alert('尚未保存任何扫描结果');
+    return;
+  }
+  const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+  const stats = Array(questionCount).fill(0);
+  allStudentResults.forEach(result => {
+    result.answers.forEach((ans, index) => {
+      if (ans === answerKey[index]) stats[index]++;
+    });
+  });
+  const aggregateContainer = document.getElementById('aggregateStats');
+  aggregateContainer.innerHTML = '';
+  for (let i = 0; i < questionCount; i++) {
+    const correctCount = stats[i];
+    const rate = ((correctCount / allStudentResults.length) * 100).toFixed(1);
+    const div = document.createElement('div');
+    div.className = 'aggregate-item';
+    div.innerHTML = `Q${i+1}: ${rate}% (${correctCount}/${allStudentResults.length})`;
+    aggregateContainer.appendChild(div);
+  }
+  document.getElementById('aggregate').classList.remove('hide');
+}
+
+function hideAggregateStats() {
+  document.getElementById('aggregate').classList.add('hide');
+}
+
+function stopCamera() {
+  if (videoStream) {
+    videoStream.getTracks().forEach(track => track.stop());
+    videoStream = null;
+    isCameraActive = false;
+  }
+  document.getElementById('cameraPreview').srcObject = null;
+}
   </script>
 </body>
-</html>
+</html>      
