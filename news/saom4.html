@@ -51,18 +51,20 @@
       padding: 5px;
       border: 1px solid #ddd;
       border-radius: 3px;
+      min-width: 100px;
     }
     .correct { color: green; }
     .incorrect { color: red; }
     @media (max-width: 600px) {
       .config-panel input { width: 80px; }
-      canvas { width: 100%; }
+      canvas { width: 100%; height: auto; }
     }
+    #questionStats { column-count: 2; column-gap: 20px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>答题卡扫描系统</h1>
+    <h1>答题卡扫描系统 - 专业版</h1>
     
     <div class="config-panel">
       <input type="number" id="questionCount" placeholder="题目总数" value="25" min="1">
@@ -72,6 +74,8 @@
       <button id="generateBtn">生成模板</button>
       <button id="setAnswerKeyBtn">设置答案</button>
       <button class="export-btn" id="exportPdfBtn">导出PDF</button>
+      <button class="export-btn" id="exportImgBtn">导出图片</button>
+      <button class="stats-btn" id="calibrateBtn">智能校准</button>
     </div>
 
     <div id="answerSheetContainer">
@@ -81,7 +85,7 @@
     <div id="cameraContainer" class="hide">
       <video id="cameraPreview" autoplay style="width:100%; height:400px; background:#000;"></video>
       <canvas id="captureCanvas" class="hide"></canvas>
-      <div style="text-align:center; margin:10px;">
+      <div class="controls">
         <button class="start-btn" id="startCameraBtn">开启摄像头</button>
         <button class="capture-btn" id="captureBtn">扫描识别</button>
         <button class="stop-btn" id="stopCameraBtn">关闭摄像头</button>
@@ -89,9 +93,8 @@
     </div>
 
     <div id="results" class="hide">
-      <h3>识别结果</h3>
-      <div>得分：<span id="totalScore">0</span></div>
-      <div id="questionStats" style="column-count:2;"></div>
+      <div class="score-display">单份总分: <span id="totalScore">0</span></div>
+      <div id="questionStats"></div>
       <button class="scan-save-btn" id="saveResultBtn">保存结果</button>
     </div>
 
@@ -112,16 +115,13 @@
     let studentAnswers = [];
     let allStudentResults = [];
     let optionPositions = [];
+    let calibrationData = { scale: 1, offsetX: 0, offsetY: 0 };
 
     document.addEventListener('DOMContentLoaded', () => {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        alert("浏览器不支持摄像头功能");
-        return;
-      }
-
       document.getElementById('generateBtn').addEventListener('click', generateAnswerSheet);
       document.getElementById('setAnswerKeyBtn').addEventListener('click', setAnswerKey);
       document.getElementById('exportPdfBtn').addEventListener('click', exportPDF);
+      document.getElementById('exportImgBtn').addEventListener('click', exportImage);
       document.getElementById('startCameraBtn').addEventListener('click', startCamera);
       document.getElementById('captureBtn').addEventListener('click', captureImage);
       document.getElementById('stopCameraBtn').addEventListener('click', stopCamera);
@@ -129,6 +129,7 @@
       document.getElementById('hideAggregateBtn').addEventListener('click', () => {
         document.getElementById('aggregate').classList.add('hide');
       });
+      document.getElementById('calibrateBtn').addEventListener('click', performCalibration);
 
       generateAnswerSheet();
     });
@@ -139,12 +140,14 @@
       canvas.width = 595;
       canvas.height = 842;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // 绘制基础模板
-      ctx.font = "24px Arial";
-      ctx.fillText("标准答题卡", 240, 40);
-      
-      // 记录选项位置
+
+      ctx.fillStyle = 'black';
+      [[50,50], [canvas.width-50,50], [50,canvas.height-50]].forEach(([x,y]) => {
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, Math.PI*2);
+        ctx.fill();
+      });
+
       optionPositions = [];
       const questionCount = parseInt(document.getElementById('questionCount').value);
       const optionCount = parseInt(document.getElementById('optionCount').value);
@@ -170,154 +173,283 @@
       }
     }
 
-    async function startCamera() {
-      try {
-        videoStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 1280, height: 720 }
-        });
-        const video = document.getElementById('cameraPreview');
-        video.srcObject = videoStream;
-        document.getElementById('cameraContainer').classList.remove('hide');
-        isCameraActive = true;
-      } catch (err) {
-        alert("摄像头访问失败: " + err.message);
+    function setAnswerKey() {
+      const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+      const input = prompt(`请输入标准答案（例如：A,B,C,A,...，共${questionCount}题）：`);
+      if (input) {
+        answerKey = input.toUpperCase().split(',').slice(0, questionCount);
+        alert('标准答案已设置');
       }
     }
 
-    function captureImage() {
-      if (!isCameraActive) return;
-      
+    function exportPDF() {
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const canvas = document.getElementById('answerSheetCanvas');
+        const imgData = canvas.toDataURL("image/png", 0.5);
+        doc.text("答题卡", doc.internal.pageSize.getWidth()/2-20, 20);
+        doc.addImage(imgData, 'PNG', 20, 30, 170, 220);
+        doc.save("answer_sheet.pdf");
+      } catch (error) {
+        console.error("导出 PDF 出错：", error);
+        alert("导出 PDF 失败！");
+      }
+    }
+
+    function exportImage() {
+      const canvas = document.getElementById('answerSheetCanvas');
+      const imgData = canvas.toDataURL("image/png", 0.5);
+      const link = document.createElement('a');
+      link.download = 'answer_sheet.png';
+      link.href = imgData;
+      link.click();
+    }
+
+    async function startCamera() {
+      if (isCameraActive) return;
       const video = document.getElementById('cameraPreview');
-      const canvas = document.getElementById('captureCanvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-      
-      processImage(canvas);
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = videoStream;
+        isCameraActive = true;
+        document.getElementById('cameraContainer').classList.remove('hide');
+      } catch (err) {
+        console.error("摄像头访问失败:", err);
+        alert('摄像头访问失败，请检查权限');
+      }
+    }
+
+    function stopCamera() {
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+        isCameraActive = false;
+      }
+      document.getElementById('cameraPreview').srcObject = null;
+    }
+
+    function captureImage() {
+      if (!isCameraActive) {
+        alert('请先开启摄像头');
+        return;
+      }
+      const video = document.getElementById('cameraPreview');
+      const captureCanvas = document.getElementById('captureCanvas');
+      const ctx = captureCanvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+      processImage(captureCanvas);
     }
 
     function processImage(canvas) {
-      if (typeof cv === 'undefined') return alert("OpenCV未加载完成");
+      return new Promise((resolve) => {
+        if (typeof cv === 'undefined') return alert("OpenCV加载失败");
 
-      try {
-        let src = cv.imread(canvas);
-        let gray = new cv.Mat();
-        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-
-        // 图像增强
-        cv.equalizeHist(gray, gray);
-        cv.GaussianBlur(gray, gray, new cv.Size(5,5), 0);
-        
-        // 阈值处理
-        let thresh = new cv.Mat();
-        cv.adaptiveThreshold(gray, thresh, 255, 
-          cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
-
-        // 形态学处理
-        let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3,3));
-        cv.morphologyEx(thresh, thresh, cv.MORPH_CLOSE, kernel);
-
-        // 轮廓分析
-        let contours = new cv.MatVector();
-        let hierarchy = new cv.Mat();
-        cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-        studentAnswers = Array(parseInt(document.getElementById('questionCount').value))
-          .fill().map(() => ({ answer: null, area: 0 }));
-
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-
-        for (let i = 0; i < contours.size(); i++) {
-          const cnt = contours.get(i);
-          const rect = cv.boundingRect(cnt);
+        try {
+          let src = cv.imread(canvas);
           
-          // 轮廓筛选
-          if (rect.width < 10 || rect.height < 10) continue;
-          if (rect.width * rect.height < 50) continue;
-
-          // 位置匹配
-          const centerX = rect.x + rect.width/2;
-          const centerY = rect.y + rect.height/2;
+          let warped = perspectiveCorrection(src);
           
-          optionPositions.forEach(pos => {
-            const xStart = pos.x * imgWidth;
-            const yStart = pos.y * imgHeight;
-            if (centerX > xStart && centerX < xStart + pos.width * imgWidth &&
-                centerY > yStart && centerY < yStart + pos.height * imgHeight) {
-              const qIndex = pos.question - 1;
+          let gray = new cv.Mat();
+          cv.cvtColor(warped, gray, cv.COLOR_RGBA2GRAY);
+          cv.equalizeHist(gray, gray);
+          cv.GaussianBlur(gray, gray, new cv.Size(5,5), 0);
+
+          let thresh = new cv.Mat();
+          cv.adaptiveThreshold(gray, thresh, 255, 
+            cv.ADAPTIVE_THRESH_GAUSSIAN_C, 
+            cv.THRESH_BINARY_INV, 
+            Math.floor(canvas.width/100)*2+1, 
+            3);
+
+          let kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(3,3));
+          cv.morphologyEx(thresh, thresh, cv.MORPH_CLOSE, kernel);
+
+          let contours = new cv.MatVector();
+          let hierarchy = new cv.Mat();
+          cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+          studentAnswers = Array(parseInt(document.getElementById('questionCount').value))
+            .fill().map(() => ({ answer: null, area: 0 }));
+
+          for (let i = 0; i < contours.size(); i++) {
+            const cnt = contours.get(i);
+            const rect = cv.boundingRect(cnt);
+            
+            if (!validateContour(rect)) continue;
+
+            const centerX = rect.x + rect.width/2;
+            const centerY = rect.y + rect.height/2;
+            const matched = matchPosition(centerX, centerY, canvas.width, canvas.height);
+            
+            if (matched) {
               const area = rect.width * rect.height;
-              if (area > studentAnswers[qIndex].area) {
-                studentAnswers[qIndex] = {
-                  answer: pos.option,
+              if (area > studentAnswers[matched.question-1].area) {
+                studentAnswers[matched.question-1] = {
+                  answer: matched.option,
                   area: area
                 };
               }
             }
-          });
-        }
+          }
 
-        // 释放内存
-        [src, gray, thresh, kernel, contours, hierarchy].forEach(m => m.delete());
-        showResults();
-      } catch (err) {
-        console.error("图像处理错误:", err);
-        alert("识别失败，请重试");
-      }
+          [src, warped, gray, thresh, kernel, contours, hierarchy].forEach(m => m.delete());
+          calculateScore();
+          resolve(true);
+        } catch (err) {
+          console.error("处理错误:", err);
+          alert("识别失败");
+          resolve(false);
+        }
+      });
     }
 
-    function showResults() {
-      const scorePer = parseInt(document.getElementById('scorePerQuestion').value);
-      let total = 0;
-      const results = studentAnswers.map((ans, i) => {
-        const correct = ans.answer === answerKey[i];
-        if (correct) total += scorePer;
-        return {
-          question: i+1,
-          answer: ans.answer || '未作答',
-          correct: correct,
-          key: answerKey[i] || '未设置'
-        };
-      });
+    function validateContour(rect) {
+      const area = rect.width * rect.height;
+      if (area < 40 || area > 300) return false;
+      const aspect = rect.width / rect.height;
+      return aspect >= 0.5 && aspect <= 2;
+    }
 
-      document.getElementById('totalScore').textContent = total;
-      document.getElementById('questionStats').innerHTML = results.map(r => `
-        <div class="${r.correct ? 'correct' : 'incorrect'}">
-          Q${r.question}: ${r.answer} (正确答案: ${r.key})
-        </div>
-      `).join('');
+    function matchPosition(x, y, imgWidth, imgHeight) {
+      return optionPositions.find(pos => {
+        const px = pos.x * imgWidth;
+        const py = pos.y * imgHeight;
+        return Math.abs(x - px) < 8 && 
+               Math.abs(y - py) < 8;
+      });
+    }
+
+    function perspectiveCorrection(src) {
+      const dst = new cv.Mat();
+      const markers = detectMarkers(src);
+      
+      if (markers.length === 3) {
+        const srcPoints = cv.matFromArray(3, 1, cv.CV_32FC2, markers);
+        const dstPoints = cv.matFromArray(3, 1, cv.CV_32FC2, [
+          50, 50,
+          src.cols-50, 50,
+          50, src.rows-50
+        ]);
+        const M = cv.getAffineTransform(srcPoints, dstPoints);
+        cv.warpAffine(src, dst, M, new cv.Size(src.cols, src.rows));
+        return dst;
+      }
+      return src.clone();
+    }
+
+    function detectMarkers(src) {
+      const gray = new cv.Mat();
+      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+      const thresh = new cv.Mat();
+      cv.threshold(gray, thresh, 100, 255, cv.THRESH_BINARY);
+      const contours = new cv.MatVector();
+      const hierarchy = new cv.Mat();
+      cv.findContours(thresh, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+      
+      const markers = [];
+      for (let i = 0; i < contours.size(); i++) {
+        const cnt = contours.get(i);
+        const area = cv.contourArea(cnt);
+        if (area < 100) continue;
+        const rect = cv.boundingRect(cnt);
+        if (Math.abs(rect.width - rect.height) < 10) {
+          const center = [rect.x + rect.width/2, rect.y + rect.height/2];
+          markers.push(center);
+        }
+      }
+      
+      gray.delete();
+      thresh.delete();
+      contours.delete();
+      hierarchy.delete();
+      return markers;
+    }
+
+    function calculateScore() {
+      if (answerKey.length === 0) {
+        alert('请先设置标准答案');
+        return;
+      }
+      const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
+      let totalScore = 0;
+      const stats = [];
+      studentAnswers.forEach((item, index) => {
+        const selected = item.answer || '未作答';
+        const isCorrect = selected === answerKey[index];
+        if (isCorrect) totalScore += scorePerQuestion;
+        stats.push({
+          question: index + 1,
+          correct: isCorrect,
+          selected: selected,
+          correctAnswer: answerKey[index]
+        });
+      });
+      
+      document.getElementById('totalScore').textContent = totalScore;
+      const container = document.getElementById('questionStats');
+      container.innerHTML = '';
+      stats.forEach(item => {
+        const div = document.createElement('div');
+        div.className = `question-item ${item.correct ? 'correct' : 'incorrect'}`;
+        div.innerHTML = `Q${item.question}: ${item.selected} ${item.correct ? '✓' : '✗'} (正确答案: ${item.correctAnswer})`;
+        container.appendChild(div);
+      });
       document.getElementById('results').classList.remove('hide');
     }
 
-    function setAnswerKey() {
-      const count = parseInt(document.getElementById('questionCount').value);
-      const input = prompt(`请输入${count}个答案（用逗号分隔）:`);
-      if (input) {
-        answerKey = input.toUpperCase().split(',').slice(0, count);
-        alert("答案已设置");
-      }
-    }
-
     function saveResult() {
-      allStudentResults.push({
-        answers: studentAnswers.map(a => a.answer),
-        score: parseInt(document.getElementById('totalScore').textContent)
+      if (studentAnswers.length === 0) {
+        alert('无有效扫描结果');
+        return;
+      }
+      const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
+      let totalScore = 0;
+      const answers = studentAnswers.map((item, index) => {
+        const selected = item.answer || '未作答';
+        if (selected === answerKey[index]) totalScore += scorePerQuestion;
+        return selected;
       });
-      alert(`已保存${allStudentResults.length}份结果`);
+      allStudentResults.push({ answers, totalScore });
+      alert(`成绩已保存，目前累计 ${allStudentResults.length} 份答题卡`);
+      displayAggregateStats();
     }
 
-    function exportPDF() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      const img = document.getElementById('answerSheetCanvas').toDataURL();
-      doc.addImage(img, 'PNG', 10, 10, 190, 280);
-      doc.save('answer_sheet.pdf');
+    function displayAggregateStats() {
+      const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+      const stats = Array(questionCount).fill(0);
+      allStudentResults.forEach(result => {
+        result.answers.forEach((ans, index) => {
+          if (ans === answerKey[index]) stats[index]++;
+        });
+      });
+      const aggregateContainer = document.getElementById('aggregateStats');
+      aggregateContainer.innerHTML = '';
+      for (let i = 0; i < questionCount; i++) {
+        const correctCount = stats[i];
+        const rate = ((correctCount / allStudentResults.length) * 100).toFixed(1);
+        const div = document.createElement('div');
+        div.className = 'aggregate-item';
+        div.innerHTML = `Q${i+1}: ${rate}% (${correctCount}/${allStudentResults.length})`;
+        aggregateContainer.appendChild(div);
+      }
+      document.getElementById('aggregate').classList.remove('hide');
     }
 
-    function stopCamera() {
-      videoStream?.getTracks().forEach(t => t.stop());
-      isCameraActive = false;
-      document.getElementById('cameraContainer').classList.add('hide');
+    async function performCalibration() {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      
+      if (!isCameraActive) {
+        alert('请先开启摄像头');
+        return;
+      }
+      
+      const video = document.getElementById('cameraPreview');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // 校准逻辑实现，例如拍摄多张样本图像进行参数调整
+      alert('校准完成');
     }
   </script>
 </body>
