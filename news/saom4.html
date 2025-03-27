@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>答题卡扫描系统 - 优化版</title>
+  <title>答题卡扫描系统 - 固定模板版</title>
   <!-- jsPDF 库 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
@@ -32,7 +32,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>答题卡扫描系统 - 优化版</h1>
+    <h1>答题卡扫描系统 - 固定模板版</h1>
     
     <!-- 参数设置区域 -->
     <div class="config-panel">
@@ -199,7 +199,7 @@
         }
       }
       
-      // 在四角添加黑色标记块（用于透视校正）
+      // 在四角添加黑色标记块（用于透视校正，固定模板可保留以便对比）
       ctx.fillStyle = "black";
       ctx.fillRect(5,5,10,10);
       ctx.fillRect(canvas.width-15,5,10,10);
@@ -266,107 +266,42 @@
       }
     }
     
-    function captureFrame() {
-      if (!isCameraActive) {
-        alert('请先开启摄像头');
-        return;
-      }
-      const video = document.getElementById('cameraPreview');
-      const captureCanvas = document.getElementById('captureCanvas');
-      const ctx = captureCanvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-      processImage(captureCanvas);
-    }
-    
-    function processImage(canvas) {
+    // 使用固定模板区域进行图像识别
+    function processImageFixedTemplate(canvas) {
       if (typeof cv === 'undefined') {
         alert('OpenCV.js 尚未加载，请稍后再试');
         return;
       }
       try {
+        // 读取图片并预处理：灰度、模糊、二值化
         let src = cv.imread(canvas);
-        let processed = new cv.Mat();
-        cv.cvtColor(src, processed, cv.COLOR_RGBA2GRAY, 0);
-        cv.GaussianBlur(processed, processed, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
-        cv.threshold(processed, processed, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
-
-        // 改进后的四角标记检测逻辑
-        let contours = new cv.MatVector();
-        let hierarchy = new cv.Mat();
-        cv.findContours(processed, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-        let markerPoints = [];
-        for (let i = 0; i < contours.size(); i++) {
-          let cnt = contours.get(i);
-          let approx = new cv.Mat();
-          cv.approxPolyDP(cnt, approx, 0.02 * cv.arcLength(cnt, true), true);
-          if (approx.rows === 4) {
-            let rect = cv.boundingRect(approx);
-            if (rect.width > 8 && rect.height > 8 && rect.width < 30 && rect.height < 30) {
-              markerPoints.push({ x: rect.x + rect.width/2, y: rect.y + rect.height/2 });
-            }
-          }
-          approx.delete();
-          cnt.delete();
-        }
-        hierarchy.delete();
-        contours.delete();
-        
-        // 若检测到四个以上候选点，则选择最靠近图像四角的四个
-        if (markerPoints.length >= 4) {
-          const imgW = processed.cols, imgH = processed.rows;
-          function distance(p, x, y) { return Math.sqrt((p.x - x)**2 + (p.y - y)**2); }
-          let tl = markerPoints.reduce((prev, p) => distance(p, 0, 0) < distance(prev, 0, 0) ? p : prev);
-          let tr = markerPoints.reduce((prev, p) => distance(p, imgW, 0) < distance(prev, imgW, 0) ? p : prev);
-          let bl = markerPoints.reduce((prev, p) => distance(p, 0, imgH) < distance(prev, 0, imgH) ? p : prev);
-          let br = markerPoints.reduce((prev, p) => distance(p, imgW, imgH) < distance(prev, imgW, imgH) ? p : prev);
-          
-          let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
-            tl.x, tl.y,
-            tr.x, tr.y,
-            br.x, br.y,
-            bl.x, bl.y
-          ]);
-          let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
-            5, 5,
-            src.cols - 15, 5,
-            src.cols - 15, src.rows - 15,
-            5, src.rows - 15
-          ]);
-          let M = cv.getPerspectiveTransform(srcTri, dstTri);
-          let warped = new cv.Mat();
-          cv.warpPerspective(src, warped, M, new cv.Size(src.cols, src.rows));
-          src.delete();
-          src = warped;
-          srcTri.delete();
-          dstTri.delete();
-          M.delete();
-        } else {
-          console.warn("未检测到足够的标记，透视校正跳过");
-        }
-        
-        // 改进后的选项识别逻辑
         let gray = new cv.Mat();
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
         cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
         let binary = new cv.Mat();
         cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
-
+        
+        // 固定模板区域：与生成答题卡时右侧区域坐标一致
         const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
         const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
         studentAnswers = Array.from({length: questionCount}, () => ({ answer: null, score: 0 }));
-        const rightSectionX = 270, startY = 110, boxSize = 15, spacing = 8;
+        
+        const rightSectionX = 270;   // 固定模板中右侧区域起始X坐标
+        const startY = 110;          // 固定模板中起始Y坐标
+        const boxSize = 15, spacing = 8;
+        
         for (let i = 0; i < questionCount; i++) {
           let y = startY + i * 30;
           let detected = null, maxBlackRatio = 0;
           for (let j = 0; j < optionCount; j++) {
             let x = rightSectionX + 30 + j * (boxSize + spacing);
+            // 直接对预定义区域进行ROI提取
             let roi = binary.roi(new cv.Rect(x, y, boxSize, boxSize));
             let total = roi.cols * roi.rows;
             let count = cv.countNonZero(roi);
             roi.delete();
             let ratio = count / total;
-            if (ratio > maxBlackRatio && ratio > 0.6) {
+            if (ratio > maxBlackRatio && ratio > 0.6) { // 阈值根据实际情况调整
               maxBlackRatio = ratio;
               detected = j;
             }
@@ -376,15 +311,26 @@
           }
         }
         
-        gray.delete();
-        binary.delete();
-        src.delete();
-        processed.delete();
+        // 清理Mat资源
+        src.delete(); gray.delete(); binary.delete();
         calculateScore();
       } catch (error) {
         console.error("图像处理出错：", error);
         alert("图像处理失败，请重试！");
       }
+    }
+    
+    // 拍照识别时调用固定模板识别函数
+    function captureFrame() {
+      if (!isCameraActive) {
+        alert('请先开启摄像头');
+        return;
+      }
+      const video = document.getElementById('cameraPreview');
+      const captureCanvas = document.getElementById('captureCanvas');
+      const ctx = captureCanvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+      processImageFixedTemplate(captureCanvas);
     }
     
     function calculateScore() {
