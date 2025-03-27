@@ -242,7 +242,7 @@
             }
             currentY += idBoxHeight + 20; // 准考证号区域下方留白
 
-            // 答题区域（右侧区域）
+            // 答题区域（右侧区域 - 垂直排列）
             const rightStartX = canvas.width / 2 + 30; // 调整了右侧起始位置
             let rightCurrentY = 80; // 右侧起始Y坐标
             ctx.font = "18px Arial";
@@ -251,42 +251,34 @@
             const answerStartX = rightStartX;
             const answerStartY = rightCurrentY + 10;
             const boxSize = 16;
-            let spacing = 10; // Initial spacing
-            if (optionCount > 6) {
-                spacing = 8; // Reduce spacing if many options
-            }
-            let questionsPerRow = 5; // Default questions per row
-            if (optionCount > 5) {
-                questionsPerRow = 4; // Reduce questions per row if many options
-            }
-            const verticalSpacing = 35; // 题目之间的垂直间距
-            let questionCounter = 0;
+            const spacing = 10;
+            const questionsPerColumn = 20; // Adjust as needed
+            const columnSpacing = 20; // Spacing between columns
+            const verticalSpacePerQuestion = (optionCount * (boxSize + spacing)) + 15; // Height per question
 
-            // Calculate the horizontal space needed for options
-            const optionWidth = boxSize + spacing;
-            const totalOptionWidth = optionCount * optionWidth;
-            const spaceForQuestionNumber = 25; // Space for "1." etc.
-            const horizontalSpacePerQuestion = spaceForQuestionNumber + totalOptionWidth;
+            let questionCounter = 0;
+            let currentColumn = 0;
+            let yInColumn = answerStartY;
 
             for (let i = 0; i < questionCount; i++) {
-                const row = Math.floor(i / questionsPerRow);
-                const col = i % questionsPerRow;
-                const currentX = answerStartX + col * (horizontalSpacePerQuestion + 10); // Add a small gap between question groups
-                const yPos = answerStartY + row * verticalSpacing;
+                const questionNumber = i + 1;
+                const startX = answerStartX + currentColumn * (100 + columnSpacing); // Adjust 100 based on max option width
 
                 ctx.font = "16px Arial";
-                ctx.fillText(`${i + 1}.`, currentX, yPos + boxSize / 2 + 5);
-
-                const optionsStartX = currentX + spaceForQuestionNumber;
+                ctx.fillText(`${questionNumber}.`, startX, yInColumn + 10);
 
                 for (let j = 0; j < optionCount; j++) {
-                    const optionX = optionsStartX + j * optionWidth;
-                    ctx.strokeRect(optionX, yPos, boxSize, boxSize);
-                    ctx.fillText(String.fromCharCode(65 + j), optionX + 3, yPos + boxSize / 2 + 5);
+                    const optionY = yInColumn + 20 + j * (boxSize + spacing);
+                    ctx.strokeRect(startX + 25, optionY, boxSize, boxSize);
+                    ctx.fillText(String.fromCharCode(65 + j), startX + 25 + 3, optionY + boxSize / 2 + 5);
                 }
+
+                yInColumn += verticalSpacePerQuestion;
                 questionCounter++;
-                if (questionCounter % questionsPerRow === 0) {
-                    rightCurrentY += verticalSpacing;
+
+                if (questionCounter % questionsPerColumn === 0) {
+                    currentColumn++;
+                    yInColumn = answerStartY;
                 }
             }
 
