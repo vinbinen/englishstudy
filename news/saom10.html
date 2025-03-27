@@ -242,7 +242,7 @@
             }
             currentY += idBoxHeight + 20; // 准考证号区域下方留白
 
-            // 答题区域（右侧区域 - 垂直排列）
+            // 答题区域（右侧区域 - 垂直题目，水平选项）
             const rightStartX = canvas.width / 2 + 30; // 调整了右侧起始位置
             let rightCurrentY = 80; // 右侧起始Y坐标
             ctx.font = "18px Arial";
@@ -251,34 +251,52 @@
             const answerStartX = rightStartX;
             const answerStartY = rightCurrentY + 10;
             const boxSize = 16;
-            const spacing = 10;
-            const questionsPerColumn = 20; // Adjust as needed
-            const columnSpacing = 20; // Spacing between columns
-            const verticalSpacePerQuestion = (optionCount * (boxSize + spacing)) + 15; // Height per question
-
+            let spacing = 10;
+            if (optionCount > 6) {
+                spacing = 8; // Reduce spacing if many options
+            }
+            const verticalSpacingBetweenQuestions = 35;
+            let currentQuestionY = answerStartY;
+            const questionsPerColumn = 25; // Adjust as needed
             let questionCounter = 0;
             let currentColumn = 0;
-            let yInColumn = answerStartY;
+            let columnStartY = answerStartY;
+
+            // Calculate the total horizontal space needed for options
+            const optionWidth = boxSize + spacing;
+            const totalOptionWidth = optionCount * optionWidth;
+            const spaceForQuestionNumber = 25;
+            const horizontalSpacePerQuestion = spaceForQuestionNumber + totalOptionWidth;
+
+            const questionsPerRow = Math.floor((canvas.width - answerStartX - margin) / (horizontalSpacePerQuestion + 10));
+            let questionsInCurrentRow = 0;
+            let currentRowY = answerStartY;
 
             for (let i = 0; i < questionCount; i++) {
                 const questionNumber = i + 1;
-                const startX = answerStartX + currentColumn * (100 + columnSpacing); // Adjust 100 based on max option width
+                let questionX = answerStartX + currentColumn * (canvas.width / 2 - margin); // Simple two-column layout for now
+                let yPosition = currentRowY + (questionsInCurrentRow * verticalSpacingBetweenQuestions);
 
                 ctx.font = "16px Arial";
-                ctx.fillText(`${questionNumber}.`, startX, yInColumn + 10);
+                ctx.fillText(`${questionNumber}.`, questionX, yPosition + boxSize / 2 + 5);
+
+                const optionsStartX = questionX + spaceForQuestionNumber;
 
                 for (let j = 0; j < optionCount; j++) {
-                    const optionY = yInColumn + 20 + j * (boxSize + spacing);
-                    ctx.strokeRect(startX + 25, optionY, boxSize, boxSize);
-                    ctx.fillText(String.fromCharCode(65 + j), startX + 25 + 3, optionY + boxSize / 2 + 5);
+                    const optionX = optionsStartX + j * optionWidth;
+                    ctx.strokeRect(optionX, yPosition, boxSize, boxSize);
+                    ctx.fillText(String.fromCharCode(65 + j), optionX + 3, yPosition + boxSize / 2 + 5);
                 }
 
-                yInColumn += verticalSpacePerQuestion;
-                questionCounter++;
-
-                if (questionCounter % questionsPerColumn === 0) {
+                questionsInCurrentRow++;
+                if (questionsInCurrentRow >= questionsPerColumn) {
+                    questionsInCurrentRow = 0;
                     currentColumn++;
-                    yInColumn = answerStartY;
+                    currentRowY = answerStartY;
+                } else if (yPosition + verticalSpacingBetweenQuestions + (optionCount * (boxSize + spacing)) > canvas.height - margin) {
+                    questionsInCurrentRow = 0;
+                    currentColumn++;
+                    currentRowY = answerStartY;
                 }
             }
 
