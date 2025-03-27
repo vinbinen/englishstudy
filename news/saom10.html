@@ -157,7 +157,6 @@
         });
 
         function generateAnswerSheet() {
-            // ... (rest of the generateAnswerSheet function remains the same) ...
             const questionCount = parseInt(document.getElementById('questionCount').value);
             const optionCount = parseInt(document.getElementById('optionCount').value);
             const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value);
@@ -251,22 +250,37 @@
 
             const answerStartX = rightStartX;
             const answerStartY = rightCurrentY + 10;
-            const boxSize = 16, spacing = 10;
-            const questionsPerRow = 5; // 每行显示的题目数量
+            const boxSize = 16;
+            let spacing = 10; // Initial spacing
+            if (optionCount > 6) {
+                spacing = 8; // Reduce spacing if many options
+            }
+            let questionsPerRow = 5; // Default questions per row
+            if (optionCount > 5) {
+                questionsPerRow = 4; // Reduce questions per row if many options
+            }
             const verticalSpacing = 35; // 题目之间的垂直间距
             let questionCounter = 0;
+
+            // Calculate the horizontal space needed for options
+            const optionWidth = boxSize + spacing;
+            const totalOptionWidth = optionCount * optionWidth;
+            const spaceForQuestionNumber = 25; // Space for "1." etc.
+            const horizontalSpacePerQuestion = spaceForQuestionNumber + totalOptionWidth;
 
             for (let i = 0; i < questionCount; i++) {
                 const row = Math.floor(i / questionsPerRow);
                 const col = i % questionsPerRow;
-                const currentX = answerStartX + col * (60); // 调整了每题的水平宽度
+                const currentX = answerStartX + col * (horizontalSpacePerQuestion + 10); // Add a small gap between question groups
                 const yPos = answerStartY + row * verticalSpacing;
 
                 ctx.font = "16px Arial";
                 ctx.fillText(`${i + 1}.`, currentX, yPos + boxSize / 2 + 5);
 
+                const optionsStartX = currentX + spaceForQuestionNumber;
+
                 for (let j = 0; j < optionCount; j++) {
-                    const optionX = currentX + 25 + j * (boxSize + spacing);
+                    const optionX = optionsStartX + j * optionWidth;
                     ctx.strokeRect(optionX, yPos, boxSize, boxSize);
                     ctx.fillText(String.fromCharCode(65 + j), optionX + 3, yPos + boxSize / 2 + 5);
                 }
