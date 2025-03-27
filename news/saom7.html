@@ -15,7 +15,7 @@
         .controls { margin-top: 10px; text-align: center; }
         button { padding: 8px 16px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
         .start-btn { background-color: #4CAF50; color: #fff; }
-        .capture-btn { background-color: #2196F3; color: #fff; display: none; } /* 隐藏拍照按钮 */
+        .capture-btn { background-color: #2196F3; color: #fff; }
         .stop-btn { background-color: #f44336; color: #fff; }
         .scan-save-btn { background-color: #FF9800; color: #fff; }
         .stats-btn { background-color: #9C27B0; color: #fff; }
@@ -23,6 +23,7 @@
         .hide { display: none; }
         #answerSheetContainer { text-align: center; margin-bottom: 20px; }
         #captureCanvas { border: 1px solid #ccc; margin-bottom: 10px; }
+        #binaryCanvas { border: 1px solid #ccc; margin-bottom: 10px; }
         canvas { border: 1px solid #ccc; margin-bottom: 10px; }
         .question-item, .aggregate-item { margin: 5px; padding: 5px; border: 1px solid #ddd; border-radius: 3px; min-width: 100px; }
         .correct { color: green; }
@@ -51,9 +52,10 @@
 
         <div id="cameraContainer">
             <video id="cameraPreview" autoplay style="width:100%; height:400px; background:#000;"></video>
-            <canvas id="captureCanvas" width="640" height="480"></canvas> <div class="controls">
+            <canvas id="captureCanvas" width="640" height="480"></canvas> <canvas id="binaryCanvas" width="640" height="480" class="hide"></canvas> <div class="controls">
                 <button class="start-btn" id="startCameraBtn">开启摄像头</button>
-                <button class="capture-btn" id="captureBtn">拍照识别</button> <button class="stop-btn" id="stopCameraBtn">关闭摄像头</button>
+                <button class="capture-btn" id="captureBtn">拍照识别</button>
+                <button class="stop-btn" id="stopCameraBtn">关闭摄像头</button>
             </div>
         </div>
 
@@ -85,7 +87,6 @@
         let studentAnswers = [];
         let allStudentResults = [];
         let opencvReady = false;
-        let realtimeScanningInterval; // 用于存储实时扫描的 interval ID
 
         function onOpenCvReady() {
             console.log("OpenCV.js is ready");
@@ -100,9 +101,9 @@
             document.getElementById('setAnswerKeyBtn').addEventListener('click', showAnswerKeyInput);
             document.getElementById('exportPdfBtn').addEventListener('click', exportAnswerSheet);
             document.getElementById('exportImgBtn').addEventListener('click', exportAnswerSheetAsImage);
-            document.getElementById('startCameraBtn').addEventListener('click', startRealtimeScanning); // 更改为实时扫描
-            // document.getElementById('captureBtn').addEventListener('click', captureFrame); // 注释掉拍照按钮的监听
-            document.getElementById('stopCameraBtn').addEventListener('click', stopRealtimeScanning); // 更改为停止实时扫描
+            document.getElementById('startCameraBtn').addEventListener('click', startCamera);
+            document.getElementById('captureBtn').addEventListener('click', captureFrame);
+            document.getElementById('stopCameraBtn').addEventListener('click', stopCamera);
             document.getElementById('saveResultBtn').addEventListener('click', saveCurrentResult);
             document.getElementById('showCameraBtn').addEventListener('click', showCamera);
             document.getElementById('showAggregateBtn').addEventListener('click', displayAggregateStats);
@@ -197,7 +198,7 @@
                 }
             }
 
-            // 在四角添加黑色标记块（用于透视校正）
+            // 在四角添加黑色标记块（用于透视校正，固定模板可保留以便对比）
             ctx.fillStyle = "black";
             ctx.fillRect(5,5,10,10);
             ctx.fillRect(canvas.width-15,5,10,10);
@@ -275,180 +276,88 @@
         }
 
         async function captureFrame() {
-            // 这个函数现在只负责获取视频帧并传递给实时处理函数
-            if (!isCameraActive || !opencvReady) return;
+            if (!isCameraActive) {
+                alert('请先开启摄像头');
+                return;
+            }
+            await waitForOpenCV(); // 确保 OpenCV 加载完成
             const video = document.getElementById('cameraPreview');
             const captureCanvas = document.getElementById('captureCanvas');
             const ctx = captureCanvas.getContext('2d');
             ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-            processImageWithPerspectiveCorrection(captureCanvas);
+            processImageFixedTemplate(captureCanvas);
         }
 
-        let lastProcessedTime = 0;
-        const processingInterval = 200; // 设置处理间隔，单位毫秒 (例如每 200ms 处理一帧)
-
-        async function startRealtimeScanning() {
-            await startCamera(); // 确保摄像头已开启
-            if (isCameraActive && opencvReady) {
-                realtimeScanningInterval = setInterval(captureFrame, processingInterval);
-            }
-        }
-
-        function stopRealtimeScanning() {
-            clearInterval(realtimeScanningInterval);
-            stopCamera();
-            // 清空之前的实时识别结果 (可选)
-            document.getElementById('totalScore').textContent = '0';
-            document.getElementById('questionStats').innerHTML = '';
-            document.getElementById('results').classList.add('hide');
-        }
-
-        // 使用透视校正进行图像识别
-        async function processImageWithPerspectiveCorrection(canvas) {
+        // 使用固定模板区域进行图像识别
+        function processImageFixedTemplate(canvas) {
             if (typeof cv === 'undefined') {
-                console.warn('OpenCV.js尚未加载');
+                alert('OpenCV.js 尚未加载，请稍后再试');
                 return;
             }
             try {
+                // 读取图片并预处理：灰度、模糊、二值化
                 let src = cv.imread(canvas);
                 let gray = new cv.Mat();
                 cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+                cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
                 let binary = new cv.Mat();
                 cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
 
-                // 1. 检测标记 (假设为黑色方块)
-                let contours = new cv.MatVector();
-                let hierarchy = new cv.Mat();
-                cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+                // 可选：显示二值化后的图像
+                cv.imshow('binaryCanvas', binary);
+                document.getElementById('binaryCanvas').classList.remove('hide');
 
-                let markerCorners = [];
-                for (let i = 0; i < contours.size(); ++i) {
-                    const contour = contours.get(i);
-                    const approx = new cv.Mat();
-                    const perimeter = cv.arcLength(contour, true);
-                    cv.approxPolyDP(contour, approx, 0.04 * perimeter, true);
-                    if (approx.data32S.length === 8) { // 正方形有 4 个角，每个角有 x 和 y
-                        const area = cv.contourArea(contour);
-                        const aspectRatio = cv.boundingRect(contour).width / cv.boundingRect(contour).height;
-                        // 进一步根据面积和宽高比进行过滤，以更准确地找到标记
-                        if (area > 100 && area < 1000 && aspectRatio > 0.8 && aspectRatio < 1.2) {
-                            let points = [];
-                            for (let j = 0; j < 4; ++j) {
-                                points.push(new cv.Point(approx.data32S[j * 2], approx.data32S[j * 2 + 1]));
-                            }
-                            markerCorners.push(points);
-                        }
-                    }
-                    approx.delete();
-                    contour.delete();
-                }
-                hierarchy.delete();
-                contours.delete();
-
-                if (markerCorners.length !== 4) {
-                    console.warn("未检测到全部四个角标记，无法进行透视校正。请确保答题卡四角标记清晰可见。");
-                    cv.imshow('captureCanvas', src); // 显示原始图像
-                    src.delete(); gray.delete(); binary.delete();
-                    return;
-                }
-
-                // 2. 排序角点
-                function orderCorners(corners) {
-                    // 计算所有角点的中心点
-                    let centerX = corners.reduce((sum, corner) => sum + corner.reduce((s, p) => s + p.x, 0) / 4, 0) / corners.length;
-                    let centerY = corners.reduce((sum, corner) => sum + corner.reduce((s, p) => s + p.y, 0) / 4, 0) / corners.length;
-
-                    return corners.sort((c1, c2) => {
-                        const angle1 = Math.atan2(c1[0].y - centerY, c1[0].x - centerX);
-                        const angle2 = Math.atan2(c2[0].y - centerY, c2[0].x - centerX);
-                        return angle1 - angle2;
-                    });
-                }
-
-                const orderedCorners = orderCorners(markerCorners);
-
-                // 3. 定义目标坐标 (假设答题卡在模板中的尺寸)
-                const targetWidth = 595;
-                const targetHeight = 842;
-                const targetPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
-                    0, 0,
-                    targetWidth, 0,
-                    targetWidth, targetHeight,
-                    0, targetHeight
-                ]);
-
-                // 将检测到的角点转换为 OpenCV 的 Point2f 数组
-                const srcPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
-                    orderedCorners[0][0].x, orderedCorners[0][0].y,
-                    orderedCorners[1][0].x, orderedCorners[1][0].y,
-                    orderedCorners[2][0].x, orderedCorners[2][0].y,
-                    orderedCorners[3][0].x, orderedCorners[3][0].y
-                ]);
-
-                // 4. 计算单应性矩阵
-                const M = cv.findHomography(srcPoints, targetPoints, cv.RANSAC, 5);
-
-                // 5. 透视变换
-                const warpedSrc = new cv.Mat();
-                const dsize = new cv.Size(targetWidth, targetHeight);
-                cv.warpPerspective(src, warpedSrc, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
-
-                // 现在可以从 warpedSrc 中提取 ROI
+                // 固定模板区域：与生成答题卡时右侧区域坐标一致
                 const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
                 const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
                 studentAnswers = Array.from({length: questionCount}, () => ({ answer: null, score: 0 }));
 
-                const rightSectionX_template = 270;
-                const startY_template = 110;
-                const boxSize_template = 15, spacing_template = 8;
-                const xOffset_template = 30;
-                const color = new cv.Scalar(0, 255, 0, 255);
+                const rightSectionX = 270;    // 固定模板中右侧区域起始X坐标，您可能需要根据实际情况调整
+                const startY = 110;         // 固定模板中起始Y坐标，您可能需要根据实际情况调整
+                const boxSize = 15, spacing = 8;
+                const color = new cv.Scalar(0, 255, 0, 255); // 绿色，用于可视化 ROI
 
-                let detectedOption = null, maxBlackRatio = 0;
-                let warpedGray = new cv.Mat();
-                let warpedBinary = new cv.Mat();
-                cv.cvtColor(warpedSrc, warpedGray, cv.COLOR_RGBA2GRAY);
-                cv.threshold(warpedGray, warpedBinary, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
-
+                let detected = null, maxBlackRatio = 0;
                 for (let i = 0; i < questionCount; i++) {
-                    let y_template = startY_template + i * 30;
-                    detectedOption = null;
+                    let y = startY + i * 30;
+                    detected = null;
                     maxBlackRatio = 0;
                     for (let j = 0; j < optionCount; j++) {
-                        let x_template = rightSectionX_template + xOffset_template + j * (boxSize_template + spacing_template);
-                        const roiRect = new cv.Rect(x_template, y_template, boxSize_template, boxSize_template);
-                        const roi = warpedBinary.roi(roiRect);
+                        let x = rightSectionX + 30 + j * (boxSize + spacing);
+                        // 直接对预定义区域进行ROI提取
+                        let roi = binary.roi(new cv.Rect(x, y, boxSize, boxSize));
                         let total = roi.cols * roi.rows;
                         let count = cv.countNonZero(roi);
                         roi.delete();
                         let ratio = count / total;
-                        if (ratio > maxBlackRatio && ratio > 0.6) {
+                        if (ratio > maxBlackRatio && ratio > 0.6) { // 阈值根据实际情况调整
                             maxBlackRatio = ratio;
-                            detectedOption = j;
+                            detected = j;
                         }
-                        let pt1 = new cv.Point(x_template, y_template);
-                        let pt2 = new cv.Point(x_template + boxSize_template, y_template + boxSize_template);
-                        cv.rectangle(warpedSrc, pt1, pt2, color, 1, cv.LINE_8, 0);
+                        // 绘制 ROI 矩形到原始图像，用于可视化
+                        let pt1 = new cv.Point(x, y);
+                        let pt2 = new cv.Point(x + boxSize, y + boxSize);
+                        cv.rectangle(src, pt1, pt2, color, 1, cv.LINE_8, 0);
                     }
-                    if (detectedOption !== null) {
-                        studentAnswers[i] = { answer: String.fromCharCode(65 + detectedOption), score: maxBlackRatio };
+                    if (detected !== null) {
+                        studentAnswers[i] = { answer: String.fromCharCode(65 + detected), score: maxBlackRatio };
                     }
                 }
+                // 将绘制了 ROI 的图像显示在 captureCanvas 上
+                cv.imshow('captureCanvas', src);
 
-                cv.imshow('captureCanvas', warpedSrc); // 显示校正后的图像和 ROI
+                // 清理Mat资源
+                src.delete(); gray.delete(); binary.delete();
                 calculateScore();
-
-                // 清理 Mats
-                src.delete(); gray.delete(); binary.delete(); warpedSrc.delete(); M.delete(); srcPoints.delete(); targetPoints.delete(); warpedGray.delete(); warpedBinary.delete();
             } catch (error) {
                 console.error("图像处理出错：", error);
-                // 不再弹出错误框，避免实时扫描时频繁出现
+                alert("图像处理失败，请重试！");
             }
         }
 
         function calculateScore() {
             if (answerKey.length === 0) {
-                // console.warn('请先设置标准答案'); // 实时扫描时可以不提示
+                alert('请先设置标准答案');
                 return;
             }
             const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
