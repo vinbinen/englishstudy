@@ -6,7 +6,32 @@
     <title>答题卡扫描系统 - 固定模板版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        /* ... (CSS样式保持不变) ... */
+        body { font-family: sans-serif; margin: 20px; }
+        .container { max-width: 960px; margin: 0 auto; }
+        h1 { text-align: center; }
+        .config-panel, #answerSheetContainer, #cameraContainer, #results, #aggregate, .controls { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9; }
+        .config-panel input[type="number"], .config-panel button, .controls button, .scan-save-btn, .stats-btn, .export-btn { margin-right: 10px; padding: 8px 15px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
+        .config-panel button.export-btn { background-color: #5cb85c; color: white; border-color: #4cae4c; }
+        .config-panel button.export-btn:hover { background-color: #4cae4c; }
+        .controls button.start-btn { background-color: #007bff; color: white; border-color: #007bff; }
+        .controls button.start-btn:hover { background-color: #0056b3; }
+        .controls button.stop-btn { background-color: #dc3545; color: white; border-color: #dc3545; }
+        .controls button.stop-btn:hover { background-color: #c82333; }
+        #answerSheetContainer { display: none; text-align: center; }
+        #answerSheetCanvas { border: 1px solid #ccc; max-width: 100%; height: auto; }
+        #cameraContainer.hide, #results.hide, #aggregate.hide { display: none; }
+        #cameraContainer.fullscreen-camera { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: black; z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #cameraContainer.fullscreen-camera video { max-width: 95%; max-height: 80%; }
+        .container.hide-others > *:not(#cameraContainer) { display: none !important; }
+        #cameraOverlayResults { position: absolute; bottom: 10px; right: 10px; background-color: rgba(0, 0, 0, 0.7); color: white; padding: 10px; border-radius: 5px; z-index: 10; font-size: 0.9em; }
+        .score-display { font-size: 1.1em; font-weight: bold; margin-bottom: 5px; }
+        #overlayQuestionStats > div { margin-bottom: 3px; }
+        .question-item.correct { color: green; }
+        .question-item.incorrect { color: red; }
+        #questionStats { display: flex; flex-wrap: wrap; gap: 10px; }
+        .question-result { border: 1px solid #ccc; padding: 8px; border-radius: 4px; }
+        .aggregate-item { border: 1px solid #eee; padding: 8px; margin-right: 10px; margin-bottom: 10px; border-radius: 4px; background-color: #fff; }
+        .hide { display: none !important; }
     </style>
 </head>
 <body>
@@ -25,7 +50,7 @@
         <div id="answerSheetContainer">
             <canvas id="answerSheetCanvas" width="595" height="842"></canvas>
         </div>
-        <div id="cameraContainer">
+        <div id="cameraContainer" class="hide">
             <video id="cameraPreview" autoplay style="width:100%; height:400px; background:#000;"></video>
             <canvas id="captureCanvas" width="640" height="480" style="display:none;"></canvas>
             <canvas id="binaryCanvas" width="640" height="480" class="hide"></canvas>
@@ -75,8 +100,13 @@
             verticalSpacingBetweenQuestions: 30,
             questionsPerColumn: 25,
             columnWidth: 200,
-            optionOffsetX: 30 // 选项相对于题目编号的X偏移量
+            optionOffsetX: 30, // 选项相对于题目编号的X偏移量
+            markerSize: 10,
+            markerMargin: 5
         };
+
+        // 选项是否被涂黑的阈值 (可根据实际情况调整)
+        const OPTION_THRESHOLD = 0.6;
 
         function onOpenCvReady() {
             console.log("OpenCV.js is ready");
@@ -229,8 +259,7 @@
 
             // 在四角添加黑色标记块（用于透视校正）
             ctx.fillStyle = "black";
-            const markerSize = 10;
-            const markerMargin = 5;
+            const { markerSize, markerMargin } = ANSWER_SHEET_CONFIG;
             ctx.fillRect(markerMargin, markerMargin, markerSize, markerSize);
             ctx.fillRect(canvas.width - markerMargin - markerSize, markerMargin, markerSize, markerSize);
             ctx.fillRect(markerMargin, canvas.height - markerMargin - markerSize, markerSize, markerSize);
@@ -454,7 +483,6 @@
             studentAnswers = Array.from({ length: questionCount }, () => ({ answer: null, score: 0 }));
 
             const { rightStartX, answerStartY, boxSize, spacing, verticalSpacingBetweenQuestions, questionsPerColumn, columnWidth, optionOffsetX } = ANSWER_SHEET_CONFIG;
-            const optionThreshold = 0.6; // 判断选项是否被涂黑的阈值
 
             let gray = new cv.Mat();
             cv.cvtColor(processedImage, gray, cv.COLOR_RGBA2GRAY, 0);
@@ -479,7 +507,7 @@
                     const count = cv.countNonZero(roi);
                     roi.delete();
                     const ratio = count / total;
-                    if (ratio > maxBlackRatio && ratio > optionThreshold) {
+                    if (ratio > maxBlackRatio && ratio > OPTION_THRESHOLD) {
                         maxBlackRatio = ratio;
                         detected = j;
                     }
