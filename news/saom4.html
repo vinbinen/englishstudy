@@ -406,91 +406,71 @@
           correctAnswer: answerKey[index]
         });
       });
-      document.getElementById('totalScore').textContent = total
-function calculateScore() {
-  if (answerKey.length === 0) {
-    alert('请先设置标准答案');
-    return;
-  }
-  const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
-  let totalScore = 0;
-  const stats = [];
-  studentAnswers.forEach((item, index) => {
-    const selected = item.answer || '未作答';
-    const isCorrect = selected === answerKey[index];
-    if (isCorrect) totalScore += scorePerQuestion;
-    stats.push({
-      question: index + 1,
-      correct: isCorrect,
-      selected: selected,
-      correctAnswer: answerKey[index]
-    });
-  });
-  document.getElementById('totalScore').textContent = totalScore;
-  const container = document.getElementById('questionStats');
-  container.innerHTML = '';
-  stats.forEach(item => {
-    const div = document.createElement('div');
-    div.className = `question-item ${item.correct ? 'correct' : 'incorrect'}`;
-    div.innerHTML = `Q${item.question}: ${item.selected} ${item.correct ? '✓' : '✗'} (正确答案: ${item.correctAnswer})`;
-    container.appendChild(div);
-  });
-  document.getElementById('results').classList.remove('hide');
-}
-
-function saveCurrentResult() {
-  if (studentAnswers.length === 0) {
-    alert('无有效扫描结果');
-    return;
-  }
-  const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
-  let totalScore = 0;
-  const answers = studentAnswers.map((item, index) => {
-    const selected = item.answer || '未作答';
-    if (selected === answerKey[index]) totalScore += scorePerQuestion;
-    return selected;
-  });
-  allStudentResults.push({ answers, totalScore });
-  alert(`成绩已保存，目前累计 ${allStudentResults.length} 份答题卡`);
-}
-
-function displayAggregateStats() {
-  if (allStudentResults.length === 0) {
-    alert('尚未保存任何扫描结果');
-    return;
-  }
-  const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-  const stats = Array(questionCount).fill(0);
-  allStudentResults.forEach(result => {
-    result.answers.forEach((ans, index) => {
-      if (ans === answerKey[index]) stats[index]++;
-    });
-  });
-  const aggregateContainer = document.getElementById('aggregateStats');
-  aggregateContainer.innerHTML = '';
-  for (let i = 0; i < questionCount; i++) {
-    const correctCount = stats[i];
-    const rate = ((correctCount / allStudentResults.length) * 100).toFixed(1);
-    const div = document.createElement('div');
-    div.className = 'aggregate-item';
-    div.innerHTML = `Q${i+1}: ${rate}% (${correctCount}/${allStudentResults.length})`;
-    aggregateContainer.appendChild(div);
-  }
-  document.getElementById('aggregate').classList.remove('hide');
-}
-
-function hideAggregateStats() {
-  document.getElementById('aggregate').classList.add('hide');
-}
-
-function stopCamera() {
-  if (videoStream) {
-    videoStream.getTracks().forEach(track => track.stop());
-    videoStream = null;
-    isCameraActive = false;
-  }
-  document.getElementById('cameraPreview').srcObject = null;
-}
+      document.getElementById('totalScore').textContent = totalScore;
+      const container = document.getElementById('questionStats');
+      container.innerHTML = '';
+      stats.forEach(item => {
+        const div = document.createElement('div');
+        div.className = `question-item ${item.correct ? 'correct' : 'incorrect'}`;
+        div.innerHTML = `Q${item.question}: ${item.selected} ${item.correct ? '✓' : '✗'} (正确答案: ${item.correctAnswer})`;
+        container.appendChild(div);
+      });
+      document.getElementById('results').classList.remove('hide');
+    }
+    
+    function saveCurrentResult() {
+      if (studentAnswers.length === 0) {
+        alert('无有效扫描结果');
+        return;
+      }
+      const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
+      let totalScore = 0;
+      const answers = studentAnswers.map((item, index) => {
+        const selected = item.answer || '未作答';
+        if (selected === answerKey[index]) totalScore += scorePerQuestion;
+        return selected;
+      });
+      allStudentResults.push({ answers, totalScore });
+      alert(`成绩已保存，目前累计 ${allStudentResults.length} 份答题卡`);
+    }
+    
+    function displayAggregateStats() {
+      if (allStudentResults.length === 0) {
+        alert('尚未保存任何扫描结果');
+        return;
+      }
+      const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+      const stats = Array(questionCount).fill(0);
+      allStudentResults.forEach(result => {
+        result.answers.forEach((ans, index) => {
+          if (ans === answerKey[index]) stats[index]++;
+        });
+      });
+      const aggregateContainer = document.getElementById('aggregateStats');
+      aggregateContainer.innerHTML = '';
+      for (let i = 0; i < questionCount; i++) {
+        const correctCount = stats[i];
+        const rate = ((correctCount / allStudentResults.length) * 100).toFixed(1);
+        const div = document.createElement('div');
+        div.className = 'aggregate-item';
+        div.innerHTML = `Q${i+1}: ${rate}% (${correctCount}/${allStudentResults.length})`;
+        aggregateContainer.appendChild(div);
+      }
+      document.getElementById('aggregate').classList.remove('hide');
+    }
+    
+    function hideAggregateStats() {
+      document.getElementById('aggregate').classList.add('hide');
+    }
+    
+    function stopCamera() {
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+        isCameraActive = false;
+      }
+      document.getElementById('cameraPreview').srcObject = null;
+    }
   </script>
 </body>
-</html>      
+</html>
