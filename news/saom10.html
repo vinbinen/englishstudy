@@ -96,7 +96,6 @@
                 <button class="stop-btn" id="stopCameraBtn">关闭摄像头</button>
                 <button id="toggleFullscreenBtn">全屏显示</button>
             </div>
-            <!-- Overlay for results -->
             <div id="cameraOverlayResults" style="position: absolute; bottom: 10px; right: 10px; background-color: rgba(0, 0, 0, 0.7); color: white; padding: 10px; border-radius: 5px; z-index: 10; display: none;">
                 <div class="score-display">总分: <span id="overlayTotalScore">0</span></div>
                 <div id="overlayQuestionStats" style="font-size: 0.8em;"></div>
@@ -243,60 +242,41 @@
             currentY += idBoxHeight + 20; // 准考证号区域下方留白
 
             // 答题区域（右侧区域 - 垂直题目，水平选项）
-            const rightStartX = canvas.width / 2 + 30; // 调整了右侧起始位置
-            let rightCurrentY = 80; // 右侧起始Y坐标
-            ctx.font = "18px Arial";
-            ctx.fillText("答题区域:", rightStartX - 10, rightCurrentY - 10);
-
-            const answerStartX = rightStartX;
-            const answerStartY = rightCurrentY + 10;
+            const rightStartX = canvas.width / 2 + 30;
+            const answerStartY = 80 + 10;
             const boxSize = 16;
             let spacing = 10;
             if (optionCount > 6) {
-                spacing = 8; // Reduce spacing if many options
+                spacing = 8;
             }
             const verticalSpacingBetweenQuestions = 35;
-            let currentQuestionY = answerStartY;
-            const questionsPerColumn = 25; // Adjust as needed
-            let questionCounter = 0;
+            const availableHeight = canvas.height - 2 * margin - answerStartY;
+            const maxQuestionsPerColumn = Math.floor(availableHeight / verticalSpacingBetweenQuestions);
+            const columnCount = Math.ceil(questionCount / maxQuestionsPerColumn);
             let currentColumn = 0;
-            let columnStartY = answerStartY;
-
-            // Calculate the total horizontal space needed for options
-            const optionWidth = boxSize + spacing;
-            const totalOptionWidth = optionCount * optionWidth;
-            const spaceForQuestionNumber = 25;
-            const horizontalSpacePerQuestion = spaceForQuestionNumber + totalOptionWidth;
-
-            const questionsPerRow = Math.floor((canvas.width - answerStartX - margin) / (horizontalSpacePerQuestion + 10));
-            let questionsInCurrentRow = 0;
-            let currentRowY = answerStartY;
+            let questionsInCurrentColumn = 0;
 
             for (let i = 0; i < questionCount; i++) {
                 const questionNumber = i + 1;
-                let questionX = answerStartX + currentColumn * (canvas.width / 2 - margin); // Simple two-column layout for now
-                let yPosition = currentRowY + (questionsInCurrentRow * verticalSpacingBetweenQuestions);
+                const columnX = rightStartX + currentColumn * (canvas.width / 2 - margin);
+                const questionY = answerStartY + questionsInCurrentColumn * verticalSpacingBetweenQuestions;
 
                 ctx.font = "16px Arial";
-                ctx.fillText(`${questionNumber}.`, questionX, yPosition + boxSize / 2 + 5);
+                ctx.fillText(`${questionNumber}.`, columnX, questionY + boxSize / 2 + 5);
 
-                const optionsStartX = questionX + spaceForQuestionNumber;
+                const optionsStartX = columnX + 25;
+                const optionWidth = boxSize + spacing;
 
                 for (let j = 0; j < optionCount; j++) {
                     const optionX = optionsStartX + j * optionWidth;
-                    ctx.strokeRect(optionX, yPosition, boxSize, boxSize);
-                    ctx.fillText(String.fromCharCode(65 + j), optionX + 3, yPosition + boxSize / 2 + 5);
+                    ctx.strokeRect(optionX, questionY, boxSize, boxSize);
+                    ctx.fillText(String.fromCharCode(65 + j), optionX + 3, questionY + boxSize / 2 + 5);
                 }
 
-                questionsInCurrentRow++;
-                if (questionsInCurrentRow >= questionsPerColumn) {
-                    questionsInCurrentRow = 0;
+                questionsInCurrentColumn++;
+                if (questionsInCurrentColumn >= maxQuestionsPerColumn) {
+                    questionsInCurrentColumn = 0;
                     currentColumn++;
-                    currentRowY = answerStartY;
-                } else if (yPosition + verticalSpacingBetweenQuestions + (optionCount * (boxSize + spacing)) > canvas.height - margin) {
-                    questionsInCurrentRow = 0;
-                    currentColumn++;
-                    currentRowY = answerStartY;
                 }
             }
 
@@ -361,7 +341,10 @@
                 video.srcObject = videoStream;
                 isCameraActive = true;
                 document.getElementById('cameraContainer').classList.remove('hide');
-                document.getElementById('cameraOverlayResults').style.display = 'block'; // Show overlay
+                document.getElementById('cameraOverlayResults').style.display = 'block';
+
+                // Wait for OpenCV to be ready
+                await waitForOpenCV();
 
                 // 启动实时处理
                 requestAnimationFrame(realtimeProcessFrame);
@@ -411,21 +394,23 @@
                 return;
             }
             try {
-                // 读取图片
+                console.log("开始图像处理"); // Log start
+
                 let src = cv.imread(canvas);
                 let gray = new cv.Mat();
                 cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+                console.log("转换为灰度图"); // Log step
 
-                // 1. 检测答题卡四角标记
-                let thresholdValue = 100; // 根据实际情况调整阈值
+                let thresholdValue = 100;
                 let binaryMarkers = new cv.Mat();
                 cv.threshold(gray, binaryMarkers, thresholdValue, 255, cv.THRESH_BINARY);
+                console.log("二值化标记"); // Log step
 
                 let contours = new cv.MatVector();
                 let hierarchy = new cv.Mat();
                 cv.findContours(binaryMarkers, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+                console.log("查找轮廓"); // Log step
 
-                // 假设四个角点是面积合适的四个黑色标记
                 let corners = [];
                 for (let i = 0; i < contours.size(); ++i) {
                     const area = cv.contourArea(contours.get(i));
@@ -444,6 +429,8 @@
                 hierarchy.delete();
                 contours.delete();
                 binaryMarkers.delete();
+
+                console.log("检测角点数量:", corners.length); // Log corner count
 
                 if (corners.length === 4) {
                     // 按 y 坐标排序，再按 x 坐标排序，确定角点顺序
@@ -482,15 +469,11 @@
                     let M = cv.getPerspectiveTransform(srcMat, dst);
                     let warped = new cv.Mat();
                     cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
-
-                    src.delete();
-                    gray.delete();
-                    M.delete();
-                    srcMat.delete();
-                    dst.delete();
+                    console.log("执行透视变换"); // Log transform
 
                     // 使用透视校正后的图像进行选项识别
                     processOptions(warped);
+                    console.log("处理选项"); // Log options
                     cv.imshow('captureCanvas', warped);
                     warped.delete();
 
@@ -498,9 +481,18 @@
                     console.warn("未能检测到全部四个角点，跳过透视变换。");
                     processOptions(src);
                     cv.imshow('captureCanvas', src);
-                    src.delete();
-                    gray.delete();
                 }
+
+                src.delete();
+                gray.delete();
+                if (typeof M !== 'undefined') M.delete();
+                if (typeof srcMat !== 'undefined') srcMat.delete();
+                if (typeof dst !== 'undefined') dst.delete();
+                if (typeof binaryMarkers !== 'undefined') binaryMarkers.delete();
+                if (typeof contours !== 'undefined') contours.delete();
+                if (typeof hierarchy !== 'undefined') hierarchy.delete();
+
+                console.log("图像处理完成"); // Log end
 
             } catch (error) {
                 console.error("图像处理出错：", error);
