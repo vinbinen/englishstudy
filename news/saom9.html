@@ -52,7 +52,9 @@
 
         <div id="cameraContainer">
             <video id="cameraPreview" autoplay style="width:100%; height:400px; background:#000;"></video>
-            <canvas id="captureCanvas" width="640" height="480"></canvas> <canvas id="binaryCanvas" width="640" height="480" class="hide"></canvas> <div class="controls">
+            <canvas id="captureCanvas" width="640" height="480"></canvas> 
+            <canvas id="binaryCanvas" width="640" height="480" class="hide"></canvas> 
+            <div class="controls">
                 <button class="start-btn" id="startCameraBtn">开启摄像头</button>
                 <button class="capture-btn" id="captureBtn">拍照识别</button>
                 <button class="stop-btn" id="stopCameraBtn">关闭摄像头</button>
@@ -142,88 +144,69 @@
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // --- 答题卡布局参数 ---
-            const margin = 20;
-            const titleY = margin + 20;
-            const infoStartY = titleY + 40;
-            const infoLineHeight = 30;
-            const notesStartY = infoStartY + infoLineHeight * 3 + 20;
-            const notesLineHeight = 20;
-            const idStartY = notesStartY + notesLineHeight * 3 + 20;
-            const idBoxX = margin, idBoxY = idStartY, idBoxWidth = 200, idBoxHeight = 180;
-            const digitCellSize = 20, digitSpacing = 2;
-
-            const answerAreaTitleY = infoStartY;
-            const answerAreaStartX = 250 + margin + 20;
-            const questionStartY = answerAreaTitleY + 30;
-            const questionVerticalSpacing = 30;
-            const optionBoxSize = 15;
-            const optionHorizontalSpacing = 8;
-            const optionOffsetX = 30;
-            const questionsPerColumn = 25;
-            const columnWidth = 200;
-
-            // --- 绘制答题卡元素 ---
-
             // 绘制标题
             ctx.font = "24px Arial";
             const title = "答题卡模板";
-            ctx.fillText(title, canvas.width / 2 - ctx.measureText(title).width / 2, titleY);
+            ctx.fillText(title, canvas.width / 2 - ctx.measureText(title).width / 2, 40);
 
             // 左侧个人信息区域
             ctx.font = "16px Arial";
-            ctx.fillText("姓名:", margin, infoStartY);
-            ctx.strokeRect(margin, infoStartY + 20, 200, infoLineHeight);
-            ctx.fillText("班级:", margin, infoStartY + infoLineHeight);
-            ctx.strokeRect(margin, infoStartY + infoLineHeight + 20, 200, infoLineHeight);
-            ctx.fillText("学号:", margin, infoStartY + infoLineHeight * 2);
-            ctx.strokeRect(margin, infoStartY + infoLineHeight * 2 + 20, 200, infoLineHeight);
+            ctx.fillText("姓名:", 20, 80);
+            ctx.strokeRect(20, 100, 200, 30);
+            ctx.fillText("班级:", 20, 140);
+            ctx.strokeRect(20, 160, 200, 30);
+            ctx.fillText("学号:", 20, 200);
+            ctx.strokeRect(20, 220, 200, 30);
 
             // 注意事项
             ctx.font = "12px Arial";
-            ctx.fillText("注意事项：", margin, notesStartY);
-            ctx.fillText("1. 用黑色中性笔涂黑对应选项", margin + 20, notesStartY + notesLineHeight);
-            ctx.fillText("2. 答题卡保持平整清洁，不可弯折", margin + 20, notesStartY + notesLineHeight * 2);
-            ctx.fillText("3. 边角处请勿涂抹", margin + 20, notesStartY + notesLineHeight * 3);
+            ctx.fillText("注意事项：", 20, 260);
+            ctx.fillText("1. 用黑色中性笔涂黑对应选项", 40, 280);
+            ctx.fillText("2. 答题卡保持平整清洁，不可弯折", 40, 300);
+            ctx.fillText("3. 边角处请勿涂抹", 40, 320);
 
             // 准考证号区域
             ctx.font = "16px Arial";
-            ctx.fillText("准考证号:", margin, idStartY);
-            ctx.strokeRect(idBoxX, idBoxY + 20, idBoxWidth, idBoxHeight);
+            ctx.fillText("准考证号:", 20, 360);
+            const idBoxX = 20, idBoxY = 380, idBoxWidth = 200, idBoxHeight = 180;
+            ctx.strokeRect(idBoxX, idBoxY, idBoxWidth, idBoxHeight);
+            const digitCellSize = 20, digitSpacing = 2;
             const digits = ['0','1','2','3','4','5','6','7','8','9'];
             for (let i = 0; i < digits.length; i++) {
-                const digitY = idBoxY + 30 + i * (digitCellSize + digitSpacing);
+                const digitY = idBoxY + 10 + i * (digitCellSize + digitSpacing);
                 [20, 50, 80, 110].forEach(offsetX => {
                     ctx.strokeRect(idBoxX + offsetX, digitY, digitCellSize, digitCellSize);
                     ctx.fillText(digits[i], idBoxX + offsetX + 5, digitY + digitCellSize/2 + 4);
                 });
             }
 
-            // 答题区域（右侧区域）
+            // 答题区域（右侧区域），预设起点与间距
             ctx.font = "16px Arial";
-            ctx.fillText("答题区域:", answerAreaStartX - 20, answerAreaTitleY);
-
+            const rightSectionX = 250 + 20; // 270，与后续识别代码保持一致
+            ctx.fillText("答题区域:", rightSectionX, 80);
+            const startX = rightSectionX;
+            const startY = 110;
+            const boxSize = 15, spacing = 8;
+            const questionsPerColumn = 25;
+            const columnWidth = 200;
             for (let i = 0; i < questionCount; i++) {
                 const column = Math.floor(i / questionsPerColumn);
-                const questionNumber = i + 1;
-                const startX = answerAreaStartX + column * columnWidth;
-                const yPos = questionStartY + (i % questionsPerColumn) * questionVerticalSpacing;
-
-                ctx.fillText(`${questionNumber}.`, startX, yPos + optionBoxSize / 2 + 5);
-
+                const currentX = startX + column * columnWidth;
+                const yPos = startY + (i % questionsPerColumn) * 30;
+                ctx.fillText(`${i+1}.`, currentX, yPos + boxSize/2 + 5);
                 for (let j = 0; j < optionCount; j++) {
-                    const optionX = startX + optionOffsetX + j * (optionBoxSize + optionHorizontalSpacing);
-                    ctx.strokeRect(optionX, yPos, optionBoxSize, optionBoxSize);
-                    ctx.fillText(String.fromCharCode(65 + j), optionX + 3, yPos + optionBoxSize / 2 + 5);
+                    const xPos = currentX + 30 + j * (boxSize + spacing);
+                    ctx.strokeRect(xPos, yPos, boxSize, boxSize);
+                    ctx.fillText(String.fromCharCode(65+j), xPos+3, yPos + boxSize/2 + 5);
                 }
             }
 
             // 在四角添加黑色标记块（用于透视校正）
             ctx.fillStyle = "black";
-            ctx.fillRect(5, 5, 10, 10);
-            ctx.fillRect(canvas.width - 15, 5, 10, 10);
-            ctx.fillRect(5, canvas.height - 15, 10, 10);
-            ctx.fillRect(canvas.width - 15, canvas.height - 15, 10, 10);
+            ctx.fillRect(5,5,10,10);
+            ctx.fillRect(canvas.width-15,5,10,10);
+            ctx.fillRect(5,canvas.height-15,10,10);
+            ctx.fillRect(canvas.width-15,canvas.height-15,10,10);
 
             // 整体边框
             ctx.strokeRect(0, 0, canvas.width, canvas.height);
@@ -308,7 +291,7 @@
             processImageFixedTemplate(captureCanvas);
         }
 
-        // 使用固定模板区域进行图像识别 (优化后包含透视变换)
+        // 使用固定模板区域进行图像识别 (包含透视变换)
         function processImageFixedTemplate(canvas) {
             if (typeof cv === 'undefined') {
                 alert('OpenCV.js 尚未加载，请稍后再试');
@@ -321,7 +304,7 @@
                 cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
 
                 // 1. 检测答题卡四角标记
-                let thresholdValue = 100; // 可以根据实际情况调整阈值
+                let thresholdValue = 100; // 根据实际情况调整阈值
                 let binaryMarkers = new cv.Mat();
                 cv.threshold(gray, binaryMarkers, thresholdValue, 255, cv.THRESH_BINARY);
 
@@ -329,14 +312,14 @@
                 let hierarchy = new cv.Mat();
                 cv.findContours(binaryMarkers, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-                // 假设四个角点是面积合适的四个黑色连通区域
+                // 假设四个角点是面积合适的四个黑色标记
                 let corners = [];
                 for (let i = 0; i < contours.size(); ++i) {
                     const area = cv.contourArea(contours.get(i));
                     const approx = new cv.Mat();
                     const epsilon = 0.04 * cv.arcLength(contours.get(i), true);
                     cv.approxPolyDP(contours.get(i), approx, epsilon, true);
-                    if (approx.data32S.length === 8 && area > 50 && area < 200) { // 筛选近似四边形且面积合适的轮廓
+                    if (approx.data32S.length === 8 && area > 50 && area < 200) {
                         let points = [];
                         for (let j = 0; j < approx.data32S.length; j += 2) {
                             points.push({ x: approx.data32S[j], y: approx.data32S[j + 1] });
@@ -350,11 +333,11 @@
                 binaryMarkers.delete();
 
                 if (corners.length === 4) {
-                    // 简单地按照 y 坐标排序，然后每组内按照 x 坐标排序来大致确定角点顺序
+                    // 按 y 坐标排序，再按 x 坐标排序，确定角点顺序
                     corners.sort((a, b) => {
                         const avgAy = a.reduce((sum, p) => sum + p.y, 0) / a.length;
                         const avgBy = b.reduce((sum, p) => sum + p.y, 0) / b.length;
-                        if (Math.abs(avgAy - avgBy) < 20) { // 如果 y 坐标接近，则按 x 坐标排序
+                        if (Math.abs(avgAy - avgBy) < 20) {
                             return (a.reduce((sum, p) => sum + p.x, 0) / a.length) - (b.reduce((sum, p) => sum + p.x, 0) / b.length);
                         }
                         return avgAy - avgBy;
@@ -367,7 +350,7 @@
                         return { x: cx / corner.length, y: cy / corner.length };
                     });
 
-                    // 进一步排序以确保角点顺序为：左上 -> 右上 -> 右下 -> 左下
+                    // 根据质心角度排序，确保顺序为：左上 -> 右上 -> 右下 -> 左下
                     const center_x = centroids.reduce((sum, p) => sum + p.x, 0) / centroids.length;
                     const center_y = centroids.reduce((sum, p) => sum + p.y, 0) / centroids.length;
                     centroids.sort((a, b) => {
@@ -376,37 +359,31 @@
                         return angleA - angleB;
                     });
 
-                    // 定义答题卡目标尺寸 (与生成时的 canvas 尺寸一致)
+                    // 定义目标尺寸（与生成模板尺寸一致）
                     const targetWidth = 595;
                     const targetHeight = 842;
-
-                    // 定义目标角点坐标
                     const dst = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, targetWidth, 0, targetWidth, targetHeight, 0, targetHeight]);
                     const srcPoints = centroids;
                     const srcMat = cv.matFromArray(4, 1, cv.CV_32FC2, [srcPoints[0].x, srcPoints[0].y, srcPoints[1].x, srcPoints[1].y, srcPoints[2].x, srcPoints[2].y, srcPoints[3].x, srcPoints[3].y]);
 
-                    // 计算透视变换矩阵
                     let M = cv.getPerspectiveTransform(srcMat, dst);
-
-                    // 应用透视变换
                     let warped = new cv.Mat();
                     cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
 
-                    // 释放不再需要的 Mat 对象
                     src.delete();
                     gray.delete();
                     M.delete();
                     srcMat.delete();
                     dst.delete();
 
-                    // 现在 warped 包含了透视校正后的答题卡图像，可以基于此进行后续的选项识别
+                    // 使用透视校正后的图像进行选项识别
                     processOptions(warped);
-                    cv.imshow('captureCanvas', warped); // 显示校正后的图像
+                    cv.imshow('captureCanvas', warped);
                     warped.delete();
 
                 } else {
                     console.warn("未能检测到全部四个角点，跳过透视变换。");
-                    processOptions(src); // 如果未找到角点，则直接处理原始图像
+                    processOptions(src);
                     cv.imshow('captureCanvas', src);
                     src.delete();
                     gray.delete();
@@ -418,52 +395,51 @@
             }
         }
 
+        // 修改后的 processOptions 函数，统一使用生成模板时的参数
         function processOptions(processedImage) {
-            // --- 答题卡布局参数 (与 generateAnswerSheet 中保持一致) ---
-            const margin = 20;
-            const answerAreaTitleY = margin + 20 + 40; // 标题高度 + 间距
-            const answerAreaStartX = 250 + margin + 20;
-            const questionStartY = answerAreaTitleY + 30;
-            const questionVerticalSpacing = 30;
-            const optionBoxSize = 15;
-            const optionHorizontalSpacing = 8;
-            const optionOffsetX = 30;
+            const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+            const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
+            // 重置学生答案数组
+            studentAnswers = Array.from({ length: questionCount }, () => ({ answer: null, score: 0 }));
+
+            // 与生成模板中一致的参数设置
+            const startX = 270;         // 与模板中 rightSectionX = 250+20
+            const startY = 110;         // 模板起始Y坐标
+            const boxSize = 15, spacing = 8;
             const questionsPerColumn = 25;
             const columnWidth = 200;
 
-            const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-            const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
-            studentAnswers = Array.from({length: questionCount}, () => ({ answer: null, score: 0 }));
-
-            const color = new cv.Scalar(0, 255, 0, 255); // 绿色，用于可视化 ROI
+            // 将图像转换为灰度和二值化
             let gray = new cv.Mat();
             cv.cvtColor(processedImage, gray, cv.COLOR_RGBA2GRAY, 0);
             let binary = new cv.Mat();
             cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
-            cv.imshow('binaryCanvas', binary); // 显示二值化后的图像
+            cv.imshow('binaryCanvas', binary);
             document.getElementById('binaryCanvas').classList.remove('hide');
 
-            let detected = null, maxBlackRatio = 0;
+            let color = new cv.Scalar(0, 255, 0, 255); // 绿色
+
+            // 遍历所有题目
             for (let i = 0; i < questionCount; i++) {
                 const column = Math.floor(i / questionsPerColumn);
-                const startX = answerAreaStartX + column * columnWidth;
-                const yPos = questionStartY + (i % questionsPerColumn) * questionVerticalSpacing;
-
-                detected = null;
-                maxBlackRatio = 0;
+                const currentX = startX + column * columnWidth;
+                const y = startY + (i % questionsPerColumn) * 30;
+                let detected = null, maxBlackRatio = 0;
+                // 遍历各选项
                 for (let j = 0; j < optionCount; j++) {
-                    const x = startX + optionOffsetX + j * (optionBoxSize + optionHorizontalSpacing);
-                    const roi = binary.roi(new cv.Rect(x, yPos, optionBoxSize, optionBoxSize));
+                    const x = currentX + 30 + j * (boxSize + spacing);
+                    let roi = binary.roi(new cv.Rect(x, y, boxSize, boxSize));
                     const total = roi.cols * roi.rows;
                     const count = cv.countNonZero(roi);
                     roi.delete();
                     const ratio = count / total;
-                    if (ratio > maxBlackRatio && ratio > 0.6) { // 阈值根据实际情况调整
+                    if (ratio > maxBlackRatio && ratio > 0.6) {
                         maxBlackRatio = ratio;
                         detected = j;
                     }
-                    const pt1 = new cv.Point(x, yPos);
-                    const pt2 = new cv.Point(x + optionBoxSize, yPos + optionBoxSize);
+                    // 绘制绿色矩形框用于调试
+                    let pt1 = new cv.Point(x, y);
+                    let pt2 = new cv.Point(x + boxSize, y + boxSize);
                     cv.rectangle(processedImage, pt1, pt2, color, 1, cv.LINE_8, 0);
                 }
                 if (detected !== null) {
