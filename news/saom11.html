@@ -356,114 +356,124 @@
             });
         }
 
+        
+        
+
+
         async function processImageFixedTemplate(canvas) {
-            if (!opencvReady) {
-                showFloatingMessage("OpenCV尚未准备好，跳过图像处理。");
-                return;
-            }
-            try {
-                showFloatingMessage("开始图像处理"); // 确认函数被调用
-                let src = cv.imread(canvas);
-                showFloatingMessage("imread 成功"); // 确认 imread 成功
-                let gray = new cv.Mat();
-                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-                showFloatingMessage("cvtColor 成功"); // 确认 cvtColor 成功
-                let thresholdValue = 100;
-                let binaryMarkers = new cv.Mat();
-                cv.threshold(gray, binaryMarkers, thresholdValue, 255, cv.THRESH_BINARY);
-                showFloatingMessage("threshold 成功"); // 确认 threshold 成功
-                let contours = new cv.MatVector();
-                let hierarchy = new cv.Mat();
-                cv.findContours(binaryMarkers, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-                showFloatingMessage("查找轮廓"); // 确认 findContours 成功
-                let corners = [];
-                const minMarkerArea = 50;
-                const maxMarkerArea = 200;
-                const approxAccuracyFactor = 0.04;
-                for (let i = 0; i < contours.size(); ++i) {
-                    const contour = contours.get(i);
-                    const area = cv.contourArea(contour);
-                    if (area > minMarkerArea && area < maxMarkerArea) {
-                        const approx = new cv.Mat();
-                        const epsilon = approxAccuracyFactor * cv.arcLength(contour, true);
-                        cv.approxPolyDP(contour, approx, epsilon, true);
-                        if (approx.data32S.length === 8) { // 寻找近似为矩形的轮廓（8个点）
-                            let points = [];
-                            for (let j = 0; j < approx.data32S.length; j += 2) {
-                                points.push({ x: approx.data32S[j], y: approx.data32S[j + 1] });
-                            }
-                            corners.push(points);
-                        }
-                        approx.delete();
+    if (!opencvReady) {
+        showFloatingMessage("OpenCV尚未准备好，跳过图像处理。");
+        return;
+    }
+    try {
+        showFloatingMessage("开始图像处理"); // 确认函数被调用
+        let src = cv.imread(canvas);
+        showFloatingMessage("imread 成功"); // 确认 imread 成功
+        let gray = new cv.Mat();
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+        showFloatingMessage("cvtColor 成功"); // 确认 cvtColor 成功
+        let thresholdValue = 100;
+        let binaryMarkers = new cv.Mat();
+        cv.threshold(gray, binaryMarkers, thresholdValue, 255, cv.THRESH_BINARY);
+        showFloatingMessage("threshold 成功"); // 确认 threshold 成功
+        let contours = new cv.MatVector();
+        let hierarchy = new cv.Mat();
+        cv.findContours(binaryMarkers, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+        showFloatingMessage(`找到 ${contours.size()} 个轮廓`); // 显示找到的轮廓数量
+
+        showFloatingMessage("开始处理轮廓");
+        let corners = [];
+        const minMarkerArea = 50;
+        const maxMarkerArea = 200;
+        const approxAccuracyFactor = 0.04;
+        for (let i = 0; i < contours.size(); ++i) {
+            const contour = contours.get(i);
+            const area = cv.contourArea(contour);
+            showFloatingMessage(`轮廓 ${i+1} 的面积: ${area}`);
+            if (area > minMarkerArea && area < maxMarkerArea) {
+                const approx = new cv.Mat();
+                const epsilon = approxAccuracyFactor * cv.arcLength(contour, true);
+                cv.approxPolyDP(contour, approx, epsilon, true);
+                showFloatingMessage(`轮廓 ${i+1} 近似后的点数: ${approx.data32S ? approx.data32S.length : 0}`);
+                if (approx.data32S && approx.data32S.length === 8) { // 寻找近似为矩形的轮廓（8个点）
+                    let points = [];
+                    for (let j = 0; j < approx.data32S.length; j += 2) {
+                        points.push({ x: approx.data32S[j], y: approx.data32S[j + 1] });
                     }
+                    corners.push(points);
+                    showFloatingMessage(`找到一个潜在的角点轮廓`);
                 }
-                hierarchy.delete();
-                contours.delete();
-                binaryMarkers.delete();
-
-                showFloatingMessage(`检测到 ${corners.length} 个角点`); // 显示检测到的角点数量
-
-                if (corners.length === 4) {
-                    // 提取每个轮廓的质心作为角点
-                    const centroids = corners.map(corner => {
-                        let cx = 0, cy = 0;
-                        corner.forEach(p => { cx += p.x; cy += p.y; });
-                        return { x: cx / corner.length, y: cy / corner.length };
-                    });
-                    // 根据质心计算中心点
-                    const center_x = centroids.reduce((sum, p) => sum + p.x, 0) / centroids.length;
-                    const center_y = centroids.reduce((sum, p) => sum + p.y, 0) / centroids.length;
-                    // 根据相对于中心的角度对角点进行排序 (左上 -> 右上 -> 右下 -> 左下)
-                    centroids.sort((a, b) => {
-                        const angleA = Math.atan2(a.y - center_y, a.x - center_x);
-                        const angleB = Math.atan2(b.y - center_y, b.x - center_x);
-                        return angleA - angleB;
-                    });
-                    // 定义目标尺寸（与生成模板尺寸一致）
-                    const targetWidth = 595;
-                    const targetHeight = 842;
-                    const dst = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, targetWidth, 0, targetWidth, targetHeight / 2, 0, targetHeight / 2]);
-                    // 处理上半部分答题卡
-                    const srcPoints = centroids;
-                    const srcMat = cv.matFromArray(4, 1, cv.CV_32FC2, [srcPoints[0].x, srcPoints[0].y, srcPoints[1].x, srcPoints[1].y, srcPoints[2].x, srcPoints[2].y, srcPoints[3].x, srcPoints[3].y]);
-
-                    let M = cv.getPerspectiveTransform(srcMat, dst);
-                    let warped = new cv.Mat();
-                    cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight / 2), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
-                    showFloatingMessage("执行透视变换"); // 确认透视变换
-                    // Log transform
-
-                    // 使用透视校正后的图像进行选项识别
-                    processOptions(warped);
-                    showFloatingMessage("处理选项"); // Log options
-                    cv.imshow('captureCanvas', warped);
-                    warped.delete();
-                    M.delete();
-                    srcMat.delete();
-                    dst.delete();
-
-                } else {
-                    showFloatingMessage("未能检测到全部四个角点，跳过透视变换。");
-                    let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
-                    // 截取上半部分
-                    processOptions(roi);
-                    cv.imshow('captureCanvas', roi);
-                    roi.delete();
-                }
-
-                src.delete();
-                gray.delete();
-                // 不要删除 contours 和 hierarchy，因为它们可能在 corner 检测失败时被使用
-                // if (typeof contours !== 'undefined') contours.delete();
-                // if (typeof hierarchy !== 'undefined') hierarchy.delete();
-
-                showFloatingMessage("图像处理完成"); // Log end
-
-            } catch (error) {
-                console.error("图像处理出错：", error);
-                alert("图像处理失败，请重试！");
+                approx.delete();
             }
         }
+        hierarchy.delete();
+        contours.delete();
+        binaryMarkers.delete();
+
+        showFloatingMessage(`检测到 ${corners.length} 个角点`); // 显示检测到的角点数量
+
+        if (corners.length === 4) {
+            showFloatingMessage("检测到 4 个角点，执行透视变换");
+            // 提取每个轮廓的质心作为角点
+            const centroids = corners.map(corner => {
+                let cx = 0, cy = 0;
+                corner.forEach(p => { cx += p.x; cy += p.y; });
+                return { x: cx / corner.length, y: cy / corner.length };
+            });
+            // 根据质心计算中心点
+            const center_x = centroids.reduce((sum, p) => sum + p.x, 0) / centroids.length;
+            const center_y = centroids.reduce((sum, p) => sum + p.y, 0) / centroids.length;
+            // 根据相对于中心的角度对角点进行排序 (左上 -> 右上 -> 右下 -> 左下)
+            centroids.sort((a, b) => {
+                const angleA = Math.atan2(a.y - center_y, a.x - center_x);
+                const angleB = Math.atan2(b.y - center_y, b.x - center_x);
+                return angleA - angleB;
+            });
+            // 定义目标尺寸（与生成模板尺寸一致）
+            const targetWidth = 595;
+            const targetHeight = 842;
+            const dst = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, targetWidth, 0, targetWidth, targetHeight / 2, 0, targetHeight / 2]);
+            // 处理上半部分答题卡
+            const srcPoints = centroids;
+            const srcMat = cv.matFromArray(4, 1, cv.CV_32FC2, [srcPoints[0].x, srcPoints[0].y, srcPoints[1].x, srcPoints[1].y, srcPoints[2].x, srcPoints[2].y, srcPoints[3].x, srcPoints[3].y]);
+
+            let M = cv.getPerspectiveTransform(srcMat, dst);
+            let warped = new cv.Mat();
+            cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight / 2), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+            showFloatingMessage("执行透视变换"); // 确认透视变换
+            // Log transform
+
+            // 使用透视校正后的图像进行选项识别
+            processOptions(warped);
+            showFloatingMessage("处理选项"); // Log options
+            cv.imshow('captureCanvas', warped);
+            warped.delete();
+            M.delete();
+            srcMat.delete();
+            dst.delete();
+
+        } else {
+            showFloatingMessage("未能检测到全部四个角点，跳过透视变换。");
+            let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
+            // 截取上半部分
+            processOptions(roi);
+            cv.imshow('captureCanvas', roi);
+            roi.delete();
+        }
+
+        src.delete();
+        gray.delete();
+        // 不要删除 contours 和 hierarchy，因为它们可能在 corner 检测失败时被使用
+        // if (typeof contours !== 'undefined') contours.delete();
+        // if (typeof hierarchy !== 'undefined') hierarchy.delete();
+
+        showFloatingMessage("图像处理完成"); // Log end
+
+    } catch (error) {
+        console.error("图像处理出错：", error);
+        alert("图像处理失败，请重试！");
+    }
+}
 
         function processOptions(processedImage) {
             const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
