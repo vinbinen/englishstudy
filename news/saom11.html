@@ -278,29 +278,34 @@
         }
 
         function exportAnswerSheetAsImage() {
-            const canvas = document.getElementById('answerSheetCanvas');
-            // 先保存原始尺寸
-            const originalWidth = canvas.width;
-            const originalHeight = canvas.height;
+    const canvas = document.getElementById('answerSheetCanvas');
+    const ctx = canvas.getContext('2d');
+    // 先保存原始尺寸
+    const originalWidth = canvas.width;
+    const originalHeight = canvas.height;
 
-            // 设置高分辨率
-            canvas.width = 2480;
-            canvas.height = 3508;
+    // 设置高分辨率
+    canvas.width = 2480;
+    canvas.height = 3508;
 
-            // 在高分辨率的 Canvas 上重新生成答题卡
-            generateAnswerSheet();
+    // 绘制白色背景
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            const imgData = canvas.toDataURL("image/jpeg", 0.8);
-            const link = document.createElement('a');
-            link.download = 'answer_sheet.jpg';
-            link.href = imgData;
-            link.click();
+    // 在高分辨率的 Canvas 上重新生成答题卡
+    generateAnswerSheet();
 
-            // 导出后恢复 Canvas 尺寸
-            canvas.width = originalWidth;
-            canvas.height = originalHeight;
-            generateAnswerSheet(); // 恢复原始尺寸后需要重新绘制以在页面上显示
-        }
+    const imgData = canvas.toDataURL("image/jpeg", 0.8);
+    const link = document.createElement('a');
+    link.download = 'answer_sheet.jpg';
+    link.href = imgData;
+    link.click();
+
+    // 导出后恢复 Canvas 尺寸
+    canvas.width = originalWidth;
+    canvas.height = originalHeight;
+    generateAnswerSheet(); // 恢复原始尺寸后需要重新绘制以在页面上显示
+}
 
         function showCamera() {
             document.getElementById('cameraContainer').classList.remove('hide');
