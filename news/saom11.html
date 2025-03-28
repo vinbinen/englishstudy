@@ -287,6 +287,10 @@
     canvas.width = 2480;
     canvas.height = 3508;
 
+        // 在高分辨率的 Canvas 上重新生成答题卡
+    generateAnswerSheet();
+
+
     const imgData = canvas.toDataURL("image/png");
     const link = document.createElement('a');
     link.download = 'answer_sheet.png';
