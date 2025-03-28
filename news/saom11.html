@@ -255,6 +255,10 @@
     ctx.lineTo(sheetWidth, sheetHeight / 2);
     ctx.stroke();
     ctx.setLineDash([]);
+        document.getElementById('answerSheetContainer').style.display = 'block';
+            document.getElementById('cameraContainer').classList.add('hide');
+            document.getElementById('results').classList.add('hide');
+            document.getElementById('aggregate').classList.add('hide');    
 }
 
         function showAnswerKeyInput() {
