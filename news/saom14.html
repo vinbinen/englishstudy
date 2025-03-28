@@ -311,7 +311,7 @@
         video.srcObject = videoStream;
         isCameraActive = true;
         // 隐藏原始视频，仅显示处理后的 canvas
-        video.classList.add('hide');
+        // video.classList.add('hide');
         document.getElementById('cameraContainer').classList.remove('hide');
         document.getElementById('cameraOverlayResults').style.display = 'block';
         await waitForOpenCV();
