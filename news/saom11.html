@@ -157,7 +157,11 @@
                 const currentInstructionsY = instructionsY + offsetY;
                 const currentStudentIdLabelY = studentIdLabelY + offsetY;
                 const currentAnswerStartY = answerStartY + offsetY;
-                const currentMarkerMargin = markerMargin + offsetY;
+                const currentMarkerMargin = markerMargin;
+                const markerSize = ANSWER_SHEET_CONFIG.markerSize;
+                const sheetWidth = ANSWER_SHEET_CONFIG.sheetWidth;
+                const sheetHeight = ANSWER_SHEET_CONFIG.sheetHeight;
+
                 ctx.font = "16px Arial"; // Slightly reduced font size for main title
                 ctx.fillText("答题卡模板", 20, 25 + offsetY);
                 ctx.font = "12px Arial"; // Reduced font size for personal info labels
@@ -215,10 +219,10 @@
 
                 // 绘制标记点
                 ctx.fillStyle = "black";
-                ctx.fillRect(markerMargin, currentMarkerMargin, markerSize, markerSize);
-                ctx.fillRect(sheetWidth - markerMargin - markerSize, currentMarkerMargin, markerSize, markerSize);
-                ctx.fillRect(markerMargin, sheetHeight / 2 + currentMarkerMargin, markerSize, markerSize);
-                ctx.fillRect(sheetWidth - markerMargin - markerSize, sheetHeight / 2 + currentMarkerMargin, markerSize, markerSize);
+                ctx.fillRect(currentMarkerMargin, offsetY + currentMarkerMargin, markerSize, markerSize);
+                ctx.fillRect(sheetWidth - currentMarkerMargin - markerSize, offsetY + currentMarkerMargin, markerSize, markerSize);
+                ctx.fillRect(currentMarkerMargin, offsetY + sheetHeight / 2 - currentMarkerMargin - markerSize - (offsetY > 0 ? 2 : 0), markerSize, markerSize); // 调整下半部分左下角
+                ctx.fillRect(sheetWidth - currentMarkerMargin - markerSize, offsetY + sheetHeight / 2 - currentMarkerMargin - markerSize - (offsetY > 0 ? 2 : 0), markerSize, markerSize); // 调整下半部分右下角
             };
 
             drawAnswerSheetPart(0); // 绘制上半部分
@@ -251,6 +255,9 @@
 
         function exportAnswerSheetAsImage() {
             const canvas = document.getElementById('answerSheetCanvas');
+            // 先设置高分辨率
+            const originalWidth = canvas.width;
+            const originalHeight = canvas.height;
             canvas.width = 2480;
             canvas.height = 3508;
             generateAnswerSheet(); // Re-render with the new dimensions
@@ -259,10 +266,10 @@
             link.download = 'answer_sheet.png';
             link.href = imgData;
             link.click();
-            // Optionally, revert the canvas size after export if needed for display
-            canvas.width = 595;
-            canvas.height = 842;
-            generateAnswerSheet();
+            // 导出后恢复 Canvas 尺寸
+            canvas.width = originalWidth;
+            canvas.height = originalHeight;
+            generateAnswerSheet(); // 再次使用原始尺寸重新渲染
         }
 
         function showCamera() {
