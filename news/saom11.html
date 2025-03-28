@@ -279,7 +279,6 @@
 
         function exportAnswerSheetAsImage() {
     const canvas = document.getElementById('answerSheetCanvas');
-    const ctx = canvas.getContext('2d');
     // 先保存原始尺寸
     const originalWidth = canvas.width;
     const originalHeight = canvas.height;
@@ -288,16 +287,12 @@
     canvas.width = 2480;
     canvas.height = 3508;
 
-    // 绘制白色背景
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     // 在高分辨率的 Canvas 上重新生成答题卡
     generateAnswerSheet();
 
-    const imgData = canvas.toDataURL("image/jpeg", 0.8);
+    const imgData = canvas.toDataURL("image/png",0.8);
     const link = document.createElement('a');
-    link.download = 'answer_sheet.jpg';
+    link.download = 'answer_sheet.png';
     link.href = imgData;
     link.click();
 
@@ -476,7 +471,7 @@
 
     } catch (error) {
         console.error("图像处理出错：", error);
-        alert("图像处理失败，请重试！");
+        showFloatingMessage("图像处理失败，请重试！");
     }
 }
 
