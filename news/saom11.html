@@ -557,7 +557,8 @@
 
         function calculateScore() {
             if (answerKey.length === 0) {
-                alert('请先设置标准答案');
+             
+                showFloatingMessage("请先设置标准答案");
                 return;
             }
             const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 10;
