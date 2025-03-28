@@ -78,6 +78,8 @@
         </div>
     </div>
 
+    <div id="floatingMessageContainer" style="position: fixed; bottom: 20px; left: 20px; z-index: 1001;"></div>
+
     <script async src="https://docs.opencv.org/4.5.3/opencv.js" onload="onOpenCvReady();"></script>
 
     <script>
@@ -115,7 +117,7 @@
         // 选项是否被涂黑的阈值 (可根据实际情况调整)
         const OPTION_THRESHOLD = 0.6;
         function onOpenCvReady() {
-            console.log("OpenCV.js is ready");
+            showFloatingMessage("OpenCV.js is ready");
             opencvReady = true;
         }
 
@@ -136,6 +138,28 @@
 
             generateAnswerSheet();
         });
+
+        function showFloatingMessage(message) {
+            const container = document.getElementById('floatingMessageContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = message;
+            messageDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+            messageDiv.style.color = 'white';
+            messageDiv.style.padding = '10px 15px';
+            messageDiv.style.borderRadius = '5px';
+            messageDiv.style.marginBottom = '10px';
+            messageDiv.style.opacity = '1';
+            messageDiv.style.transition = 'opacity 0.5s ease-in-out';
+
+            container.appendChild(messageDiv);
+
+            setTimeout(() => {
+                messageDiv.style.opacity = '0';
+                setTimeout(() => {
+                    container.removeChild(messageDiv);
+                }, 500); // 等待淡出动画完成
+            }, 3000); // 消息显示 3 秒后开始淡出
+        }
 
         function generateAnswerSheet() {
             const questionCount = parseInt(document.getElementById('questionCount').value);
@@ -249,36 +273,34 @@
             const input = prompt(`请输入标准答案（例如：A,B,C,A,...，共${questionCount}题）：`);
             if (input) {
                 answerKey = input.toUpperCase().split(',').slice(0, questionCount);
-                alert('标准答案已设置');
+                showFloatingMessage('标准答案已设置');
             }
         }
 
         function exportAnswerSheetAsImage() {
-    const canvas = document.getElementById('answerSheetCanvas');
-    // 先保存原始尺寸
-    const originalWidth = canvas.width;
-    const originalHeight = canvas.height;
+            const canvas = document.getElementById('answerSheetCanvas');
+            // 先保存原始尺寸
+            const originalWidth = canvas.width;
+            const originalHeight = canvas.height;
 
-    // 设置高分辨率
-    canvas.width = 2480;
-    canvas.height = 3508;
+            // 设置高分辨率
+            canvas.width = 2480;
+            canvas.height = 3508;
 
-    // 在高分辨率的 Canvas 上重新生成答题卡
-    generateAnswerSheet();
+            // 在高分辨率的 Canvas 上重新生成答题卡
+            generateAnswerSheet();
 
-    const imgData = canvas.toDataURL("image/jpeg",0.8);
-    const link = document.createElement('a');
-    link.download = 'answer_sheet.jpg';
-    link.href = imgData;
-    link.click();
+            const imgData = canvas.toDataURL("image/jpeg", 0.8);
+            const link = document.createElement('a');
+            link.download = 'answer_sheet.jpg';
+            link.href = imgData;
+            link.click();
 
-    // 导出后恢复 Canvas 尺寸
-    canvas.width = originalWidth;
-    canvas.height = originalHeight;
-    generateAnswerSheet(); // 恢复原始尺寸后需要重新绘制以在页面上显示
-}
-
-        
+            // 导出后恢复 Canvas 尺寸
+            canvas.width = originalWidth;
+            canvas.height = originalHeight;
+            generateAnswerSheet(); // 恢复原始尺寸后需要重新绘制以在页面上显示
+        }
 
         function showCamera() {
             document.getElementById('cameraContainer').classList.remove('hide');
@@ -335,32 +357,25 @@
         }
 
         async function processImageFixedTemplate(canvas) {
-            if (typeof cv === 'undefined') {
-                alert('OpenCV.js 尚未加载，请稍后再试');
+            if (!opencvReady) {
+                showFloatingMessage("OpenCV尚未准备好，跳过图像处理。");
                 return;
             }
             try {
-                console.log("开始图像处理");
-                // Log start
-
+                showFloatingMessage("开始图像处理"); // 确认函数被调用
                 let src = cv.imread(canvas);
+                showFloatingMessage("imread 成功"); // 确认 imread 成功
                 let gray = new cv.Mat();
                 cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-                console.log("转换为灰度图");
-                // Log step
-
+                showFloatingMessage("cvtColor 成功"); // 确认 cvtColor 成功
                 let thresholdValue = 100;
                 let binaryMarkers = new cv.Mat();
                 cv.threshold(gray, binaryMarkers, thresholdValue, 255, cv.THRESH_BINARY);
-                console.log("二值化标记");
-                // Log step
-
+                showFloatingMessage("threshold 成功"); // 确认 threshold 成功
                 let contours = new cv.MatVector();
                 let hierarchy = new cv.Mat();
                 cv.findContours(binaryMarkers, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-                console.log("查找轮廓");
-                // Log step
-
+                showFloatingMessage("查找轮廓"); // 确认 findContours 成功
                 let corners = [];
                 const minMarkerArea = 50;
                 const maxMarkerArea = 200;
@@ -386,7 +401,7 @@
                 contours.delete();
                 binaryMarkers.delete();
 
-                console.log("检测角点数量:", corners.length); // Log corner count
+                showFloatingMessage(`检测到 ${corners.length} 个角点`); // 显示检测到的角点数量
 
                 if (corners.length === 4) {
                     // 提取每个轮廓的质心作为角点
@@ -415,12 +430,12 @@
                     let M = cv.getPerspectiveTransform(srcMat, dst);
                     let warped = new cv.Mat();
                     cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight / 2), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
-                    console.log("执行透视变换");
+                    showFloatingMessage("执行透视变换"); // 确认透视变换
                     // Log transform
 
                     // 使用透视校正后的图像进行选项识别
                     processOptions(warped);
-                    console.log("处理选项"); // Log options
+                    showFloatingMessage("处理选项"); // Log options
                     cv.imshow('captureCanvas', warped);
                     warped.delete();
                     M.delete();
@@ -428,7 +443,7 @@
                     dst.delete();
 
                 } else {
-                    console.warn("未能检测到全部四个角点，跳过透视变换。");
+                    showFloatingMessage("未能检测到全部四个角点，跳过透视变换。");
                     let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
                     // 截取上半部分
                     processOptions(roi);
@@ -442,7 +457,7 @@
                 // if (typeof contours !== 'undefined') contours.delete();
                 // if (typeof hierarchy !== 'undefined') hierarchy.delete();
 
-                console.log("图像处理完成"); // Log end
+                showFloatingMessage("图像处理完成"); // Log end
 
             } catch (error) {
                 console.error("图像处理出错：", error);
@@ -575,7 +590,7 @@
                 return selected;
             });
             allStudentResults.push({ answers, totalScore });
-            alert(`成绩已保存，目前累计 ${allStudentResults.length} 份答题卡`);
+            showFloatingMessage(`成绩已保存，目前累计 ${allStudentResults.length} 份答题卡`);
         }
 
         function displayAggregateStats() {
