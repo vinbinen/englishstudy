@@ -162,110 +162,100 @@
         }
 
         function generateAnswerSheet() {
-            const questionCount = parseInt(document.getElementById('questionCount').value);
-            const optionCount = parseInt(document.getElementById('optionCount').value);
-            const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value);
+    const questionCount = parseInt(document.getElementById('questionCount').value);
+    const optionCount = parseInt(document.getElementById('optionCount').value);
+    const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value);
 
-            const { sheetWidth, sheetHeight, nameY, classY, studentIdY, instructionsY, studentIdLabelY, studentIdStartX, studentIdBoxSize, studentIdBoxSpacing, questionsStartX, answerStartY, verticalSpacingBetweenQuestions, horizontalSpacingBetweenOptions, boxSize, optionOffsetX, questionsPerColumn, columnSpacing, markerSize, markerMargin } = ANSWER_SHEET_CONFIG;
-            const canvas = document.getElementById('answerSheetCanvas');
-            const ctx = canvas.getContext('2d');
-            
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const { sheetWidth, sheetHeight, nameY, classY, studentIdY, instructionsY, studentIdLabelY, studentIdStartX, studentIdBoxSize, studentIdBoxSpacing, questionsStartX, answerStartY, verticalSpacingBetweenQuestions, horizontalSpacingBetweenOptions, boxSize, optionOffsetX, questionsPerColumn, columnSpacing, markerSize, markerMargin } = ANSWER_SHEET_CONFIG;
+    const canvas = document.getElementById('answerSheetCanvas');
+    const ctx = canvas.getContext('2d');
 
-            const drawAnswerSheetPart = (offsetY = 0) => {
-                const currentNameY = nameY + offsetY;
-                const currentClassY = classY + offsetY;
-                const currentStudentIdY = studentIdY + offsetY;
-                const currentInstructionsY = instructionsY + offsetY;
-                const currentStudentIdLabelY = studentIdLabelY + offsetY;
-                const currentAnswerStartY = answerStartY + offsetY;
-                const currentMarkerMargin = markerMargin;
-                const markerSize = ANSWER_SHEET_CONFIG.markerSize;
-                const sheetWidth = ANSWER_SHEET_CONFIG.sheetWidth;
-                const sheetHeight = ANSWER_SHEET_CONFIG.sheetHeight;
+    const scaleX = canvas.width / sheetWidth;
+    const scaleY = canvas.height / sheetHeight;
 
-                ctx.font = "16px Arial"; // Slightly reduced font size for main title
-                ctx.fillText("答题卡模板", 20, 25 + offsetY);
-                ctx.font = "12px Arial"; // Reduced font size for personal info labels
-                ctx.fillText("姓名:", 20, currentNameY);
-                ctx.strokeRect(60, currentNameY - 10, 100, 15); // Reduced width of boxes
+    ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0); // 设置缩放变换
+    ctx.clearRect(0, 0, canvas.width / scaleX, canvas.height / scaleY); // 清除原始尺寸的区域
 
-                ctx.fillText("班级:", 20, currentClassY);
-                ctx.strokeRect(60, currentClassY - 10, 100, 15); // Reduced width of boxes
+    const drawAnswerSheetPart = (offsetY = 0) => {
+        const currentNameY = nameY + offsetY;
+        const currentClassY = classY + offsetY;
+        const currentStudentIdY = studentIdY + offsetY;
+        const currentInstructionsY = instructionsY + offsetY;
+        const currentStudentIdLabelY = studentIdLabelY + offsetY;
+        const currentAnswerStartY = answerStartY + offsetY;
+        const currentMarkerMargin = markerMargin;
+        const markerSize = ANSWER_SHEET_CONFIG.markerSize;
+        const scaledMarkerMargin = markerMargin; // 标记点的 margin 不缩放
+        const scaledMarkerSize = markerSize; // 标记点的大小不缩放
 
-                ctx.fillText("学号:", 20, currentStudentIdY);
-                ctx.strokeRect(60, currentStudentIdY - 10, 100, 15); // Reduced width of boxes
+        ctx.font = `${16}px Arial`;
+        ctx.fillText("答题卡模板", 20, 25 + offsetY);
+        ctx.font = `${12}px Arial`;
+        ctx.fillText("姓名:", 20, currentNameY);
+        ctx.strokeRect(60, currentNameY - 10, 100, 15);
 
-                ctx.font = "10px Arial";
-                // Reduced font size for instructions
-                ctx.fillText("注意事项:", 20, currentInstructionsY);
-                ctx.font = "9px Arial";
-                ctx.fillText("1. 用黑色中性笔涂黑对应选项", 30, currentInstructionsY + 12);
-                ctx.fillText("2. 答题卡保持平整清洁，不可弯折", 30, currentInstructionsY + 22);
-                ctx.fillText("3. 边角处请勿涂抹", 30, currentInstructionsY + 32);
+        ctx.fillText("班级:", 20, currentClassY);
+        ctx.strokeRect(60, currentClassY - 10, 100, 15);
 
-                ctx.font = "12px Arial";
-                // Reduced font size for student ID label
-                ctx.fillText("准考证号:", 20, currentStudentIdLabelY);
-                const digits = ['0','1','2','3','4','5','6','7','8','9'];
-                for (let i = 0; i < studentIdDigits; i++) {
-                    const startX = studentIdStartX + i * (studentIdBoxSize + studentIdBoxSpacing);
-                    for (let j = 0; j < digits.length; j++) {
-                        const startY = currentStudentIdLabelY + 8 + j * (studentIdBoxSize + studentIdBoxSpacing);
-                        ctx.strokeRect(startX, startY, studentIdBoxSize, studentIdBoxSize);
-                        ctx.font = "7px Arial"; // Further reduced font size
-                        ctx.fillText(digits[j], startX + 1, startY + studentIdBoxSize - 1);
-                    }
-                }
+        ctx.fillText("学号:", 20, currentStudentIdY);
+        ctx.strokeRect(60, currentStudentIdY - 10, 100, 15);
 
-                // 绘制答题区域
-                ctx.font = "10px Arial";
-                // Reduced font size for question numbers and options
-                const columns = Math.ceil(questionCount / questionsPerColumn);
-                for (let i = 0; i < questionCount; i++) {
-                    const row = i % questionsPerColumn;
-                    const col = Math.floor(i / questionsPerColumn);
-                    const questionX = questionsStartX + col * (columnSpacing + (optionCount * horizontalSpacingBetweenOptions + boxSize + optionOffsetX + 3));
-                    // Further adjusted horizontal spacing
-                    const questionY = currentAnswerStartY + row * verticalSpacingBetweenQuestions;
-                    ctx.fillText(`${i + 1}.`, questionX, questionY + boxSize / 2 + 2);
+        ctx.font = `${10}px Arial`;
+        ctx.fillText("注意事项:", 20, currentInstructionsY);
+        ctx.font = `${9}px Arial`;
+        ctx.fillText("1. 用黑色中性笔涂黑对应选项", 30, currentInstructionsY + 12);
+        ctx.fillText("2. 答题卡保持平整清洁，不可弯折", 30, currentInstructionsY + 22);
+        ctx.fillText("3. 边角处请勿涂抹", 30, currentInstructionsY + 32);
 
-                    const optionsStartX = questionX + boxSize + optionOffsetX;
-                    const options = ['A', 'B', 'C', 'D'];
-                    for (let j = 0; j < optionCount && j < options.length; j++) {
-                        const optionX = optionsStartX + j * horizontalSpacingBetweenOptions;
-                        ctx.strokeRect(optionX, questionY, boxSize, boxSize);
-                        ctx.fillText(options[j], optionX + 1, questionY + boxSize / 2 + 2);
-                    }
-                }
-
-                // 绘制标记点
-                ctx.fillStyle = "black";
-                ctx.fillRect(currentMarkerMargin, offsetY + currentMarkerMargin, markerSize, markerSize);
-                ctx.fillRect(sheetWidth - currentMarkerMargin - markerSize, offsetY + currentMarkerMargin, markerSize, markerSize);
-                ctx.fillRect(currentMarkerMargin, offsetY + sheetHeight / 2 - currentMarkerMargin - markerSize - (offsetY > 0 ? 2 : 0), markerSize, markerSize); // 调整下半部分左下角
-                ctx.fillRect(sheetWidth - currentMarkerMargin - markerSize, offsetY + sheetHeight / 2 - currentMarkerMargin - markerSize - (offsetY > 0 ? 2 : 0), markerSize, markerSize); // 调整下半部分右下角
-            };
-
-            drawAnswerSheetPart(0); // 绘制上半部分
-            drawAnswerSheetPart(sheetHeight / 2); // 绘制下半部分
-
-            // 绘制裁剪线
-            ctx.strokeStyle = "#ccc";
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.moveTo(0, sheetHeight / 2);
-            ctx.lineTo(sheetWidth, sheetHeight / 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            // 恢复实线
-
-            document.getElementById('answerSheetContainer').style.display = 'block';
-            document.getElementById('cameraContainer').classList.add('hide');
-            document.getElementById('results').classList.add('hide');
-            document.getElementById('aggregate').classList.add('hide');
+        ctx.font = `${12}px Arial`;
+        ctx.fillText("准考证号:", 20, currentStudentIdLabelY);
+        const digits = ['0','1','2','3','4','5','6','7','8','9'];
+        for (let i = 0; i < studentIdDigits; i++) {
+            const startX = studentIdStartX + i * (studentIdBoxSize + studentIdBoxSpacing);
+            for (let j = 0; j < digits.length; j++) {
+                const startY = currentStudentIdLabelY + 8 + j * (studentIdBoxSize + studentIdBoxSpacing);
+                ctx.strokeRect(startX, startY, studentIdBoxSize, studentIdBoxSize);
+                ctx.font = `${7}px Arial`;
+                ctx.fillText(digits[j], startX + 1, startY + studentIdBoxSize - 1);
+            }
         }
+
+        ctx.font = `${10}px Arial`;
+        const columns = Math.ceil(questionCount / questionsPerColumn);
+        for (let i = 0; i < questionCount; i++) {
+            const row = i % questionsPerColumn;
+            const col = Math.floor(i / questionsPerColumn);
+            const questionX = questionsStartX + col * (columnSpacing + (optionCount * horizontalSpacingBetweenOptions + boxSize + optionOffsetX + 3));
+            const questionY = currentAnswerStartY + row * verticalSpacingBetweenQuestions;
+            ctx.fillText(`${i + 1}.`, questionX, questionY + boxSize / 2 + 2);
+
+            const optionsStartX = questionX + boxSize + optionOffsetX;
+            const options = ['A', 'B', 'C', 'D'];
+            for (let j = 0; j < optionCount && j < options.length; j++) {
+                const optionX = optionsStartX + j * horizontalSpacingBetweenOptions;
+                ctx.strokeRect(optionX, questionY, boxSize, boxSize);
+                ctx.fillText(options[j], optionX + 1, questionY + boxSize / 2 + 2);
+            }
+        }
+
+        ctx.fillStyle = "black";
+        ctx.fillRect(scaledMarkerMargin, offsetY + scaledMarkerMargin, scaledMarkerSize, scaledMarkerSize);
+        ctx.fillRect(sheetWidth - scaledMarkerMargin - scaledMarkerSize, offsetY + scaledMarkerMargin, scaledMarkerSize, scaledMarkerSize);
+        ctx.fillRect(scaledMarkerMargin, offsetY + sheetHeight / 2 - scaledMarkerMargin - scaledMarkerSize - (offsetY > 0 ? 2 : 0), scaledMarkerSize, scaledMarkerSize);
+        ctx.fillRect(sheetWidth - scaledMarkerMargin - scaledMarkerSize, offsetY + sheetHeight / 2 - scaledMarkerMargin - scaledMarkerSize - (offsetY > 0 ? 2 : 0), scaledMarkerSize, scaledMarkerSize);
+    };
+
+    drawAnswerSheetPart(0);
+    drawAnswerSheetPart(sheetHeight / 2);
+
+    ctx.strokeStyle = "#ccc";
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(0, sheetHeight / 2);
+    ctx.lineTo(sheetWidth, sheetHeight / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
 
         function showAnswerKeyInput() {
             const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
