@@ -48,7 +48,7 @@
             <button class="export-btn" id="exportImgBtn">导出答题卡为图片</button>
         </div>
         <div id="answerSheetContainer">
-            <canvas id="answerSheetCanvas" width="595" height="842"></canvas>
+            <canvas id="answerSheetCanvas" width="2480" height="3508"></canvas>
         </div>
         <div id="cameraContainer" class="hide">
             <video id="cameraPreview" autoplay style="width:100%; height:400px; background:#000;"></video>
@@ -93,26 +93,26 @@
 
         // 答题区域布局参数 (全局常量)
         const ANSWER_SHEET_CONFIG = {
-            sheetWidth: 595,
-            sheetHeight: 842,
-            nameY: 50, // Adjusted Y position
-            classY: 75, // Adjusted Y position
-            studentIdY: 100, // Adjusted Y position
-            instructionsY: 140, // Adjusted Y position
-            studentIdLabelY: 180, // Adjusted Y position
-            studentIdStartX: 30,
-            studentIdBoxSize: 10, // Further reduced size
-            studentIdBoxSpacing: 2, // Further reduced spacing
-            questionsStartX: 180, // Further adjusted start X
-            answerStartY: 30, // Adjusted start Y for questions
-            verticalSpacingBetweenQuestions: 18, // Further reduced vertical spacing
-            horizontalSpacingBetweenOptions: 18, // Further reduced horizontal spacing
-            boxSize: 10, // Further reduced box size
-            optionOffsetX: 6, // Further reduced offset
-            questionsPerColumn: 25,
-            columnSpacing: 60, // Significantly reduced column spacing
-            markerSize: 6, // Further reduced marker size
-            markerMargin: 2 // Further reduced marker margin
+            sheetWidth: 2480, // Width in pixels for export
+            sheetHeight: 3508, // Height in pixels for export
+            nameY: 150, // Increased Y
+            classY: 210, // Increased Y
+            studentIdY: 270, // Increased Y
+            instructionsY: 400, // Increased Y
+            studentIdLabelY: 520, // Increased Y
+            studentIdStartX: 100, // Increased start X
+            studentIdBoxSize: 30, // Increased box size
+            studentIdBoxSpacing: 10, // Increased spacing
+            questionsStartX: 150, // Adjusted start X for questions
+            answerStartY: 100, // Increased start Y for questions
+            verticalSpacingBetweenQuestions: 45, // Adjusted vertical spacing
+            horizontalSpacingBetweenOptions: 50, // Adjusted horizontal spacing
+            boxSize: 30, // Increased option box size
+            optionOffsetX: 20, // Increased offset
+            questionsPerColumn: 22, // 设置每列题目数不超过22个
+            columnSpacing: 30, // 降低列间距到30像素
+            markerSize: 25, // Increased marker size
+            markerMargin: 20 // Increased marker margin
         };
 
         // 选项是否被涂黑的阈值 (可根据实际情况调整)
@@ -165,56 +165,58 @@
                 const currentAnswerStartY = answerStartY + offsetY;
                 const currentMarkerMargin = markerMargin + offsetY;
 
-                ctx.font = "16px Arial"; // Slightly reduced font size for main title
-                ctx.fillText("答题卡模板", 20, 25 + offsetY);
+                ctx.font = "60px Arial";
+                ctx.fillText("答题卡模板", 100, 80 + offsetY);
 
-                ctx.font = "12px Arial"; // Reduced font size for personal info labels
-                ctx.fillText("姓名:", 20, currentNameY);
-                ctx.strokeRect(60, currentNameY - 10, 100, 15); // Reduced width of boxes
+                ctx.font = "48px Arial";
+                ctx.fillText("姓名:", 100, currentNameY);
+                ctx.strokeRect(300, currentNameY - 40, 600, 50);
 
-                ctx.fillText("班级:", 20, currentClassY);
-                ctx.strokeRect(60, currentClassY - 10, 100, 15); // Reduced width of boxes
+                ctx.fillText("班级:", 100, currentClassY);
+                ctx.strokeRect(300, currentClassY - 40, 600, 50);
 
-                ctx.fillText("学号:", 20, currentStudentIdY);
-                ctx.strokeRect(60, currentStudentIdY - 10, 100, 15); // Reduced width of boxes
+                ctx.fillText("学号:", 100, currentStudentIdY);
+                ctx.strokeRect(300, currentStudentIdY - 40, 600, 50);
 
-                ctx.font = "10px Arial"; // Reduced font size for instructions
-                ctx.fillText("注意事项:", 20, currentInstructionsY);
-                ctx.font = "9px Arial";
-                ctx.fillText("1. 用黑色中性笔涂黑对应选项", 30, currentInstructionsY + 12);
-                ctx.fillText("2. 答题卡保持平整清洁，不可弯折", 30, currentInstructionsY + 22);
-                ctx.fillText("3. 边角处请勿涂抹", 30, currentInstructionsY + 32);
+                ctx.font = "36px Arial";
+                ctx.fillText("注意事项:", 100, currentInstructionsY);
+                ctx.font = "30px Arial";
+                ctx.fillText("1. 用黑色中性笔涂黑对应选项", 150, currentInstructionsY + 50);
+                ctx.fillText("2. 答题卡保持平整清洁，不可弯折", 150, currentInstructionsY + 90);
+                ctx.fillText("3. 边角处请勿涂抹", 150, currentInstructionsY + 130);
 
-                ctx.font = "12px Arial"; // Reduced font size for student ID label
-                ctx.fillText("准考证号:", 20, currentStudentIdLabelY);
+                ctx.font = "48px Arial";
+                ctx.fillText("准考证号:", 100, currentStudentIdLabelY);
                 const digits = ['0','1','2','3','4','5','6','7','8','9'];
                 for (let i = 0; i < studentIdDigits; i++) {
                     const startX = studentIdStartX + i * (studentIdBoxSize + studentIdBoxSpacing);
                     for (let j = 0; j < digits.length; j++) {
-                        const startY = currentStudentIdLabelY + 8 + j * (studentIdBoxSize + studentIdBoxSpacing);
+                        const startY = currentStudentIdLabelY + 50 + j * (studentIdBoxSize + studentIdBoxSpacing);
                         ctx.strokeRect(startX, startY, studentIdBoxSize, studentIdBoxSize);
-                        ctx.font = "7px Arial"; // Further reduced font size
-                        ctx.fillText(digits[j], startX + 1, startY + studentIdBoxSize - 1);
+                        ctx.font = "24px Arial";
+                        ctx.fillText(digits[j], startX + 8, startY + studentIdBoxSize - 8);
                     }
                 }
 
                 // 绘制答题区域
-                ctx.font = "10px Arial"; // Reduced font size for question numbers and options
-                const columns = Math.ceil(questionCount / questionsPerColumn);
-                for (let i = 0; i < questionCount; i++) {
-                    const row = i % questionsPerColumn;
-                    const col = Math.floor(i / questionsPerColumn);
-                    const questionX = questionsStartX + col * (columnSpacing + (optionCount * horizontalSpacingBetweenOptions + boxSize + optionOffsetX + 3)); // Further adjusted horizontal spacing
+                ctx.font = "40px Arial";
+                const questionsPerHalf = Math.ceil(questionCount / 2);
+                const questionsPerColumnHalf = questionsPerColumn; // 每列题目数
+                const columnsHalf = Math.ceil(questionsPerHalf / questionsPerColumnHalf);
+                for (let i = 0; i < questionsPerHalf; i++) {
+                    const row = i % questionsPerColumnHalf;
+                    const col = Math.floor(i / questionsPerColumnHalf);
+                    const questionX = questionsStartX + col * (columnSpacing + (optionCount * horizontalSpacingBetweenOptions + boxSize + optionOffsetX + 30));
                     const questionY = currentAnswerStartY + row * verticalSpacingBetweenQuestions;
 
-                    ctx.fillText(`${i + 1}.`, questionX, questionY + boxSize / 2 + 2);
+                    ctx.fillText(`${i + 1}.`, questionX, questionY + boxSize / 2 + 15);
 
                     const optionsStartX = questionX + boxSize + optionOffsetX;
                     const options = ['A', 'B', 'C', 'D'];
                     for (let j = 0; j < optionCount && j < options.length; j++) {
                         const optionX = optionsStartX + j * horizontalSpacingBetweenOptions;
                         ctx.strokeRect(optionX, questionY, boxSize, boxSize);
-                        ctx.fillText(options[j], optionX + 1, questionY + boxSize / 2 + 2);
+                        ctx.fillText(options[j], optionX + 8, questionY + boxSize / 2 + 15);
                     }
                 }
 
@@ -231,7 +233,7 @@
 
             // 绘制裁剪线
             ctx.strokeStyle = "#ccc";
-            ctx.setLineDash([5, 5]);
+            ctx.setLineDash([10, 10]);
             ctx.beginPath();
             ctx.moveTo(0, sheetHeight / 2);
             ctx.lineTo(sheetWidth, sheetHeight / 2);
@@ -258,10 +260,8 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 const canvas = document.getElementById('answerSheetCanvas');
-                const imgData = canvas.toDataURL("image/png", 0.5);
-                doc.text("答题卡", doc.internal.pageSize.getWidth()/2-20, 20);
-                doc.addImage(imgData, 'PNG', 20, 30, 170, 260); // 调整高度以适应两份答题卡
-                doc.addImage(imgData, 'PNG', 20, 30 + 842 / 2, 170, 260); // 绘制第二份，调整 Y 坐标
+                const imgData = canvas.toDataURL("image/png", 1); // Use full quality
+                doc.addImage(imgData, 'PNG', 0, 0, doc.internal.pageSize.getWidth(), doc.internal.pageSize.getHeight());
                 doc.save("answer_sheet.pdf");
             } catch (error) {
                 console.error("导出 PDF 出错：", error);
@@ -271,18 +271,11 @@
 
         function exportAnswerSheetAsImage() {
             const canvas = document.getElementById('answerSheetCanvas');
-            canvas.width = 2480;
-            canvas.height = 3508;
-            generateAnswerSheet(); // Re-render with the new dimensions
             const imgData = canvas.toDataURL("image/png");
             const link = document.createElement('a');
             link.download = 'answer_sheet.png';
             link.href = imgData;
             link.click();
-            // Optionally, revert the canvas size after export if needed for display
-            // canvas.width = 595;
-            // canvas.height = 842;
-            // generateAnswerSheet();
         }
 
         function showCamera() {
