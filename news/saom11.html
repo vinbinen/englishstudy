@@ -266,9 +266,9 @@
     // 在高分辨率的 Canvas 上重新生成答题卡
     generateAnswerSheet();
 
-    const imgData = canvas.toDataURL("image/png");
+    const imgData = canvas.toDataURL("image/jpeg",0.8);
     const link = document.createElement('a');
-    link.download = 'answer_sheet.png';
+    link.download = 'answer_sheet.jpg';
     link.href = imgData;
     link.click();
 
