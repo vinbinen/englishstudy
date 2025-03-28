@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>答题卡扫描系统 - 固定模板版（优化后）</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; background: #f5f5f5; }
+    .container { max-width: 960px; margin: 0 auto; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    h1 { text-align: center; }
+    .config-panel, #answerSheetContainer, #cameraContainer, #results, #aggregate, .controls { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9; }
+    .config-panel input[type="number"], .config-panel button, .controls button { margin-right: 10px; padding: 8px 15px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
+    .config-panel button.export-btn { background-color: #5cb85c; color: white; border-color: #4cae4c; }
+    .config-panel button.export-btn:hover { background-color: #4cae4c; }
+    .controls button.start-btn { background-color: #007bff; color: white; border-color: #007bff; }
+    .controls button.start-btn:hover { background-color: #0056b3; }
+    .controls button.stop-btn { background-color: #dc3545; color: white; border-color: #dc3545; }
+    .controls button.stop-btn:hover { background-color: #c82333; }
+    #answerSheetContainer { display: none; text-align: center; }
+    #answerSheetCanvas { border: 1px solid #ccc; max-width: 100%; height: auto; }
+    #cameraContainer.hide, #results.hide, #aggregate.hide { display: none; }
+    #cameraContainer.fullscreen-camera { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: black; z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    #cameraContainer.fullscreen-camera video { max-width: 95%; max-height: 80%; }
+    #cameraOverlayResults { position: absolute; bottom: 10px; right: 10px; background-color: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px; z-index: 10; font-size: 0.9em; }
+    .score-display { font-size: 1.1em; font-weight: bold; margin-bottom: 5px; }
+    #overlayQuestionStats > div { margin-bottom: 3px; }
+    #questionStats { display: flex; flex-wrap: wrap; gap: 10px; }
+    .question-result { border: 1px solid #ccc; padding: 8px; border-radius: 4px; }
+    .aggregate-item { border: 1px solid #eee; padding: 8px; margin-right: 10px; margin-bottom: 10px; border-radius: 4px; background-color: #fff; }
+    .hide { display: none !important; }
+    /* 隐藏 video 元素 */
+    #cameraPreview.hide { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>答题卡扫描系统 - 固定模板版（优化后）</h1>
+    <div class="config-panel">
+      <input type="number" id="questionCount" placeholder="题目总数" value="100" min="1" max="200">
+      <input type="number" id="optionCount" placeholder="每题选项数" value="4" min="2" max="10">
+      <input type="number" id="studentIdDigits" placeholder="准考证号位数" value="10" min="1" max="20">
+      <input type="number" id="scorePerQuestion" placeholder="每题分值" value="1" min="1">
+      <button id="generateBtn">生成答题卡</button>
+      <button id="setAnswerKeyBtn">输入标准答案</button>
+      <button class="export-btn" id="exportImgBtn">导出答题卡为图片</button>
+    </div>
+    <div id="answerSheetContainer">
+      <canvas id="answerSheetCanvas" width="595" height="842"></canvas>
+    </div>
+    <div id="cameraContainer" class="hide">
+      <!-- 原始视频隐藏，仅显示经过WebWorker处理后的画布 -->
+      <video id="cameraPreview" autoplay class="hide" style="width:100%; height:400px; background:#000;"></video>
+      <canvas id="captureCanvas" width="640" height="480"></canvas>
+      <canvas id="binaryCanvas" width="640" height="480" class="hide"></canvas>
+      <div class="controls">
+        <button class="start-btn" id="startCameraBtn">开启摄像头</button>
+        <button class="stop-btn" id="stopCameraBtn">关闭摄像头</button>
+        <button id="toggleFullscreenBtn">全屏显示</button>
+      </div>
+      <div id="cameraOverlayResults" style="display: none;">
+        <div class="score-display">总分: <span id="overlayTotalScore">0</span></div>
+        <div id="overlayQuestionStats" style="font-size: 0.8em;"></div>
+      </div>
+    </div>
+    <div id="results" class="hide">
+      <div class="score-display">单份总分: <span id="totalScore">0</span></div>
+      <div id="questionStats"></div>
+      <button id="saveResultBtn">保存此份成绩</button>
+    </div>
+    <div id="aggregate" class="hide">
+      <h3>各题正确率统计</h3>
+      <div id="aggregateStats"></div>
+      <button id="hideAggregateBtn">关闭统计</button>
+    </div>
+    <div class="controls">
+      <button id="showCameraBtn">切换到摄像头</button>
+      <button id="showAggregateBtn">显示所有答题卡统计</button>
+    </div>
+  </div>
+  
+  <!-- 浮动调试消息 -->
+  <div id="floatingMessageContainer" style="position: fixed; bottom: 20px; left: 20px; z-index: 1001;"></div>
+  
+  <!-- 引入 OpenCV.js -->
+  <script async src="https://docs.opencv.org/4.5.3/opencv.js" onload="onOpenCvReady();"></script>
+  
+  <script>
+    "use strict";
+    // 全局配置参数
+    const APP_CONFIG = {
+      processing: {
+        fps: 15,
+        resolution: { width: 640, height: 480 },
+        adaptiveThreshold: { blockSize: 11, C: 2 },
+        morphology: { kernelSize: 3, iterations: 2 },
+        optionThreshold: 0.6
+      },
+      answerSheet: {
+        sheetWidth: 595,
+        sheetHeight: 842,
+        nameY: 50,
+        classY: 75,
+        studentIdY: 100,
+        instructionsY: 140,
+        studentIdLabelY: 190,
+        studentIdStartX: 30,
+        studentIdBoxSize: 10,
+        studentIdBoxSpacing: 2,
+        questionsStartX: 180,
+        answerStartY: 30,
+        verticalSpacingBetweenQuestions: 18,
+        horizontalSpacingBetweenOptions: 18,
+        boxSize: 10,
+        optionOffsetX: 6,
+        questionsPerColumn: 22,
+        columnSpacing: 12,
+        markerSize: 6,
+        markerMargin: 10
+      }
+    };
+    
+    // 模块化状态管理
+    class AppState {
+      constructor() {
+        this.answerKey = [];
+        this.studentAnswers = [];
+        this.allStudentResults = [];
+        this.cameraActive = false;
+        this.processingStats = { frameCount: 0, avgProcessingTime: 0 };
+      }
+      updateProcessingTime(time) {
+        this.processingStats.frameCount++;
+        this.processingStats.avgProcessingTime =
+          (this.processingStats.avgProcessingTime * (this.processingStats.frameCount - 1) + time)
+          / this.processingStats.frameCount;
+      }
+    }
+    const appState = new AppState();
+    
+    // 图像处理器（利用Web Worker加速）
+    class ImageProcessor {
+      constructor() {
+        this.isProcessing = false;
+        // worker脚本需单独部署为 image-processor.js（见下文）
+        this.worker = new Worker('image-processor.js');
+      }
+      process(frame) {
+        if (this.isProcessing) return Promise.resolve(null);
+        this.isProcessing = true;
+        return new Promise((resolve) => {
+          this.worker.onmessage = (e) => {
+            this.isProcessing = false;
+            resolve(e.data);
+          };
+          this.worker.postMessage({ imageData: frame, config: APP_CONFIG.processing });
+        });
+      }
+    }
+    const imageProcessor = new ImageProcessor();
+    
+    // 摄像头控制器，封装启动、帧捕获、处理及UI更新
+    class CameraController {
+      constructor() {
+        this.videoElement = document.getElementById('cameraPreview');
+        this.stream = null;
+      }
+      async start() {
+        try {
+          this.stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "environment" }
+          });
+          this.videoElement.srcObject = this.stream;
+          await this.videoElement.play();
+          appState.cameraActive = true;
+          this.startProcessingLoop();
+        } catch (error) {
+          console.error("摄像头启动失败:", error);
+          alert('摄像头访问失败，请检查权限');
+        }
+      }
+      startProcessingLoop() {
+        const processFrame = async () => {
+          if (!appState.cameraActive) return;
+          const startTime = performance.now();
+          const frame = this.captureFrame();
+          // 通过worker处理图像，得到透视变换后的ROI及轮廓信息
+          const results = await imageProcessor.process(frame);
+          if (results && results.processedImageData) {
+            this.updateCanvas(results.processedImageData);
+          }
+          appState.updateProcessingTime(performance.now() - startTime);
+          requestAnimationFrame(processFrame);
+        };
+        processFrame();
+      }
+      captureFrame() {
+        const canvas = document.createElement('canvas');
+        canvas.width = APP_CONFIG.processing.resolution.width;
+        canvas.height = APP_CONFIG.processing.resolution.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(this.videoElement, 0, 0, canvas.width, canvas.height);
+        return ctx.getImageData(0, 0, canvas.width, canvas.height);
+      }
+      updateCanvas(imageData) {
+        const canvas = document.getElementById('captureCanvas');
+        const ctx = canvas.getContext('2d');
+        // 更新处理结果（例如：覆盖高亮结果可在worker中返回检测结果后绘制）
+        ctx.putImageData(imageData, 0, 0);
+      }
+      stop() {
+        if (this.stream) {
+          this.stream.getTracks().forEach(track => track.stop());
+          this.stream = null;
+          appState.cameraActive = false;
+        }
+        this.videoElement.srcObject = null;
+      }
+    }
+    const cameraController = new CameraController();
+    
+    // 答题卡生成与绘制（基于固定模板）
+    function generateAnswerSheet() {
+      const questionCount = parseInt(document.getElementById('questionCount').value);
+      const optionCount = parseInt(document.getElementById('optionCount').value);
+      const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value);
+      const cfg = APP_CONFIG.answerSheet;
+      const canvas = document.getElementById('answerSheetCanvas');
+      const ctx = canvas.getContext('2d');
+      const scaleX = canvas.width / cfg.sheetWidth;
+      const scaleY = canvas.height / cfg.sheetHeight;
+      ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+      ctx.clearRect(0, 0, cfg.sheetWidth, cfg.sheetHeight);
+      
+      function drawPart(offsetY = 0) {
+        const currentNameY = cfg.nameY + offsetY;
+        const currentClassY = cfg.classY + offsetY;
+        const currentStudentIdY = cfg.studentIdY + offsetY;
+        const currentInstructionsY = cfg.instructionsY + offsetY;
+        const currentStudentIdLabelY = cfg.studentIdLabelY + offsetY;
+        const currentAnswerStartY = cfg.answerStartY + offsetY;
+        ctx.font = "16px Arial";
+        ctx.fillText("答题卡模板", 20, 25 + offsetY);
+        ctx.font = "12px Arial";
+        ctx.fillText("姓名:", 20, currentNameY);
+        ctx.strokeRect(60, currentNameY - 10, 100, 15);
+        ctx.fillText("班级:", 20, currentClassY);
+        ctx.strokeRect(60, currentClassY - 10, 100, 15);
+        ctx.fillText("学号:", 20, currentStudentIdY);
+        ctx.strokeRect(60, currentStudentIdY - 10, 100, 15);
+        ctx.font = "10px Arial";
+        ctx.fillText("注意事项:", 20, currentInstructionsY);
+        ctx.font = "9px Arial";
+        ctx.fillText("1. 用黑色中性笔涂黑对应选项", 30, currentInstructionsY + 12);
+        ctx.fillText("2. 答题卡保持平整清洁，不可弯折", 30, currentInstructionsY + 22);
+        ctx.fillText("3. 边角处请勿涂抹", 30, currentInstructionsY + 32);
+        ctx.font = "12px Arial";
+        ctx.fillText("准考证号:", 20, currentStudentIdLabelY);
+        const digits = "0123456789".split("");
+        for (let i = 0; i < studentIdDigits; i++) {
+          const startX = cfg.studentIdStartX + i * (cfg.studentIdBoxSize + cfg.studentIdBoxSpacing);
+          for (let j = 0; j < digits.length; j++) {
+            const startY = currentStudentIdLabelY + 8 + j * (cfg.studentIdBoxSize + cfg.studentIdBoxSpacing);
+            ctx.strokeRect(startX, startY, cfg.studentIdBoxSize, cfg.studentIdBoxSize);
+            ctx.font = "7px Arial";
+            ctx.fillText(digits[j], startX + 1, startY + cfg.studentIdBoxSize - 1);
+          }
+        }
+        ctx.font = "10px Arial";
+        const columns = Math.ceil(questionCount / cfg.questionsPerColumn);
+        for (let i = 0; i < questionCount; i++) {
+          const row = i % cfg.questionsPerColumn;
+          const col = Math.floor(i / cfg.questionsPerColumn);
+          const questionX = cfg.questionsStartX + col * (cfg.columnSpacing + (optionCount * cfg.horizontalSpacingBetweenOptions + cfg.boxSize + cfg.optionOffsetX + 3));
+          const questionY = currentAnswerStartY + row * cfg.verticalSpacingBetweenQuestions;
+          ctx.fillText((i + 1) + ".", questionX, questionY + cfg.boxSize / 2 + 2);
+          const optionsStartX = questionX + cfg.boxSize + cfg.optionOffsetX;
+          const options = ['A','B','C','D'];
+          for (let j = 0; j < optionCount && j < options.length; j++) {
+            const optionX = optionsStartX + j * cfg.horizontalSpacingBetweenOptions;
+            ctx.strokeRect(optionX, questionY, cfg.boxSize, cfg.boxSize);
+            ctx.fillText(options[j], optionX + 1, questionY + cfg.boxSize / 2 + 2);
+          }
+        }
+        // 左上、右上、左中、右中四个定位标记
+        ctx.fillStyle = "black";
+        ctx.fillRect(cfg.markerMargin, offsetY + cfg.markerMargin, cfg.markerSize, cfg.markerSize);
+        ctx.fillRect(cfg.sheetWidth - cfg.markerMargin - cfg.markerSize, offsetY + cfg.markerMargin, cfg.markerSize, cfg.markerSize);
+        ctx.fillRect(cfg.markerMargin, offsetY + cfg.sheetHeight / 2 - cfg.markerMargin - cfg.markerSize + 10, cfg.markerSize, cfg.markerSize);
+        ctx.fillRect(cfg.sheetWidth - cfg.markerMargin - cfg.markerSize, offsetY + cfg.sheetHeight / 2 - cfg.markerMargin - cfg.markerSize + 10, cfg.markerSize, cfg.markerSize);
+      }
+      
+      drawPart(0);
+      drawPart(cfg.sheetHeight / 2);
+      // 绘制分割虚线
+      ctx.strokeStyle = "#ccc";
+      ctx.setLineDash([5,5]);
+      ctx.beginPath();
+      ctx.moveTo(0, cfg.sheetHeight / 2);
+      ctx.lineTo(cfg.sheetWidth, cfg.sheetHeight / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      document.getElementById('answerSheetContainer').style.display = 'block';
+      document.getElementById('cameraContainer').classList.add('hide');
+      document.getElementById('results').classList.add('hide');
+      document.getElementById('aggregate').classList.add('hide');
+    }
+    
+    // 标准答案输入
+    function showAnswerKeyInput() {
+      const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+      const input = prompt(`请输入标准答案（例如：A,B,C,...，共${questionCount}题）：`);
+      if (input) {
+        appState.answerKey = input.toUpperCase().split(',').slice(0, questionCount);
+        showFloatingMessage("标准答案已设置");
+      }
+    }
+    
+    // 导出答题卡图片（高清版）
+    function exportAnswerSheetAsImage() {
+      const canvas = document.getElementById('answerSheetCanvas');
+      const originalWidth = canvas.width, originalHeight = canvas.height;
+      canvas.width = 2480;
+      canvas.height = 3508;
+      generateAnswerSheet();
+      const imgData = canvas.toDataURL("image/png");
+      const link = document.createElement('a');
+      link.download = 'answer_sheet.png';
+      link.href = imgData;
+      link.click();
+      canvas.width = originalWidth;
+      canvas.height = originalHeight;
+      generateAnswerSheet();
+    }
+    
+    // 显示/隐藏摄像头区域、聚合统计
+    function showCamera() {
+      document.getElementById('cameraContainer').classList.remove('hide');
+    }
+    function displayAggregateStats() {
+      if (appState.allStudentResults.length === 0) {
+        alert('尚未保存任何扫描结果');
+        return;
+      }
+      const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+      const stats = Array(questionCount).fill(0);
+      appState.allStudentResults.forEach(result => {
+        result.answers.forEach((ans, index) => {
+          if (ans === appState.answerKey[index]) stats[index]++;
+        });
+      });
+      const aggregateContainer = document.getElementById('aggregateStats');
+      aggregateContainer.innerHTML = '';
+      for (let i = 0; i < questionCount; i++) {
+        const correctCount = stats[i];
+        const rate = ((correctCount / appState.allStudentResults.length) * 100).toFixed(1);
+        const div = document.createElement('div');
+        div.className = 'aggregate-item';
+        div.innerHTML = `Q${i+1}: ${rate}% (${correctCount}/${appState.allStudentResults.length})`;
+        aggregateContainer.appendChild(div);
+      }
+      document.getElementById('aggregate').classList.remove('hide');
+    }
+    function hideAggregateStats() {
+      document.getElementById('aggregate').classList.add('hide');
+    }
+    
+    // 保存当前扫描结果并显示调试信息
+    function calculateScore() {
+      if (appState.answerKey.length === 0) {
+        showFloatingMessage("请先设置标准答案");
+        return;
+      }
+      const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 1;
+      let totalScore = 0;
+      const stats = [];
+      appState.studentAnswers.forEach((item, index) => {
+        const selected = item.answer || '未作答';
+        const isCorrect = selected === appState.answerKey[index];
+        if (isCorrect) totalScore += scorePerQuestion;
+        stats.push({ question: index + 1, correct: isCorrect, selected: selected, correctAnswer: appState.answerKey[index] });
+      });
+      document.getElementById('overlayTotalScore').textContent = totalScore;
+      const overlayStats = document.getElementById('overlayQuestionStats');
+      overlayStats.innerHTML = '';
+      stats.forEach(item => {
+        const div = document.createElement('div');
+        div.textContent = `Q${item.question}: ${item.selected} ${item.correct ? '✓' : '✗'}`;
+        overlayStats.appendChild(div);
+      });
+      document.getElementById('results').classList.add('hide');
+    }
+    function saveCurrentResult() {
+      if (!appState.studentAnswers.length) {
+        alert('无有效扫描结果');
+        return;
+      }
+      const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 1;
+      let totalScore = 0;
+      const answers = appState.studentAnswers.map((item, index) => {
+        const selected = item.answer || '未作答';
+        if (selected === appState.answerKey[index]) totalScore += scorePerQuestion;
+        return selected;
+      });
+      appState.allStudentResults.push({ answers, totalScore });
+      showFloatingMessage(`成绩已保存，目前累计 ${appState.allStudentResults.length} 份答题卡`);
+    }
+    
+    // 浮动消息（用于调试及状态提示）
+    function showFloatingMessage(message) {
+      const container = document.getElementById('floatingMessageContainer');
+      const div = document.createElement('div');
+      div.textContent = message;
+      div.style.cssText = "background: rgba(0,0,0,0.7); color: #fff; padding: 10px 15px; border-radius: 5px; margin-bottom:10px; opacity:1; transition: opacity 0.5s;";
+      container.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = "0";
+        setTimeout(() => { container.removeChild(div); }, 500);
+      }, 3000);
+    }
+    
+    // 等待 OpenCV 加载完成
+    function waitForOpenCV() {
+      return new Promise(resolve => {
+        if (typeof cv !== 'undefined' && cv.Mat) resolve();
+        else setTimeout(() => waitForOpenCV().then(resolve), 100);
+      });
+    }
+    
+    // 切换全屏模式
+    function toggleFullscreen() {
+      const container = document.querySelector('.container');
+      const camContainer = document.getElementById('cameraContainer');
+      if (camContainer.classList.contains('fullscreen-camera')) {
+        camContainer.classList.remove('fullscreen-camera');
+        container.classList.remove('hide-others');
+        document.body.style.overflow = 'auto';
+      } else {
+        camContainer.classList.add('fullscreen-camera');
+        container.classList.add('hide-others');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+    
+    // 入口：DOM加载后初始化事件监听
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('您的浏览器不支持摄像头功能');
+      }
+      document.getElementById('generateBtn').addEventListener('click', generateAnswerSheet);
+      document.getElementById('setAnswerKeyBtn').addEventListener('click', showAnswerKeyInput);
+      document.getElementById('exportImgBtn').addEventListener('click', exportAnswerSheetAsImage);
+      document.getElementById('startCameraBtn').addEventListener('click', async () => {
+        await waitForOpenCV();
+        cameraController.start();
+      });
+      document.getElementById('stopCameraBtn').addEventListener('click', () => cameraController.stop());
+      document.getElementById('saveResultBtn').addEventListener('click', saveCurrentResult);
+      document.getElementById('showCameraBtn').addEventListener('click', showCamera);
+      document.getElementById('showAggregateBtn').addEventListener('click', displayAggregateStats);
+      document.getElementById('hideAggregateBtn').addEventListener('click', hideAggregateStats);
+      document.getElementById('toggleFullscreenBtn').addEventListener('click', toggleFullscreen);
+      generateAnswerSheet();
+    });
+  </script>
+</body>
+</html>
