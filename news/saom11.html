@@ -474,86 +474,72 @@
         showFloatingMessage("图像处理失败，请重试！");
     }
 }
-
         function processOptions(processedImage) {
-            const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-            const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
-            studentAnswers = Array.from({ length: questionCount }, () => ({ answer: null, score: 0 }));
-            const { questionsStartX, answerStartY, verticalSpacingBetweenQuestions, horizontalSpacingBetweenOptions, boxSize, optionOffsetX, questionsPerColumn, columnSpacing } = ANSWER_SHEET_CONFIG;
-            const options = ['A', 'B', 'C', 'D'];
-            let gray = new cv.Mat();
-            cv.cvtColor(processedImage, gray, cv.COLOR_RGBA2GRAY, 0);
-            let binary = new cv.Mat();
-            cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
-            cv.imshow('binaryCanvas', binary);
-            document.getElementById('binaryCanvas').classList.remove('hide');
-            for (let i = 0; i < questionCount; i++) {
-                const row = i % questionsPerColumn;
-                const col = Math.floor(i / questionsPerColumn);
-                const questionX = questionsStartX + col * (columnSpacing + (optionCount * horizontalSpacingBetweenOptions + boxSize + optionOffsetX + 3));
-                const questionY = answerStartY + row * verticalSpacingBetweenQuestions;
-                let detected = null, maxBlackRatio = 0;
-                const optionsStartX = questionX + boxSize + optionOffsetX;
+    const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+    const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
+    studentAnswers = Array.from({ length: questionCount }, () => ({ answer: null, score: 0 }));
+    const { questionsStartX, answerStartY, verticalSpacingBetweenQuestions, horizontalSpacingBetweenOptions, boxSize, optionOffsetX, questionsPerColumn, columnSpacing } = ANSWER_SHEET_CONFIG;
+    const options = ['A', 'B', 'C', 'D'];
+    let gray = new cv.Mat();
+    cv.cvtColor(processedImage, gray, cv.COLOR_RGBA2GRAY, 0);
+    let binary = new cv.Mat();
+    cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
+    cv.imshow('binaryCanvas', binary);
+    document.getElementById('binaryCanvas').classList.remove('hide');
 
-                for (let j = 0; j < optionCount && j < options.length; j++) {
-                    const optionX = optionsStartX + j * horizontalSpacingBetweenOptions;
-                    let roi = binary.roi(new cv.Rect(optionX, questionY, boxSize, boxSize));
-                    const total = roi.cols * roi.rows;
-                    const count = cv.countNonZero(roi);
-                    roi.delete();
-                    const ratio = count / total;
-                    if (ratio > maxBlackRatio && ratio > OPTION_THRESHOLD) {
-                        maxBlackRatio = ratio;
-                        detected = j;
-                    }
-                }
-                if (detected !== null) {
-                    studentAnswers[i] = { answer: options[detected], score: maxBlackRatio };
-                }
+    const captureCanvas = document.getElementById('captureCanvas');
+    const captureCtx = captureCanvas.getContext('2d');
+    captureCtx.lineWidth = 2; // 设置边框粗细
+
+    for (let i = 0; i < questionCount; i++) {
+        const row = i % questionsPerColumn;
+        const col = Math.floor(i / questionsPerColumn);
+        const questionX = questionsStartX + col * (columnSpacing + (optionCount * horizontalSpacingBetweenOptions + boxSize + optionOffsetX + 3));
+        const questionY = answerStartY + row * verticalSpacingBetweenQuestions;
+        let detected = null, maxBlackRatio = 0;
+        const optionsStartX = questionX + boxSize + optionOffsetX;
+
+        for (let j = 0; j < optionCount && j < options.length; j++) {
+            const optionX = optionsStartX + j * horizontalSpacingBetweenOptions;
+            let roi = binary.roi(new cv.Rect(optionX, questionY, boxSize, boxSize));
+            const total = roi.cols * roi.rows;
+            const count = cv.countNonZero(roi);
+            roi.delete();
+            const ratio = count / total;
+            if (ratio > maxBlackRatio && ratio > OPTION_THRESHOLD) {
+                maxBlackRatio = ratio;
+                detected = j;
             }
-
-            // 在 processedImage 上绘制识别结果
-            let color = new cv.Scalar(0, 255, 0, 255);
-            // 默认绿色
-            let thickness = 2;
-            for (let i = 0; i < questionCount; i++) {
-                const row = i % questionsPerColumn;
-                const col = Math.floor(i / questionsPerColumn);
-                const questionX = questionsStartX + col * (columnSpacing + (optionCount * horizontalSpacingBetweenOptions + boxSize + optionOffsetX + 3));
-                const questionY = answerStartY + row * verticalSpacingBetweenQuestions;
-                const optionsStartX = questionX + boxSize + optionOffsetX;
-                for (let j = 0; j < optionCount && j < options.length; j++) {
-                    const optionX = optionsStartX + j * horizontalSpacingBetweenOptions;
-                    let pt1 = new cv.Point(optionX, questionY);
-                    let pt2 = new cv.Point(optionX + boxSize, questionY + boxSize);
-
-                    const selectedOption = studentAnswers[i].answer;
-                    const currentOption = options[j];
-
-                    if (selectedOption === currentOption) {
-                        if (answerKey[i] && selectedOption === answerKey[i]) {
-                            processedImage.roi(new cv.Rect(optionX, questionY, boxSize, boxSize)).setTo(new cv.Scalar(0, 255, 0, 255));
-                            // 填充绿色
-                        } else if (answerKey[i] && selectedOption !== answerKey[i]) {
-                            processedImage.roi(new cv.Rect(optionX, questionY, boxSize, boxSize)).setTo(new cv.Scalar(255, 0, 0, 255));
-                            // 填充红色
-                        } else {
-                            cv.rectangle(processedImage, pt1, pt2, color, thickness, cv.LINE_8, 0);
-                            // 只画框
-                        }
-                    } else {
-                        cv.rectangle(processedImage, pt1, pt2, color, 1, cv.LINE_8, 0);
-                        // 画出所有选项的框
-                    }
-                }
-            }
-
-            cv.imshow('captureCanvas', processedImage);
-            // 显示带有识别结果的图像
-
-            binary.delete();
-            gray.delete();
         }
+        if (detected !== null) {
+            studentAnswers[i] = { answer: options[detected], score: maxBlackRatio };
+
+            // 在 captureCanvas 上绘制选框
+            const optionXOverlay = optionsStartX + detected * horizontalSpacingBetweenOptions;
+            captureCtx.beginPath();
+            captureCtx.rect(optionXOverlay, questionY, boxSize, boxSize);
+
+            if (answerKey[i]) {
+                if (options[detected] === answerKey[i]) {
+                    captureCtx.strokeStyle = 'green'; // 答案正确，绿色边框
+                } else {
+                    captureCtx.strokeStyle = 'red'; // 答案错误，红色边框
+                }
+                captureCtx.stroke();
+            } else {
+                captureCtx.strokeStyle = 'blue'; // 未设置答案时，蓝色边框
+                captureCtx.stroke();
+            }
+        }
+    }
+
+    cv.imshow('captureCanvas', processedImage); // 这里仍然显示处理后的图像，选框会覆盖在上面
+
+    binary.delete();
+    gray.delete();
+}
+
+        
 
         function calculateScore() {
             if (answerKey.length === 0) {
