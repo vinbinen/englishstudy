@@ -253,24 +253,36 @@
             }
         }
 
+        
+
         function exportAnswerSheetAsImage() {
-            const canvas = document.getElementById('answerSheetCanvas');
-            // 先设置高分辨率
-            const originalWidth = canvas.width;
-            const originalHeight = canvas.height;
-            canvas.width = 2480;
-            canvas.height = 3508;
-            generateAnswerSheet(); // Re-render with the new dimensions
-            const imgData = canvas.toDataURL("image/png");
-            const link = document.createElement('a');
-            link.download = 'answer_sheet.png';
-            link.href = imgData;
-            link.click();
-            // 导出后恢复 Canvas 尺寸
-            canvas.width = originalWidth;
-            canvas.height = originalHeight;
-            generateAnswerSheet(); // 再次使用原始尺寸重新渲染
-        }
+    const canvas = document.getElementById('answerSheetCanvas');
+    // 先设置高分辨率哈哈
+    const originalWidth = canvas.width;
+    const originalHeight = canvas.height;
+    console.log("导出前原始尺寸:", originalWidth, originalHeight); // 调试信息
+
+    canvas.width = 2480;
+    canvas.height = 3508;
+    console.log("设置高分辨率后尺寸:", canvas.width, canvas.height); // 调试信息
+
+    generateAnswerSheet(); // Re-render with the new dimensions
+    console.log("重新生成答题卡后尺寸:", canvas.width, canvas.height); // 调试信息
+
+    const imgData = canvas.toDataURL("image/png");
+    console.log("获取到 ImageData，长度:", imgData.length); // 调试信息
+
+    const link = document.createElement('a');
+    link.download = 'answer_sheet.png';
+    link.href = imgData;
+    link.click();
+
+    // 导出后恢复 Canvas 尺寸
+    canvas.width = originalWidth;
+    canvas.height = originalHeight;
+    generateAnswerSheet(); // 再次使用原始尺寸重新渲染
+    console.log("恢复原始尺寸后:", canvas.width, canvas.height); // 调试信息
+}
 
         function showCamera() {
             document.getElementById('cameraContainer').classList.remove('hide');
