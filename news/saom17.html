@@ -502,7 +502,7 @@
             video.classList.remove('hide');
             document.getElementById('cameraContainer').classList.remove('hide');
             document.getElementById('cameraOverlayResults').style.display = 'block';
-            await waitForOpenCV();
+            await waitForOpenCv();
             debugLog("Camera started.");
         } catch (err) {
             alert(`Camera start failed: ${err.message}`);
@@ -728,13 +728,13 @@
 
             const resultDiv = document.createElement('div');
             resultDiv.classList.add('question-result');
-            resultDiv.textContent = `${index + 1}: <span class="math-inline">\{ans\.answer \|\| '\-'\} \(</span>{isCorrect ? 'Correct' : 'Incorrect'})`;
+            resultDiv.innerHTML = `${index + 1}: ${ans.answer || '-'} (${isCorrect ? 'Correct' : 'Incorrect'})`;
             resultDiv.style.backgroundColor = isCorrect ? '#d4edda' : '#f8d7da';
             resultDiv.style.borderColor = isCorrect ? '#c3e6cb' : '#f5c6cb';
             questionStatsDiv.appendChild(resultDiv);
 
             const overlayResultDiv = document.createElement('div');
-            overlayResultDiv.textContent = `${index + 1}: <span class="math-inline">\{ans\.answer \|\| '\-'\} \(</span>{isCorrect ? 'OK' : 'X'})`;
+            overlayResultDiv.innerHTML = `${index + 1}: ${ans.answer || '-'} (${isCorrect ? 'OK' : 'X'})`;
           overlayQuestionStatsDiv.appendChild(overlayResultDiv);
         });
 
