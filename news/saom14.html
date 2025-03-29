@@ -1,23 +1,23 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>智能答题卡扫描系统</title>
+  <title>Reliable Answer Sheet Scanner</title>
   <style>
     body { font-family: sans-serif; margin: 20px; }
     .container { max-width: 960px; margin: 0 auto; }
     h1 { text-align: center; }
-    .config-panel, #answerSheetContainer, #cameraContainer, #results, #aggregate, .controls { 
-      margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9; 
+    .config-panel, #answerSheetContainer, #cameraContainer, #results, #aggregate, .controls {
+      margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;
     }
-    .config-panel input[type="number"], 
-    .config-panel button, 
-    .controls button, 
-    .scan-save-btn, 
-    .stats-btn, 
-    .export-btn { 
-      margin-right: 10px; padding: 8px 15px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; 
+    .config-panel input[type="number"],
+    .config-panel button,
+    .controls button,
+    .scan-save-btn,
+    .stats-btn,
+    .export-btn {
+      margin-right: 10px; padding: 8px 15px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;
     }
     .export-btn { background-color: #5cb85c; color: white; border-color: #4cae4c; }
     .export-btn:hover { background-color: #4cae4c; }
@@ -44,81 +44,80 @@
     .question-result { border: 1px solid #ccc; padding: 8px; border-radius: 4px; }
     .aggregate-item { border: 1px solid #eee; padding: 8px; margin-right: 10px; margin-bottom: 10px; border-radius: 4px; background-color: #fff; }
     .hide { display: none !important; }
-    /* Remove video hide rules so live feed is visible */
+    /* Ensure live feed is visible */
     #cameraPreview { width: 100%; height: 400px; background: #000; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>智能答题卡扫描系统</h1>
+    <h1>Reliable Answer Sheet Scanner</h1>
     <div class="config-panel">
-      <input type="number" id="questionCount" placeholder="题目总数" value="100" min="1" max="200">
-      <input type="number" id="optionCount" placeholder="每题选项数" value="4" min="2" max="10">
-      <input type="number" id="studentIdDigits" placeholder="准考证号位数" value="10" min="1" max="20">
-      <input type="number" id="scorePerQuestion" placeholder="每题分值" value="1" min="1">
-      <button id="generateBtn">生成答题卡</button>
-      <button id="setAnswerKeyBtn">输入标准答案</button>
-      <button class="export-btn" id="exportImgBtn">导出答题卡为图片</button>
+      <input type="number" id="questionCount" placeholder="Total Questions" value="100" min="1" max="200">
+      <input type="number" id="optionCount" placeholder="Options per Question" value="4" min="2" max="10">
+      <input type="number" id="studentIdDigits" placeholder="Student ID Digits" value="10" min="1" max="20">
+      <input type="number" id="scorePerQuestion" placeholder="Score per Question" value="1" min="1">
+      <button id="generateBtn">Generate Answer Sheet</button>
+      <button id="setAnswerKeyBtn">Set Answer Key</button>
+      <button class="export-btn" id="exportImgBtn">Export Sheet Image</button>
     </div>
     <div id="answerSheetContainer">
       <canvas id="answerSheetCanvas" width="595" height="842"></canvas>
     </div>
     <div id="cameraContainer" class="hide">
-      <!-- 显示 live feed video -->
       <video id="cameraPreview" autoplay></video>
       <canvas id="captureCanvas" width="640" height="480"></canvas>
       <canvas id="binaryCanvas" width="640" height="480" class="hide"></canvas>
       <div class="controls">
-        <button class="start-btn" id="startCameraBtn">开启摄像头</button>
-        <button class="stop-btn" id="stopCameraBtn">关闭摄像头</button>
-        <button id="capturePhotoBtn">拍照扫描</button>
-        <button id="toggleFullscreenBtn">全屏显示</button>
+        <button class="start-btn" id="startCameraBtn">Start Camera</button>
+        <button class="stop-btn" id="stopCameraBtn">Stop Camera</button>
+        <button id="capturePhotoBtn">Capture & Scan</button>
+        <button id="toggleFullscreenBtn">Toggle Fullscreen</button>
       </div>
       <div id="cameraOverlayResults" style="display: none;">
-        <div class="score-display">总分: <span id="overlayTotalScore">0</span></div>
+        <div class="score-display">Total Score: <span id="overlayTotalScore">0</span></div>
         <div id="overlayQuestionStats"></div>
       </div>
     </div>
     <div id="results" class="hide">
-      <div class="score-display">单份总分: <span id="totalScore">0</span></div>
+      <div class="score-display">Score: <span id="totalScore">0</span></div>
       <div id="questionStats"></div>
-      <button class="scan-save-btn" id="saveResultBtn">保存此份成绩</button>
+      <button class="scan-save-btn" id="saveResultBtn">Save Result</button>
     </div>
     <div id="aggregate" class="hide">
-      <h3>各题正确率统计</h3>
+      <h3>Aggregate Statistics</h3>
       <div id="aggregateStats"></div>
-      <button class="stats-btn" id="hideAggregateBtn">关闭统计</button>
+      <button class="stats-btn" id="hideAggregateBtn">Close Stats</button>
     </div>
     <div class="controls">
-      <button id="showCameraBtn">切换到摄像头</button>
-      <button id="showAggregateBtn">显示所有答题卡统计</button>
+      <button id="showCameraBtn">Show Camera</button>
+      <button id="showAggregateBtn">Show All Results</button>
     </div>
   </div>
 
-  <!-- 可选的浮动消息容器 -->
+  <!-- Floating message container for debugging/info -->
   <div id="floatingMessageContainer" style="position: fixed; bottom: 20px; left: 20px; z-index: 1001;"></div>
 
   <!-- OpenCV.js -->
   <script async src="https://docs.opencv.org/4.5.3/opencv.js" onload="onOpenCvReady();"></script>
   <script>
     "use strict";
-    // Enable debug logging if needed
+    // Enable debug logs for testing (set to false when deploying)
     const debugMode = true;
-    function debugLog(message) {
+    function debugLog(msg) {
       if (debugMode) {
-        console.log("[DEBUG]", message);
-        showFloatingMessage(message);
+        console.log("[DEBUG]", msg);
+        showFloatingMessage(msg);
       }
     }
 
     let videoStream = null;
     let isCameraActive = false;
-    let answerKey = [];    // Standard answer array
-    let studentAnswers = [];  // Scanned answers from photo
+    let answerKey = [];         // Array of correct answers
+    let studentAnswers = [];    // Scanned answers per capture
     let allStudentResults = [];
     let opencvReady = false;
 
-    // Layout parameters for the answer sheet (adjust as needed)
+    // Configuration for answer sheet layout (adjust these as needed)
     const ANSWER_SHEET_CONFIG = {
       sheetWidth: 595,
       sheetHeight: 842,
@@ -142,10 +141,10 @@
       markerMargin: 10
     };
 
-    // Threshold for determining if an option bubble is filled
+    // Option filling threshold
     const OPTION_THRESHOLD = 0.6;
 
-    // Called once OpenCV.js is loaded
+    // Called when OpenCV is loaded
     function onOpenCvReady() {
       debugLog("OpenCV.js is ready");
       opencvReady = true;
@@ -153,10 +152,10 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert('您的浏览器不支持摄像头功能');
+        alert('Your browser does not support camera features.');
         return;
       }
-      // Bind UI events
+      // Bind events
       document.getElementById('generateBtn').addEventListener('click', generateAnswerSheet);
       document.getElementById('setAnswerKeyBtn').addEventListener('click', showAnswerKeyInput);
       document.getElementById('exportImgBtn').addEventListener('click', exportAnswerSheetAsImage);
@@ -173,105 +172,102 @@
       generateAnswerSheet();
     });
 
-    // Show a floating debug/info message
+    // Helper: Show floating debug/info messages
     function showFloatingMessage(message) {
       const container = document.getElementById('floatingMessageContainer');
-      const messageDiv = document.createElement('div');
-      messageDiv.textContent = message;
-      messageDiv.style.backgroundColor = 'rgba(0,0,0,0.7)';
-      messageDiv.style.color = 'white';
-      messageDiv.style.padding = '10px 15px';
-      messageDiv.style.borderRadius = '5px';
-      messageDiv.style.marginBottom = '10px';
-      messageDiv.style.opacity = '1';
-      messageDiv.style.transition = 'opacity 0.5s ease-in-out';
-      container.appendChild(messageDiv);
+      const msgDiv = document.createElement('div');
+      msgDiv.textContent = message;
+      msgDiv.style.backgroundColor = 'rgba(0,0,0,0.7)';
+      msgDiv.style.color = 'white';
+      msgDiv.style.padding = '10px 15px';
+      msgDiv.style.borderRadius = '5px';
+      msgDiv.style.marginBottom = '10px';
+      msgDiv.style.opacity = '1';
+      msgDiv.style.transition = 'opacity 0.5s ease-in-out';
+      container.appendChild(msgDiv);
       setTimeout(() => {
-        messageDiv.style.opacity = '0';
-        setTimeout(() => container.removeChild(messageDiv), 500);
+        msgDiv.style.opacity = '0';
+        setTimeout(() => { container.removeChild(msgDiv); }, 500);
       }, 3000);
     }
 
-    // Generate the answer sheet template on a canvas
+    // Generate answer sheet template on canvas
     function generateAnswerSheet() {
       const questionCount = parseInt(document.getElementById('questionCount').value);
       const optionCount = parseInt(document.getElementById('optionCount').value);
       const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value);
       const canvas = document.getElementById('answerSheetCanvas');
       const ctx = canvas.getContext('2d');
-      const { sheetWidth, sheetHeight, nameY, classY, studentIdY, instructionsY, studentIdLabelY, studentIdStartX, studentIdBoxSize, studentIdBoxSpacing, questionsStartX, answerStartY, verticalSpacingBetweenQuestions, horizontalSpacingBetweenOptions, boxSize, optionOffsetX, questionsPerColumn, columnSpacing, markerSize, markerMargin } = ANSWER_SHEET_CONFIG;
-      const scaleX = canvas.width / sheetWidth;
-      const scaleY = canvas.height / sheetHeight;
+      const config = ANSWER_SHEET_CONFIG;
+      const scaleX = canvas.width / config.sheetWidth;
+      const scaleY = canvas.height / config.sheetHeight;
       ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
-      ctx.clearRect(0, 0, sheetWidth, sheetHeight);
+      ctx.clearRect(0, 0, config.sheetWidth, config.sheetHeight);
 
-      // Helper function for drawing a half-sheet template
-      function drawAnswerSheetPart(offsetY = 0) {
-        const currentNameY = nameY + offsetY;
-        const currentClassY = classY + offsetY;
-        const currentStudentIdY = studentIdY + offsetY;
-        const currentInstructionsY = instructionsY + offsetY;
-        const currentStudentIdLabelY = studentIdLabelY + offsetY;
-        const currentAnswerStartY = answerStartY + offsetY;
+      function drawSheetPart(offsetY = 0) {
+        const nameY = config.nameY + offsetY;
+        const classY = config.classY + offsetY;
+        const studentIdY = config.studentIdY + offsetY;
+        const instructionsY = config.instructionsY + offsetY;
+        const studentIdLabelY = config.studentIdLabelY + offsetY;
+        const answerStartY = config.answerStartY + offsetY;
         ctx.font = "16px Arial";
-        ctx.fillText("答题卡模板", 20, 25 + offsetY);
+        ctx.fillText("Answer Sheet Template", 20, 25 + offsetY);
         ctx.font = "12px Arial";
-        ctx.fillText("姓名:", 20, currentNameY);
-        ctx.strokeRect(60, currentNameY - 10, 100, 15);
-        ctx.fillText("班级:", 20, currentClassY);
-        ctx.strokeRect(60, currentClassY - 10, 100, 15);
-        ctx.fillText("学号:", 20, currentStudentIdY);
-        ctx.strokeRect(60, currentStudentIdY - 10, 100, 15);
+        ctx.fillText("Name:", 20, nameY);
+        ctx.strokeRect(60, nameY - 10, 100, 15);
+        ctx.fillText("Class:", 20, classY);
+        ctx.strokeRect(60, classY - 10, 100, 15);
+        ctx.fillText("Student ID:", 20, studentIdY);
+        ctx.strokeRect(60, studentIdY - 10, 100, 15);
         ctx.font = "10px Arial";
-        ctx.fillText("注意事项:", 20, currentInstructionsY);
+        ctx.fillText("Instructions:", 20, instructionsY);
         ctx.font = "9px Arial";
-        ctx.fillText("1. 用黑色中性笔涂黑对应选项", 30, currentInstructionsY + 12);
-        ctx.fillText("2. 答题卡保持平整清洁，不可弯折", 30, currentInstructionsY + 22);
-        ctx.fillText("3. 边角处请勿涂抹", 30, currentInstructionsY + 32);
+        ctx.fillText("1. Use a dark pen to fill bubbles", 30, instructionsY + 12);
+        ctx.fillText("2. Keep the sheet flat and clean", 30, instructionsY + 22);
+        ctx.fillText("3. Do not fill at the edges", 30, instructionsY + 32);
         ctx.font = "12px Arial";
-        ctx.fillText("准考证号:", 20, currentStudentIdLabelY);
+        ctx.fillText("Student ID:", 20, studentIdLabelY);
         const digits = ['0','1','2','3','4','5','6','7','8','9'];
         for (let i = 0; i < studentIdDigits; i++) {
-          const startX = studentIdStartX + i * (studentIdBoxSize + studentIdBoxSpacing);
+          const startX = config.studentIdStartX + i * (config.studentIdBoxSize + config.studentIdBoxSpacing);
           for (let j = 0; j < digits.length; j++) {
-            const startY = currentStudentIdLabelY + 8 + j * (studentIdBoxSize + studentIdBoxSpacing);
-            ctx.strokeRect(startX, startY, studentIdBoxSize, studentIdBoxSize);
+            const startY = studentIdLabelY + 8 + j * (config.studentIdBoxSize + config.studentIdBoxSpacing);
+            ctx.strokeRect(startX, startY, config.studentIdBoxSize, config.studentIdBoxSize);
             ctx.font = "7px Arial";
-            ctx.fillText(digits[j], startX + 1, startY + studentIdBoxSize - 1);
+            ctx.fillText(digits[j], startX + 1, startY + config.studentIdBoxSize - 1);
           }
         }
         ctx.font = "10px Arial";
-        const columns = Math.ceil(questionCount / questionsPerColumn);
         for (let i = 0; i < questionCount; i++) {
-          const row = i % questionsPerColumn;
-          const col = Math.floor(i / questionsPerColumn);
-          const questionX = questionsStartX + col * (columnSpacing + (optionCount * horizontalSpacingBetweenOptions + boxSize + optionOffsetX + 3));
-          const questionY = currentAnswerStartY + row * verticalSpacingBetweenQuestions;
-          ctx.fillText(`${i + 1}.`, questionX, questionY + boxSize / 2 + 2);
-          const optionsStartX = questionX + boxSize + optionOffsetX;
+          const row = i % config.questionsPerColumn;
+          const col = Math.floor(i / config.questionsPerColumn);
+          const questionX = config.questionsStartX + col * (config.columnSpacing + (optionCount * config.horizontalSpacingBetweenOptions + config.boxSize + config.optionOffsetX + 3));
+          const questionY = answerStartY + row * config.verticalSpacingBetweenQuestions;
+          ctx.fillText(`${i + 1}.`, questionX, questionY + config.boxSize / 2 + 2);
+          const optionsStartX = questionX + config.boxSize + config.optionOffsetX;
           const options = ['A', 'B', 'C', 'D'];
           for (let j = 0; j < optionCount && j < options.length; j++) {
-            const optionX = optionsStartX + j * horizontalSpacingBetweenOptions;
-            ctx.strokeRect(optionX, questionY, boxSize, boxSize);
-            ctx.fillText(options[j], optionX + 1, questionY + boxSize / 2 + 2);
+            const optionX = optionsStartX + j * config.horizontalSpacingBetweenOptions;
+            ctx.strokeRect(optionX, questionY, config.boxSize, config.boxSize);
+            ctx.fillText(options[j], optionX + 1, questionY + config.boxSize / 2 + 2);
           }
         }
-        // Draw markers in corners
+        // Draw markers at corners for perspective detection
         ctx.fillStyle = "black";
-        ctx.fillRect(markerMargin, offsetY + markerMargin, markerSize, markerSize);
-        ctx.fillRect(sheetWidth - markerMargin - markerSize, offsetY + markerMargin, markerSize, markerSize);
-        ctx.fillRect(markerMargin, offsetY + sheetHeight / 2 - markerMargin - markerSize + 10, markerSize, markerSize);
-        ctx.fillRect(sheetWidth - markerMargin - markerSize, offsetY + sheetHeight / 2 - markerMargin - markerSize + 10, markerSize, markerSize);
+        ctx.fillRect(config.markerMargin, offsetY + config.markerMargin, config.markerSize, config.markerSize);
+        ctx.fillRect(config.sheetWidth - config.markerMargin - config.markerSize, offsetY + config.markerMargin, config.markerSize, config.markerSize);
+        ctx.fillRect(config.markerMargin, offsetY + config.sheetHeight / 2 - config.markerMargin - config.markerSize + 10, config.markerSize, config.markerSize);
+        ctx.fillRect(config.sheetWidth - config.markerMargin - config.markerSize, offsetY + config.sheetHeight / 2 - config.markerMargin - config.markerSize + 10, config.markerSize, config.markerSize);
       }
-      // Draw two halves
-      drawAnswerSheetPart(0);
-      drawAnswerSheetPart(sheetHeight / 2);
-      // Draw a dashed line separating the halves
+      drawSheetPart(0);
+      drawSheetPart(ANSWER_SHEET_CONFIG.sheetHeight / 2);
+      // Draw a dashed line dividing the two halves
       ctx.strokeStyle = "#ccc";
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
-      ctx.moveTo(0, sheetHeight / 2);
-      ctx.lineTo(sheetWidth, sheetHeight / 2);
+      ctx.moveTo(0, ANSWER_SHEET_CONFIG.sheetHeight / 2);
+      ctx.lineTo(ANSWER_SHEET_CONFIG.sheetWidth, ANSWER_SHEET_CONFIG.sheetHeight / 2);
       ctx.stroke();
       ctx.setLineDash([]);
       document.getElementById('answerSheetContainer').style.display = 'block';
@@ -280,17 +276,17 @@
       document.getElementById('aggregate').classList.add('hide');
     }
 
-    // Input standard answer key (expects comma-separated string)
+    // Prompt user to set the standard answer key
     function showAnswerKeyInput() {
       const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-      const input = prompt(`请输入标准答案（例如：A,B,C,A,...，共${questionCount}题）：`);
+      const input = prompt(`Enter the answer key (e.g., A,B,C,A,... for ${questionCount} questions):`);
       if (input) {
         answerKey = input.toUpperCase().split(',').slice(0, questionCount);
-        debugLog('标准答案已设置');
+        debugLog("Standard answer key set.");
       }
     }
 
-    // Export the answer sheet canvas as an image
+    // Export the generated answer sheet as an image
     function exportAnswerSheetAsImage() {
       const canvas = document.getElementById('answerSheetCanvas');
       const originalWidth = canvas.width, originalHeight = canvas.height;
@@ -307,12 +303,12 @@
       generateAnswerSheet();
     }
 
-    // Show camera container (switch view)
+    // Show the camera container
     function showCamera() {
       document.getElementById('cameraContainer').classList.remove('hide');
     }
 
-    // Start the camera and show live feed
+    // Start the camera and display the live video feed
     async function startCamera() {
       if (isCameraActive) return;
       const video = document.getElementById('cameraPreview');
@@ -320,36 +316,34 @@
         videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
         video.srcObject = videoStream;
         isCameraActive = true;
-        // Ensure video is visible
         video.classList.remove('hide');
         document.getElementById('cameraContainer').classList.remove('hide');
         document.getElementById('cameraOverlayResults').style.display = 'block';
         await waitForOpenCV();
-        debugLog("摄像头已开启");
+        debugLog("Camera started.");
       } catch (err) {
-        console.error("摄像头访问失败:", err);
-        alert('摄像头访问失败，请检查权限');
+        console.error("Camera access error:", err);
+        alert('Unable to access camera. Please check permissions.');
       }
     }
 
-    // Capture one photo frame and process it
+    // Capture a photo frame and perform scanning
     function capturePhoto() {
       if (!isCameraActive || !opencvReady) {
-        debugLog("摄像头未开启或 OpenCV 尚未准备好");
+        debugLog("Camera not active or OpenCV not ready.");
         return;
       }
       const video = document.getElementById('cameraPreview');
       const captureCanvas = document.getElementById('captureCanvas');
       const ctx = captureCanvas.getContext('2d');
-      // Draw current video frame onto canvas
       ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-      // Process the captured image: apply perspective transform if possible and scan options
-      processImageForScanning(captureCanvas);
-      // After processing, calculate score and update overlay
-      calculateScore();
+      // Process image for scanning, then calculate score
+      processImageForScanning(captureCanvas).then(() => {
+        calculateScore();
+      });
     }
 
-    // Utility to wait until OpenCV is ready
+    // Wait until OpenCV is fully ready
     function waitForOpenCV() {
       return new Promise(resolve => {
         if (typeof cv !== 'undefined' && cv.Mat) {
@@ -360,143 +354,156 @@
       });
     }
 
-    // Process captured image using OpenCV (with perspective correction and option detection)
+    // Process the captured image: attempt perspective transform based on markers, fallback if needed
     async function processImageForScanning(canvas) {
       if (!opencvReady) {
-        debugLog("OpenCV 未准备好");
+        debugLog("OpenCV not ready for scanning.");
         return;
       }
       try {
         let src = cv.imread(canvas);
         let gray = new cv.Mat();
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-        // Apply a fixed threshold to detect markers (could be refined)
+        // Use adaptive thresholding for markers (more robust than fixed threshold)
         let binaryMarkers = new cv.Mat();
-        cv.threshold(gray, binaryMarkers, 100, 255, cv.THRESH_BINARY);
+        cv.adaptiveThreshold(gray, binaryMarkers, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 11, 2);
         let contours = new cv.MatVector();
         let hierarchy = new cv.Mat();
         cv.findContours(binaryMarkers, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-        let detectedCorners = [];
-        const minMarkerArea = 50, maxMarkerArea = 200, approxAccuracyFactor = 0.04;
+        let detectedMarkers = [];
+        const minArea = 50, maxArea = 300, approxFactor = 0.04;
         for (let i = 0; i < contours.size(); i++) {
           let contour = contours.get(i);
           let area = cv.contourArea(contour);
-          if (area > minMarkerArea && area < maxMarkerArea) {
+          if (area > minArea && area < maxArea) {
             let approx = new cv.Mat();
-            let epsilon = approxAccuracyFactor * cv.arcLength(contour, true);
+            let epsilon = approxFactor * cv.arcLength(contour, true);
             cv.approxPolyDP(contour, approx, epsilon, true);
-            if (approx.data32S && approx.data32S.length === 8) {
+            if (approx.rows === 4) {  // if we have 4 vertices
               let pts = [];
-              for (let j = 0; j < approx.data32S.length; j += 2) {
-                pts.push({ x: approx.data32S[j], y: approx.data32S[j+1] });
+              for (let j = 0; j < 4; j++) {
+                pts.push({
+                  x: approx.intPtr(j, 0)[0],
+                  y: approx.intPtr(j, 0)[1]
+                });
               }
-              detectedCorners.push(pts);
+              detectedMarkers.push(pts);
             }
             approx.delete();
           }
         }
         hierarchy.delete(); contours.delete(); binaryMarkers.delete();
+        debugLog(`Detected ${detectedMarkers.length} marker(s).`);
 
-        // If exactly four markers are found, do a perspective transform
-        if (detectedCorners.length === 4) {
-          let centroids = detectedCorners.map(corner => {
+        // If we detect four markers, try perspective transformation
+        if (detectedMarkers.length === 4) {
+          // Compute centroids of each detected marker
+          let centroids = detectedMarkers.map(marker => {
             let sumX = 0, sumY = 0;
-            corner.forEach(p => { sumX += p.x; sumY += p.y; });
-            return { x: sumX / corner.length, y: sumY / corner.length };
+            marker.forEach(pt => { sumX += pt.x; sumY += pt.y; });
+            return { x: sumX / marker.length, y: sumY / marker.length };
           });
-          // Sort points clockwise around center
-          const center = centroids.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), {x: 0, y: 0});
-          center.x /= centroids.length; center.y /= centroids.length;
+          // Sort points clockwise
+          const center = centroids.reduce((acc, pt) => ({ x: acc.x + pt.x, y: acc.y + pt.y }), {x: 0, y: 0});
+          center.x /= centroids.length;
+          center.y /= centroids.length;
           centroids.sort((a, b) => Math.atan2(a.y - center.y, a.x - center.x) - Math.atan2(b.y - center.y, b.x - center.x));
           const targetWidth = 595, targetHeight = 842;
-          let dstCoords = cv.matFromArray(4, 1, cv.CV_32FC2, [0,0, targetWidth,0, targetWidth,targetHeight/2, 0,targetHeight/2]);
-          let srcCoords = cv.matFromArray(4, 1, cv.CV_32FC2, [
+          let srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
             centroids[0].x, centroids[0].y,
             centroids[1].x, centroids[1].y,
             centroids[2].x, centroids[2].y,
             centroids[3].x, centroids[3].y
           ]);
-          let M = cv.getPerspectiveTransform(srcCoords, dstCoords);
+          let dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
+            0, 0,
+            targetWidth, 0,
+            targetWidth, targetHeight/2,
+            0, targetHeight/2
+          ]);
+          let M = cv.getPerspectiveTransform(srcPts, dstPts);
           let warped = new cv.Mat();
           cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight/2), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
           processScannedOptions(warped);
           cv.imshow('captureCanvas', warped);
-          warped.delete(); M.delete(); srcCoords.delete(); dstCoords.delete();
+          warped.delete(); M.delete(); srcPts.delete(); dstPts.delete();
         } else {
-          // If not detected, fallback: use the upper half of the captured image as ROI
+          // Fallback: use upper half of the captured image
           let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
           processScannedOptions(roi);
           cv.imshow('captureCanvas', roi);
           roi.delete();
         }
         src.delete(); gray.delete();
-      } catch (err) {
-        console.error("图像处理错误:", err);
-        debugLog("图像处理出错，请重试！");
+      } catch (error) {
+        console.error("Scanning error:", error);
+        debugLog("Error processing image, please try again.");
       }
     }
 
-    // Process the warped image and detect the filled options
+    // Detect filled options from the processed (warped) image
     function processScannedOptions(processedImage) {
       const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
       const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
-      studentAnswers = Array.from({length: questionCount}, () => ({answer: null, score: 0}));
-      const { questionsStartX, answerStartY, verticalSpacingBetweenQuestions, horizontalSpacingBetweenOptions, boxSize, optionOffsetX, questionsPerColumn } = ANSWER_SHEET_CONFIG;
-      const options = ['A','B','C','D'];
+      studentAnswers = Array.from({ length: questionCount }, () => ({ answer: null, score: 0 }));
+      const config = ANSWER_SHEET_CONFIG;
+      const options = ['A', 'B', 'C', 'D'];
       let gray = new cv.Mat();
       cv.cvtColor(processedImage, gray, cv.COLOR_RGBA2GRAY, 0);
+      // Use adaptive thresholding for better robustness
       let binary = new cv.Mat();
-      cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
+      cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
       cv.imshow('binaryCanvas', binary);
       document.getElementById('binaryCanvas').classList.remove('hide');
 
       const captureCanvas = document.getElementById('captureCanvas');
       const captureCtx = captureCanvas.getContext('2d');
       captureCtx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
-      // Loop through each question area and decide which option is filled
+
       for (let i = 0; i < questionCount; i++) {
-        const row = i % questionsPerColumn;
-        const col = Math.floor(i / questionsPerColumn);
-        const questionX = questionsStartX + col * (horizontalSpacingBetweenOptions * optionCount + boxSize + optionOffsetX + 12);
-        const questionY = answerStartY + row * verticalSpacingBetweenQuestions;
-        let detected = null, maxBlackRatio = 0;
-        const optionsStartX = questionX + boxSize + optionOffsetX;
+        const row = i % config.questionsPerColumn;
+        const col = Math.floor(i / config.questionsPerColumn);
+        // Adjust these offsets if necessary – the scanned image must be well-aligned to the template
+        const questionX = config.questionsStartX + col * (config.horizontalSpacingBetweenOptions * optionCount + config.boxSize + config.optionOffsetX + 12);
+        const questionY = config.answerStartY + row * config.verticalSpacingBetweenQuestions;
+        let detected = null, maxRatio = 0;
+        const optionsStartX = questionX + config.boxSize + config.optionOffsetX;
         for (let j = 0; j < optionCount && j < options.length; j++) {
-          const optionX = optionsStartX + j * horizontalSpacingBetweenOptions;
-          let roi = binary.roi(new cv.Rect(optionX, questionY, boxSize, boxSize));
-          const total = roi.cols * roi.rows;
-          const count = cv.countNonZero(roi);
+          const optionX = optionsStartX + j * config.horizontalSpacingBetweenOptions;
+          let roi = binary.roi(new cv.Rect(optionX, questionY, config.boxSize, config.boxSize));
+          const totalPixels = roi.cols * roi.rows;
+          const filledPixels = cv.countNonZero(roi);
           roi.delete();
-          const ratio = count / total;
-          if (ratio > maxBlackRatio && ratio > OPTION_THRESHOLD) {
-            maxBlackRatio = ratio;
+          const ratio = filledPixels / totalPixels;
+          if (ratio > maxRatio && ratio > OPTION_THRESHOLD) {
+            maxRatio = ratio;
             detected = j;
           }
         }
         if (detected !== null) {
-          studentAnswers[i] = { answer: options[detected], score: maxBlackRatio };
-          // Overlay result on canvas
-          captureCtx.fillStyle = answerKey[i] 
+          studentAnswers[i] = { answer: options[detected], score: maxRatio };
+          // Overlay colored rectangle to indicate detection (green for correct, red for wrong, blue if key not set)
+          captureCtx.fillStyle = answerKey[i]
             ? (options[detected] === answerKey[i] ? 'rgba(0,255,0,0.5)' : 'rgba(255,0,0,0.5)')
             : 'rgba(0,0,255,0.5)';
-          captureCtx.fillRect(optionsStartX + detected * horizontalSpacingBetweenOptions, questionY, boxSize, boxSize);
+          captureCtx.fillRect(optionsStartX + detected * config.horizontalSpacingBetweenOptions, questionY, config.boxSize, config.boxSize);
         }
       }
       cv.imshow('captureCanvas', processedImage);
       binary.delete(); gray.delete();
     }
 
-    // Calculate score based on scanned answers and standard answer key
+    // Calculate the total score based on scanned answers versus the answer key
     function calculateScore() {
       if (answerKey.length === 0) {
-        debugLog("请先设置标准答案");
+        debugLog("Please set the answer key first.");
         return;
       }
       const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 1;
       let totalScore = 0;
       const stats = [];
       studentAnswers.forEach((item, index) => {
-        const selected = item.answer || '未作答';
+        const selected = item.answer || 'Not answered';
         const isCorrect = selected === answerKey[index];
         if (isCorrect) totalScore += scorePerQuestion;
         stats.push({
@@ -517,27 +524,27 @@
       document.getElementById('results').classList.add('hide');
     }
 
-    // Save current scan result
+    // Save the current scan result
     function saveCurrentResult() {
       if (studentAnswers.length === 0) {
-        alert('无有效扫描结果');
+        alert('No valid scan result available.');
         return;
       }
       const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 1;
       let totalScore = 0;
       const answers = studentAnswers.map((item, index) => {
-        const selected = item.answer || '未作答';
+        const selected = item.answer || 'Not answered';
         if (selected === answerKey[index]) totalScore += scorePerQuestion;
         return selected;
       });
       allStudentResults.push({ answers, totalScore });
-      debugLog(`成绩已保存，目前累计 ${allStudentResults.length} 份答题卡`);
+      debugLog(`Result saved. Total results: ${allStudentResults.length}`);
     }
 
-    // Display aggregate statistics for all saved results
+    // Display aggregate statistics for saved results
     function displayAggregateStats() {
       if (allStudentResults.length === 0) {
-        alert('尚未保存任何扫描结果');
+        alert('No scan results saved yet.');
         return;
       }
       const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
@@ -564,7 +571,7 @@
       document.getElementById('aggregate').classList.add('hide');
     }
 
-    // Stop camera stream
+    // Stop the camera stream
     function stopCamera() {
       if (videoStream) {
         videoStream.getTracks().forEach(track => track.stop());
@@ -579,8 +586,7 @@
     function toggleFullscreen() {
       const container = document.querySelector('.container');
       const cameraContainer = document.getElementById('cameraContainer');
-      const isFullscreen = cameraContainer.classList.contains('fullscreen-camera');
-      if (isFullscreen) {
+      if (cameraContainer.classList.contains('fullscreen-camera')) {
         cameraContainer.classList.remove('fullscreen-camera');
         container.classList.remove('hide-others');
         document.body.style.overflow = 'auto';
