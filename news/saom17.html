@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Enhanced Answer Sheet Scanner with GitHub Parameters</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .config-panel,
+        #answerSheetContainer,
+        #cameraContainer,
+        #results,
+        #aggregate,
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        .config-panel input[type="number"],
+        .config-panel button,
+        .controls button,
+        .scan-save-btn,
+        .stats-btn,
+        .export-btn {
+            margin-right: 10px;
+            padding: 8px 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .export-btn {
+            background-color: #5cb85c;
+            color: white;
+            border-color: #4cae4c;
+        }
+
+        .export-btn:hover {
+            background-color: #4cae4c;
+        }
+
+        .start-btn {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .start-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .stop-btn {
+            background-color: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+
+        .stop-btn:hover {
+            background-color: #c82333;
+        }
+
+        #answerSheetContainer {
+            display: none;
+            text-align: center;
+        }
+
+        #answerSheetCanvas {
+            border: 1px solid #ccc;
+            max-width: 100%;
+            height: auto;
+        }
+
+        #cameraContainer.hide,
+        #results.hide,
+        #aggregate.hide {
+            display: none;
+        }
+
+        #cameraContainer.fullscreen-camera {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #cameraContainer.fullscreen-camera video {
+            max-width: 95%;
+            max-height: 80%;
+        }
+
+        .container.hide-others > *:not(#cameraContainer) {
+            display: none !important;
+        }
+
+        #cameraOverlayResults {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 10;
+            font-size: 0.9em;
+        }
+
+        .score-display {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        #overlayQuestionStats > div {
+            margin-bottom: 3px;
+        }
+
+        #questionStats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .question-result {
+            border: 1px solid #ccc;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .aggregate-item {
+            border: 1px solid #eee;
+            padding: 8px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            background-color: #fff;
+        }
+
+        .hide {
+            display: none !important;
+        }
+
+        /* Ensure live feed is visible */
+        #cameraPreview {
+            width: 100%;
+            height: 400px;
+            background: #000;
+        }
+
+        /* Loading animation */
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5em;
+            z-index: 1002;
+        }
+
+        /* Answer Key Input Dialog */
+        #answerKeyDialog {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #answerKeyDialog label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        #answerKeyInput {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        #answerKeyDialog button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+        }
+
+        #answerKeyDialog button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Enhanced Answer Sheet Scanner</h1>
+    <div class="config-panel">
+        <input type="number" id="questionCount" placeholder="Total Questions" value="100" min="1" max="200">
+        <input type="number" id="optionCount" placeholder="Options per Question" value="4" min="2" max="10">
+        <input type="number" id="studentIdDigits" placeholder="Student ID Digits" value="10" min="1" max="20">
+        <input type="number" id="scorePerQuestion" placeholder="Score per Question" value="1" min="1">
+        <button id="generateBtn">Generate Answer Sheet</button>
+        <button id="setAnswerKeyBtn">Set Answer Key</button>
+        <button class="export-btn" id="exportImgBtn">Export Sheet Image</button>
+    </div>
+    <div id="answerSheetContainer">
+        <canvas id="answerSheetCanvas" width="595" height="842"></canvas>
+    </div>
+    <div id="cameraContainer" class="hide">
+        <video id="cameraPreview" autoplay></video>
+        <canvas id="captureCanvas" width="640" height="480"></canvas>
+        <canvas id="binaryCanvas" width="640" height="480" class="hide"></canvas>
+        <div class="controls">
+            <button class="start-btn" id="startCameraBtn">Start Camera</button>
+            <button class="stop-btn" id="stopCameraBtn">Stop Camera</button>
+            <button id="capturePhotoBtn">Capture & Scan</button>
+            <button id="toggleFullscreenBtn">Toggle Fullscreen</button>
+        </div>
+        <div id="cameraOverlayResults" style="display: none;">
+            <div class="score-display">Total Score: <span id="overlayTotalScore">0</span></div>
+            <div id="overlayQuestionStats"></div>
+        </div>
+    </div>
+    <div id="results" class="hide">
+        <div class="score-display">Score: <span id="totalScore">0</span></div>
+        <div id="questionStats"></div>
+        <button class="scan-save-btn" id="saveResultBtn">Save Result</button>
+    </div>
+    <div id="aggregate" class="hide">
+        <h3>Aggregate Statistics</h3>
+        <div id="aggregateStats"></div>
+        <button class="stats-btn" id="hideAggregateBtn">Close Stats</button>
+    </div>
+    <div class="controls">
+        <button id="showCameraBtn">Show Camera</button>
+        <button id="showAggregateBtn">Show All Results</button>
+    </div>
+</div>
+
+<div id="floatingMessageContainer" style="position: fixed; bottom: 20px; left: 20px; z-index: 1001;"></div>
+<div id="loading" style="display: none;">Loading OpenCV.js ...</div>
+
+<dialog id="answerKeyDialog">
+    <h2>Set Answer Key</h2>
+    <label for="answerKeyInput">Enter answer key (comma-separated, e.g., A,B,C,A):</label>
+    <input type="text" id="answerKeyInput">
+    <button id="submitAnswerKeyBtn">Submit</button>
+</dialog>
+
+<script async src="https://docs.opencv.org/4.5.3/opencv.js" onload="onOpenCvReady();"></script>
+<script>
+    "use strict";
+    const debugMode = true;
+
+    function debugLog(msg) {
+        if (debugMode) {
+            console.log("[DEBUG]", msg);
+            showFloatingMessage(msg);
+        }
+    }
+
+    const AppState = {
+        videoStream: null,
+        answerKey: [],
+        studentAnswers: [],
+        isCameraActive: false,
+        opencvReady: false
+    };
+
+    // Adjusted layout configuration (region positions) inspired by the GitHub project.
+    const ANSWER_SHEET_CONFIG = {
+        sheetWidth: 595,
+        sheetHeight: 842,
+        nameY: 40,                     // Slightly higher for better spacing
+        classY: 65,
+        studentIdY: 90,
+        instructionsY: 120,
+        studentIdLabelY: 160,
+        studentIdStartX: 30,
+        studentIdBoxSize: 10,
+        studentIdBoxSpacing: 2,
+        questionsStartX: 170,            // Moved left for better alignment
+        answerStartY: 30,
+        verticalSpacingBetweenQuestions: 20, // Increased spacing for clarity
+        horizontalSpacingBetweenOptions: 22,     // Wider spacing between options
+        boxSize: 12,                     // Slightly larger bubble boxes
+        optionOffsetX: 8,
+        questionsPerColumn: 22,
+        columnSpacing: 15,
+        markerSize: 8,
+        markerMargin: 12
+    };
+
+    // Threshold for a filled bubble (tweak this if your bubbles are lightly filled)
+    const OPTION_THRESHOLD = 0.55; // Slightly lower threshold
+
+    function onOpenCvReady() {
+        debugLog("OpenCV.js is ready");
+        AppState.opencvReady = true;
+        document.getElementById('loading').style.display = 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Your browser does not support camera features.');
+            return;
+        }
+        // Bind UI events
+        document.getElementById('generateBtn').addEventListener('click', generateAnswerSheet);
+        document.getElementById('setAnswerKeyBtn').addEventListener('click', () => document.getElementById('answerKeyDialog').showModal());
+        document.getElementById('submitAnswerKeyBtn').addEventListener('click', setAnswerKey);
+        document.getElementById('exportImgBtn').addEventListener('click', exportAnswerSheetAsImage);
+        document.getElementById('startCameraBtn').addEventListener('click', startCamera);
+        document.getElementById('stopCameraBtn').addEventListener('click', stopCamera);
+        document.getElementById('capturePhotoBtn').addEventListener('click', capturePhoto);
+        document.getElementById('saveResultBtn').addEventListener('click', saveCurrentResult);
+        document.getElementById('showCameraBtn').addEventListener('click', showCamera);
+        document.getElementById('showAggregateBtn').addEventListener('click', displayAggregateStats);
+        document.getElementById('hideAggregateBtn').addEventListener('click', hideAggregateStats);
+        document.getElementById('toggleFullscreenBtn').addEventListener('click', toggleFullscreen);
+
+        generateAnswerSheet();
+        document.getElementById('loading').style.display = 'flex';
+    });
+
+    function showFloatingMessage(message) {
+        const container = document.getElementById('floatingMessageContainer');
+        const msgDiv = document.createElement('div');
+        msgDiv.textContent = message;
+        msgDiv.style.backgroundColor = 'rgba(0,0,0,0.7)';
+        msgDiv.style.color = 'white';
+        msgDiv.style.padding = '10px 15px';
+        msgDiv.style.borderRadius = '5px';
+        msgDiv.style.marginBottom = '10px';
+        msgDiv.style.opacity = '1';
+        msgDiv.style.transition = 'opacity 0.5s ease-in-out';
+        container.appendChild(msgDiv);
+        setTimeout(() => {
+            msgDiv.style.opacity = '0';
+            setTimeout(() => container.removeChild(msgDiv), 500);
+        }, 3000);
+    }
+
+    // Generate the answer sheet template with adjusted region positions
+    function generateAnswerSheet() {
+        const questionCount = parseInt(document.getElementById('questionCount').value);
+        const optionCount = parseInt(document.getElementById('optionCount').value);
+        const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value);
+        const canvas = document.getElementById('answerSheetCanvas');
+        const ctx = canvas.getContext('2d');
+        const config = ANSWER_SHEET_CONFIG;
+        const scaleX = canvas.width / config.sheetWidth;
+        const scaleY = canvas.height / config.sheetHeight;
+        ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+        ctx.clearRect(0, 0, config.sheetWidth, config.sheetHeight);
+
+        function drawSheetPart(offsetY = 0) {
+            const nameY = config.nameY + offsetY;
+            const classY = config.classY + offsetY;
+            const studentIdY = config.studentIdY + offsetY;
+            const instructionsY = config.instructionsY + offsetY;
+            const studentIdLabelY = config.studentIdLabelY + offsetY;
+            const answerStartY = config.answerStartY + offsetY;
+            ctx.font = "16px Arial";
+            ctx.fillText("Answer Sheet Template", 20, 25 + offsetY);
+            ctx.font = "12px Arial";
+            ctx.fillText("Name:", 20, nameY);
+            ctx.strokeRect(60, nameY - 10, 100, 15);
+            ctx.fillText("Class:", 20, classY);
+            ctx.strokeRect(60, classY - 10, 100, 15);
+            ctx.fillText("Student ID:", 20, studentIdY);
+            ctx.strokeRect(60, studentIdY - 10, 100, 15);
+            ctx.font = "10px Arial";
+            ctx.fillText("Instructions:", 20, instructionsY);
+            ctx.font = "9px Arial";
+            ctx.fillText("1. Use a dark pen to fill bubbles", 30, instructionsY + 12);
+            ctx.fillText("2. Keep the sheet flat and clean", 30, instructionsY + 22);
+            ctx.fillText("3. Do not fill at the edges", 30, instructionsY + 32);
+            ctx.font = "12px Arial";
+            ctx.fillText("Student ID:", 20, studentIdLabelY);
+            const digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+            for (let i = 0; i < studentIdDigits; i++) {
+                const startX = config.studentIdStartX + i * (config.studentIdBoxSize + config.studentIdBoxSpacing);
+                for (let j = 0; j < digits.length; j++) {
+                    const startY = studentIdLabelY + 8 + j * (config.studentIdBoxSize+ config.studentIdBoxSpacing);
+                    ctx.strokeRect(startX, startY, config.studentIdBoxSize, config.studentIdBoxSize);
+                    ctx.font = "7px Arial";
+                    ctx.fillText(digits[j], startX + 1, startY + config.studentIdBoxSize - 1);
+                }
+            }
+            ctx.font = "10px Arial";
+            for (let i = 0; i < questionCount; i++) {
+                const row = i % config.questionsPerColumn;
+                const col = Math.floor(i / config.questionsPerColumn);
+                const questionX = config.questionsStartX + col * (config.columnSpacing + (optionCount * config.horizontalSpacingBetweenOptions + config.boxSize + config.optionOffsetX + 3));
+                const questionY = answerStartY + row * config.verticalSpacingBetweenQuestions;
+                ctx.fillText(`${i + 1}.`, questionX, questionY + config.boxSize / 2 + 2);
+                const optionsStartX = questionX + config.boxSize + config.optionOffsetX;
+                const options = ['A', 'B', 'C', 'D', 'E', 'F'].slice(0, optionCount);
+                for (let j = 0; j < optionCount; j++) {
+                    const optionX = optionsStartX + j * config.horizontalSpacingBetweenOptions;
+                    ctx.strokeRect(optionX, questionY, config.boxSize, config.boxSize);
+                    ctx.fillText(options[j], optionX + 1, questionY + config.boxSize / 2 + 2);
+                }
+            }
+            // Draw markers at corners (for perspective correction)
+            ctx.fillStyle = "black";
+            ctx.fillRect(config.markerMargin, offsetY + config.markerMargin, config.markerSize, config.markerSize);
+            ctx.fillRect(config.sheetWidth - config.markerMargin - config.markerSize, offsetY + config.markerMargin, config.markerSize, config.markerSize);
+            ctx.fillRect(config.markerMargin, offsetY + config.sheetHeight / 2 - config.markerMargin - config.markerSize + 10, config.markerSize, config.markerSize);
+            ctx.fillRect(config.sheetWidth - config.markerMargin - config.markerSize, offsetY + config.sheetHeight / 2 - config.markerMargin - config.markerSize + 10, config.markerSize, config.markerSize);
+        }
+        drawSheetPart(0);
+        drawSheetPart(config.sheetHeight / 2);
+        ctx.strokeStyle = "#ccc";
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(0, config.sheetHeight / 2);
+        ctx.lineTo(config.sheetWidth, config.sheetHeight / 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        document.getElementById('answerSheetContainer').style.display = 'block';
+        document.getElementById('cameraContainer').classList.add('hide');
+        document.getElementById('results').classList.add('hide');
+        document.getElementById('aggregate').classList.add('hide');
+    }
+
+    function setAnswerKey() {
+        const input = document.getElementById('answerKeyInput').value;
+        const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+        const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
+        const validOptions = ['A', 'B', 'C', 'D', 'E', 'F'].slice(0, optionCount);
+        const answers = input.toUpperCase().split(',').map(s => s.trim()).slice(0, questionCount);
+
+        const isValid = answers.every(ans => validOptions.includes(ans));
+        if (isValid) {
+            AppState.answerKey = answers;
+            debugLog("Answer key set: " + AppState.answerKey.join(','));
+            document.getElementById('answerKeyDialog').close();
+        } else {
+            alert(`Invalid answer key format. Please use comma-separated values (e.g., A,B,C) with valid options (${validOptions.join(', ')}).`);
+        }
+    }
+
+    function exportAnswerSheetAsImage() {
+        const canvas = document.getElementById('answerSheetCanvas');
+        const originalWidth = canvas.width, originalHeight = canvas.height;
+        canvas.width = 2480;
+        canvas.height = 3508;
+        generateAnswerSheet();
+        const imgData = canvas.toDataURL("image/png");
+        const link = document.createElement('a');
+        link.download = 'answer_sheet.png';
+        link.href = imgData;
+        link.click();
+        canvas.width = originalWidth;
+        canvas.height = originalHeight;
+        generateAnswerSheet();
+    }
+
+    function showCamera() {
+        document.getElementById('cameraContainer').classList.remove('hide');
+    }
+
+    async function startCamera() {
+        if (AppState.isCameraActive) return;
+        const video = document.getElementById('cameraPreview');
+        try {
+            AppState.videoStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}});
+            video.srcObject = AppState.videoStream;
+            AppState.isCameraActive = true;
+            video.classList.remove('hide');
+            document.getElementById('cameraContainer').classList.remove('hide');
+            document.getElementById('cameraOverlayResults').style.display = 'block';
+            await waitForOpenCV();
+            debugLog("Camera started.");
+        } catch (err) {
+            alert(`Camera start failed: ${err.message}`);
+            debugLog(`Camera error: ${err.stack}`);
+        }
+    }
+
+    function capturePhoto() {
+        if (!AppState.isCameraActive || !AppState.opencvReady) {
+            debugLog("Camera not active or OpenCV not ready.");
+            return;
+        }
+        const video = document.getElementById('cameraPreview');
+        const captureCanvas = document.getElementById('captureCanvas');
+        const ctx = captureCanvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+        processImageForScanning(captureCanvas);
+    }
+
+    function waitForOpenCv() {
+        return new Promise(resolve => {
+            if (typeof cv !== 'undefined' && cv.Mat) {
+                resolve();
+            } else {
+                setTimeout(() => waitForOpenCv().then(resolve), 100);
+            }
+        });
+    }
+
+    // Process the captured image using histogram equalization and adaptive thresholding.
+    // Attempt to detect four markers for perspective transformation; if not found, fall back to upper half ROI.
+    async function processImageForScanning(canvas) {
+        if (!AppState.opencvReady) {
+            debugLog("OpenCV not ready for scanning.");
+            return;
+        }
+        let src, gray, equalized, binaryMarkers, contours, hierarchy;
+        try {
+            src = cv.imread(canvas);
+            gray = new cv.Mat();
+            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+
+            // Equalize histogram for improved contrast
+            equalized = new cv.Mat();
+            cv.equalizeHist(gray, equalized);
+
+            // Adaptive thresholding for marker detection
+            binaryMarkers = new cv.Mat();
+            cv.adaptiveThreshold(equalized, binaryMarkers, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 11, 2);
+
+            contours = new cv.MatVector();
+            hierarchy = new cv.Mat();
+            cv.findContours(binaryMarkers, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+            let detectedMarkers = [];
+            const minArea = 50, maxArea = 300, approxFactor = 0.04;
+            for (let i = 0; i < contours.size(); i++) {
+                let contour = contours.get(i);
+                let area = cv.contourArea(contour);
+                if (area > minArea && area < maxArea) {
+                    let approx = new cv.Mat();
+                    let epsilon = approxFactor * cv.arcLength(contour, true);
+                    cv.approxPolyDP(contour, approx, epsilon, true);
+                    if (approx.rows === 4) {
+                        let pts = [];
+                        for (let j = 0; j < 4; j++) {
+                            pts.push({
+                                x: approx.intPtr(j, 0)[0],
+                                y: approx.intPtr(j, 0)[1]
+                            });
+                        }
+                        detectedMarkers.push(pts);
+                        // Draw markers for visual debugging
+                        pts.forEach(pt => {
+                            cv.circle(src, new cv.Point(pt.x, pt.y), 4, new cv.Scalar(255, 0, 0, 255), -1);
+                        });
+                    }
+                    approx.delete();
+                }
+            }
+            debugLog(`Detected ${detectedMarkers.length} marker(s).`);
+
+            if (detectedMarkers.length === 4) {
+                let centroids = detectedMarkers.map(marker => {
+                    let sumX = 0, sumY = 0;
+                    marker.forEach(pt => {
+                        sumX += pt.x;
+                        sumY += pt.y;
+                    });
+                    return {x: sumX / marker.length, y: sumY / marker.length};
+                });
+                // Draw centroids for debugging
+                centroids.forEach(c => {
+                    cv.circle(src, new cv.Point(c.x, c.y), 4, new cv.Scalar(0, 255, 0, 255), -1);
+                });
+                const center = centroids.reduce((acc, pt) => ({x: acc.x + pt.x, y: acc.y + pt.y}), {x: 0, y: 0});
+                center.x /= centroids.length;
+                center.y /= centroids.length;
+                centroids.sort((a, b) => Math.atan2(a.y - center.y, a.x - center.x) - Math.atan2(b.y - center.y, b.x - center.x));
+                const targetWidth = 595, targetHeight = 842;
+                let srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
+                    centroids[0].x, centroids[0].y,
+                    centroids[1].x, centroids[1].y,
+                    centroids[2].x, centroids[2].y,
+                    centroids[3].x, centroids[3].y
+                ]);
+                let dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
+                    0, 0,
+                    targetWidth, 0,
+                    targetWidth, targetHeight / 2,
+                    0, targetHeight / 2
+                ]);
+                let M = cv.getPerspectiveTransform(srcPts, dstPts);
+                let warped = new cv.Mat();
+                cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight / 2), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+                processScannedOptions(warped);
+                cv.imshow('captureCanvas', warped);
+                warped.delete();
+                M.delete();
+                srcPts.delete();
+                dstPts.delete();
+            } else {
+                // Fallback: use the upper half of the captured image
+                let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
+                processScannedOptions(roi);
+                cv.imshow('captureCanvas', roi);
+                roi.delete();
+            }
+        } catch (error) {
+            console.error("Scanning error:", error);
+            debugLog("Error processing image, please try again.");
+        } finally {
+            if (src) src.delete();
+            if (gray) gray.delete();
+            if (equalized) equalized.delete();
+            if (binaryMarkers) binaryMarkers.delete();
+            if (contours) contours.delete();
+            if (hierarchy) hierarchy.delete();
+        }
+    }
+
+    // Detect filled bubbles in the warped (or ROI) image using adjusted region positions.
+    function processScannedOptions(processedImage) {
+        const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+        const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
+        AppState.studentAnswers = Array.from({length: questionCount}, () => ({answer: null, score: 0}));
+        const config = ANSWER_SHEET_CONFIG;
+        const options = ['A', 'B', 'C', 'D', 'E', 'F'].slice(0, optionCount);
+        let gray, binary;
+        try {
+            gray = new cv.Mat();
+            cv.cvtColor(processedImage, gray, cv.COLOR_RGBA2GRAY, 0);
+            binary = new cv.Mat();
+            cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
+            cv.imshow('binaryCanvas', binary);
+            document.getElementById('binaryCanvas').classList.remove('hide');
+
+            const captureCanvas = document.getElementById('captureCanvas');
+            const captureCtx = captureCanvas.getContext('2d');
+            captureCtx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
+
+            for (let i = 0; i < questionCount; i++) {
+                const row = i % config.questionsPerColumn;
+                const col = Math.floor(i / config.questionsPerColumn);
+                const questionX = config.questionsStartX + col * (config.horizontalSpacingBetweenOptions * optionCount + config.boxSize + config.optionOffsetX + 12);
+                const questionY = config.answerStartY + row * config.verticalSpacingBetweenQuestions;
+                let bestMatch = {option: null, fillRatio: 0};
+
+                for (let j = 0; j < optionCount; j++) {
+                    const optionX = questionX + j * config.horizontalSpacingBetweenOptions;
+                    const roiRect = new cv.Rect(optionX, questionY, config.boxSize, config.boxSize);
+                    let optionRoi = binary.roi(roiRect);
+                    let filledPixels = cv.countNonZero(optionRoi);
+                    optionRoi.delete();
+                    const fillRatio = filledPixels / (config.boxSize * config.boxSize);
+
+                    captureCtx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                    if (fillRatio > OPTION_THRESHOLD) {
+                        captureCtx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+                        if (fillRatio > bestMatch.fillRatio) {
+                            bestMatch.option = options[j];
+                            bestMatch.fillRatio = fillRatio;
+                        }
+                    }
+                    captureCtx.strokeRect(optionX, questionY, config.boxSize, config.boxSize);
+                    captureCtx.font = "10px Arial";
+                    captureCtx.fillStyle = 'black';
+                    captureCtx.fillText(options[j], optionX + 1, questionY + config.boxSize / 2 + 3);
+                }
+                AppState.studentAnswers[i].answer = bestMatch.option;
+            }
+            debugLog("Scanning complete. Detected answers: " + AppState.studentAnswers.map(ans => ans.answer).join(','));
+            calculateScore();
+        } catch (error) {
+            console.error("Error processing scanned options:", error);
+            debugLog("Error processing scanned options.");
+        } finally {
+            if (gray) gray.delete();
+            if (binary) binary.delete();
+        }
+    }
+
+    function calculateScore() {
+        if (AppState.answerKey.length === 0) {
+            alert('Please set the answer key first.');
+            return;
+        }
+        let score = 0;
+        const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 1;
+        const questionStatsDiv = document.getElementById('questionStats');
+        const overlayQuestionStatsDiv = document.getElementById('overlayQuestionStats');
+        questionStatsDiv.innerHTML = '';
+        overlayQuestionStatsDiv.innerHTML = '';
+
+        AppState.studentAnswers.forEach((ans, index) => {
+            const isCorrect = ans.answer === AppState.answerKey[index];
+            if (isCorrect) {
+                score += scorePerQuestion;
+                ans.score = scorePerQuestion;
+            } else {
+                ans.score = 0;
+            }
+
+            const resultDiv = document.createElement('div');
+            resultDiv.classList.add('question-result');
+            resultDiv.textContent = `${index + 1}: <span class="math-inline">\{ans\.answer \|\| '\-'\} \(</span>{isCorrect ? 'Correct' : 'Incorrect'})`;
+            resultDiv.style.backgroundColor = isCorrect ? '#d4edda' : '#f8d7da';
+            resultDiv.style.borderColor = isCorrect ? '#c3e6cb' : '#f5c6cb';
+            questionStatsDiv.appendChild(resultDiv);
+
+            const overlayResultDiv = document.createElement('div');
+            overlayResultDiv.textContent = `${index + 1}: <span class="math-inline">\{ans\.answer \|\| '\-'\} \(</span>{isCorrect ? 'OK' : 'X'})`;
+          overlayQuestionStatsDiv.appendChild(overlayResultDiv);
+        });
+
+        document.getElementById('totalScore').textContent = score;
+        document.getElementById('overlayTotalScore').textContent = score;
+        document.getElementById('results').classList.remove('hide');
+        document.getElementById('aggregate').classList.add('hide');
+    }
+
+    function saveCurrentResult() {
+        if (AppState.studentAnswers.length === 0) {
+            alert('No result to save.');
+            return;
+        }
+        // Assuming you want to store results globally, though consider a more structured approach
+        if (!window.allStudentResults) {
+            window.allStudentResults = [];
+        }
+        window.allStudentResults.push({answers: [...AppState.studentAnswers], score: parseInt(document.getElementById('totalScore').textContent)});
+        debugLog("Result saved. Total saved: " + window.allStudentResults.length);
+        alert('Result saved!');
+    }
+
+    function displayAggregateStats() {
+        if (!window.allStudentResults || window.allStudentResults.length === 0) {
+            alert('No results available.');
+            return;
+        }
+        const aggregateStatsDiv = document.getElementById('aggregateStats');
+        aggregateStatsDiv.innerHTML = '';
+
+        const averageScore = window.allStudentResults.reduce((sum, res) => sum + res.score, 0) / window.allStudentResults.length;
+        const avgScoreItem = document.createElement('div');
+        avgScoreItem.classList.add('aggregate-item');
+        avgScoreItem.textContent = `Average Score: ${averageScore.toFixed(2)}`;
+        aggregateStatsDiv.appendChild(avgScoreItem);
+
+        document.getElementById('aggregate').classList.remove('hide');
+        document.getElementById('results').classList.add('hide');
+    }
+
+    function hideAggregateStats() {
+        document.getElementById('aggregate').classList.add('hide');
+    }
+
+    function stopCamera() {
+        if (AppState.isCameraActive) {
+            AppState.videoStream.getTracks().forEach(track => track.stop());
+            AppState.videoStream = null;
+            AppState.isCameraActive = false;
+            document.getElementById('cameraPreview').classList.add('hide');
+            document.getElementById('cameraOverlayResults').style.display = 'none';
+            debugLog("Camera stopped.");
+        }
+    }
+
+    function toggleFullscreen() {
+        const cameraContainer = document.getElementById('cameraContainer');
+        if (!document.fullscreenElement) {
+            cameraContainer.requestFullscreen().catch(err => {
+                alert(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }
+</script>
+</body>
+</html>
