@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Reliable Answer Sheet Scanner</title>
+  <title>Enhanced Answer Sheet Scanner</title>
   <style>
     body { font-family: sans-serif; margin: 20px; }
     .container { max-width: 960px; margin: 0 auto; }
@@ -50,7 +50,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>Reliable Answer Sheet Scanner</h1>
+    <h1>Enhanced Answer Sheet Scanner</h1>
     <div class="config-panel">
       <input type="number" id="questionCount" placeholder="Total Questions" value="100" min="1" max="200">
       <input type="number" id="optionCount" placeholder="Options per Question" value="4" min="2" max="10">
@@ -94,14 +94,13 @@
     </div>
   </div>
 
-  <!-- Floating message container for debugging/info -->
+  <!-- Floating message container for debug/info -->
   <div id="floatingMessageContainer" style="position: fixed; bottom: 20px; left: 20px; z-index: 1001;"></div>
 
   <!-- OpenCV.js -->
   <script async src="https://docs.opencv.org/4.5.3/opencv.js" onload="onOpenCvReady();"></script>
   <script>
     "use strict";
-    // Enable debug logs for testing (set to false when deploying)
     const debugMode = true;
     function debugLog(msg) {
       if (debugMode) {
@@ -112,12 +111,12 @@
 
     let videoStream = null;
     let isCameraActive = false;
-    let answerKey = [];         // Array of correct answers
-    let studentAnswers = [];    // Scanned answers per capture
+    let answerKey = [];      // Correct answers array
+    let studentAnswers = []; // Scanned answers
     let allStudentResults = [];
     let opencvReady = false;
 
-    // Configuration for answer sheet layout (adjust these as needed)
+    // Answer sheet layout configuration – adjust as needed
     const ANSWER_SHEET_CONFIG = {
       sheetWidth: 595,
       sheetHeight: 842,
@@ -141,10 +140,9 @@
       markerMargin: 10
     };
 
-    // Option filling threshold
+    // Threshold for determining a filled bubble
     const OPTION_THRESHOLD = 0.6;
 
-    // Called when OpenCV is loaded
     function onOpenCvReady() {
       debugLog("OpenCV.js is ready");
       opencvReady = true;
@@ -155,7 +153,7 @@
         alert('Your browser does not support camera features.');
         return;
       }
-      // Bind events
+      // Bind UI events
       document.getElementById('generateBtn').addEventListener('click', generateAnswerSheet);
       document.getElementById('setAnswerKeyBtn').addEventListener('click', showAnswerKeyInput);
       document.getElementById('exportImgBtn').addEventListener('click', exportAnswerSheetAsImage);
@@ -168,11 +166,9 @@
       document.getElementById('hideAggregateBtn').addEventListener('click', hideAggregateStats);
       document.getElementById('toggleFullscreenBtn').addEventListener('click', toggleFullscreen);
 
-      // Generate answer sheet on load
       generateAnswerSheet();
     });
 
-    // Helper: Show floating debug/info messages
     function showFloatingMessage(message) {
       const container = document.getElementById('floatingMessageContainer');
       const msgDiv = document.createElement('div');
@@ -187,11 +183,11 @@
       container.appendChild(msgDiv);
       setTimeout(() => {
         msgDiv.style.opacity = '0';
-        setTimeout(() => { container.removeChild(msgDiv); }, 500);
+        setTimeout(() => container.removeChild(msgDiv), 500);
       }, 3000);
     }
 
-    // Generate answer sheet template on canvas
+    // Generate the answer sheet template
     function generateAnswerSheet() {
       const questionCount = parseInt(document.getElementById('questionCount').value);
       const optionCount = parseInt(document.getElementById('optionCount').value);
@@ -253,7 +249,7 @@
             ctx.fillText(options[j], optionX + 1, questionY + config.boxSize / 2 + 2);
           }
         }
-        // Draw markers at corners for perspective detection
+        // Draw markers at corners (used for perspective transform)
         ctx.fillStyle = "black";
         ctx.fillRect(config.markerMargin, offsetY + config.markerMargin, config.markerSize, config.markerSize);
         ctx.fillRect(config.sheetWidth - config.markerMargin - config.markerSize, offsetY + config.markerMargin, config.markerSize, config.markerSize);
@@ -261,13 +257,12 @@
         ctx.fillRect(config.sheetWidth - config.markerMargin - config.markerSize, offsetY + config.sheetHeight / 2 - config.markerMargin - config.markerSize + 10, config.markerSize, config.markerSize);
       }
       drawSheetPart(0);
-      drawSheetPart(ANSWER_SHEET_CONFIG.sheetHeight / 2);
-      // Draw a dashed line dividing the two halves
+      drawSheetPart(config.sheetHeight / 2);
       ctx.strokeStyle = "#ccc";
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
-      ctx.moveTo(0, ANSWER_SHEET_CONFIG.sheetHeight / 2);
-      ctx.lineTo(ANSWER_SHEET_CONFIG.sheetWidth, ANSWER_SHEET_CONFIG.sheetHeight / 2);
+      ctx.moveTo(0, config.sheetHeight / 2);
+      ctx.lineTo(config.sheetWidth, config.sheetHeight / 2);
       ctx.stroke();
       ctx.setLineDash([]);
       document.getElementById('answerSheetContainer').style.display = 'block';
@@ -276,17 +271,15 @@
       document.getElementById('aggregate').classList.add('hide');
     }
 
-    // Prompt user to set the standard answer key
     function showAnswerKeyInput() {
       const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-      const input = prompt(`Enter the answer key (e.g., A,B,C,A,... for ${questionCount} questions):`);
+      const input = prompt(`Enter answer key (e.g., A,B,C,A,... for ${questionCount} questions):`);
       if (input) {
         answerKey = input.toUpperCase().split(',').slice(0, questionCount);
-        debugLog("Standard answer key set.");
+        debugLog("Answer key set.");
       }
     }
 
-    // Export the generated answer sheet as an image
     function exportAnswerSheetAsImage() {
       const canvas = document.getElementById('answerSheetCanvas');
       const originalWidth = canvas.width, originalHeight = canvas.height;
@@ -303,12 +296,10 @@
       generateAnswerSheet();
     }
 
-    // Show the camera container
     function showCamera() {
       document.getElementById('cameraContainer').classList.remove('hide');
     }
 
-    // Start the camera and display the live video feed
     async function startCamera() {
       if (isCameraActive) return;
       const video = document.getElementById('cameraPreview');
@@ -327,7 +318,6 @@
       }
     }
 
-    // Capture a photo frame and perform scanning
     function capturePhoto() {
       if (!isCameraActive || !opencvReady) {
         debugLog("Camera not active or OpenCV not ready.");
@@ -337,13 +327,11 @@
       const captureCanvas = document.getElementById('captureCanvas');
       const ctx = captureCanvas.getContext('2d');
       ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-      // Process image for scanning, then calculate score
       processImageForScanning(captureCanvas).then(() => {
         calculateScore();
       });
     }
 
-    // Wait until OpenCV is fully ready
     function waitForOpenCV() {
       return new Promise(resolve => {
         if (typeof cv !== 'undefined' && cv.Mat) {
@@ -354,7 +342,8 @@
       });
     }
 
-    // Process the captured image: attempt perspective transform based on markers, fallback if needed
+    // Process the captured image: apply histogram equalization, adaptive thresholding,
+    // detect markers, draw centroids, and perform perspective transform if four markers are found.
     async function processImageForScanning(canvas) {
       if (!opencvReady) {
         debugLog("OpenCV not ready for scanning.");
@@ -364,12 +353,19 @@
         let src = cv.imread(canvas);
         let gray = new cv.Mat();
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-        // Use adaptive thresholding for markers (more robust than fixed threshold)
+
+        // Equalize histogram to improve contrast
+        let equalized = new cv.Mat();
+        cv.equalizeHist(gray, equalized);
+
+        // Use adaptive thresholding to detect markers
         let binaryMarkers = new cv.Mat();
-        cv.adaptiveThreshold(gray, binaryMarkers, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 11, 2);
+        cv.adaptiveThreshold(equalized, binaryMarkers, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 11, 2);
+
         let contours = new cv.MatVector();
         let hierarchy = new cv.Mat();
         cv.findContours(binaryMarkers, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
         let detectedMarkers = [];
         const minArea = 50, maxArea = 300, approxFactor = 0.04;
         for (let i = 0; i < contours.size(); i++) {
@@ -379,7 +375,7 @@
             let approx = new cv.Mat();
             let epsilon = approxFactor * cv.arcLength(contour, true);
             cv.approxPolyDP(contour, approx, epsilon, true);
-            if (approx.rows === 4) {  // if we have 4 vertices
+            if (approx.rows === 4) {
               let pts = [];
               for (let j = 0; j < 4; j++) {
                 pts.push({
@@ -388,6 +384,10 @@
                 });
               }
               detectedMarkers.push(pts);
+              // Draw markers for debugging
+              pts.forEach(pt => {
+                cv.circle(src, new cv.Point(pt.x, pt.y), 4, new cv.Scalar(255, 0, 0, 255), -1);
+              });
             }
             approx.delete();
           }
@@ -395,18 +395,18 @@
         hierarchy.delete(); contours.delete(); binaryMarkers.delete();
         debugLog(`Detected ${detectedMarkers.length} marker(s).`);
 
-        // If we detect four markers, try perspective transformation
         if (detectedMarkers.length === 4) {
-          // Compute centroids of each detected marker
           let centroids = detectedMarkers.map(marker => {
             let sumX = 0, sumY = 0;
             marker.forEach(pt => { sumX += pt.x; sumY += pt.y; });
             return { x: sumX / marker.length, y: sumY / marker.length };
           });
-          // Sort points clockwise
+          // Draw centroids for debugging
+          centroids.forEach(c => {
+            cv.circle(src, new cv.Point(c.x, c.y), 4, new cv.Scalar(0, 255, 0, 255), -1);
+          });
           const center = centroids.reduce((acc, pt) => ({ x: acc.x + pt.x, y: acc.y + pt.y }), {x: 0, y: 0});
-          center.x /= centroids.length;
-          center.y /= centroids.length;
+          center.x /= centroids.length; center.y /= centroids.length;
           centroids.sort((a, b) => Math.atan2(a.y - center.y, a.x - center.x) - Math.atan2(b.y - center.y, b.x - center.x));
           const targetWidth = 595, targetHeight = 842;
           let srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
@@ -428,20 +428,20 @@
           cv.imshow('captureCanvas', warped);
           warped.delete(); M.delete(); srcPts.delete(); dstPts.delete();
         } else {
-          // Fallback: use upper half of the captured image
+          // Fallback: use the upper half of the image
           let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
           processScannedOptions(roi);
           cv.imshow('captureCanvas', roi);
           roi.delete();
         }
-        src.delete(); gray.delete();
+        src.delete(); gray.delete(); equalized.delete();
       } catch (error) {
         console.error("Scanning error:", error);
         debugLog("Error processing image, please try again.");
       }
     }
 
-    // Detect filled options from the processed (warped) image
+    // Detect filled bubbles in the warped (or ROI) image
     function processScannedOptions(processedImage) {
       const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
       const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
@@ -450,7 +450,6 @@
       const options = ['A', 'B', 'C', 'D'];
       let gray = new cv.Mat();
       cv.cvtColor(processedImage, gray, cv.COLOR_RGBA2GRAY, 0);
-      // Use adaptive thresholding for better robustness
       let binary = new cv.Mat();
       cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
       cv.imshow('binaryCanvas', binary);
@@ -463,7 +462,6 @@
       for (let i = 0; i < questionCount; i++) {
         const row = i % config.questionsPerColumn;
         const col = Math.floor(i / config.questionsPerColumn);
-        // Adjust these offsets if necessary – the scanned image must be well-aligned to the template
         const questionX = config.questionsStartX + col * (config.horizontalSpacingBetweenOptions * optionCount + config.boxSize + config.optionOffsetX + 12);
         const questionY = config.answerStartY + row * config.verticalSpacingBetweenQuestions;
         let detected = null, maxRatio = 0;
@@ -482,7 +480,6 @@
         }
         if (detected !== null) {
           studentAnswers[i] = { answer: options[detected], score: maxRatio };
-          // Overlay colored rectangle to indicate detection (green for correct, red for wrong, blue if key not set)
           captureCtx.fillStyle = answerKey[i]
             ? (options[detected] === answerKey[i] ? 'rgba(0,255,0,0.5)' : 'rgba(255,0,0,0.5)')
             : 'rgba(0,0,255,0.5)';
@@ -493,7 +490,6 @@
       binary.delete(); gray.delete();
     }
 
-    // Calculate the total score based on scanned answers versus the answer key
     function calculateScore() {
       if (answerKey.length === 0) {
         debugLog("Please set the answer key first.");
@@ -524,7 +520,6 @@
       document.getElementById('results').classList.add('hide');
     }
 
-    // Save the current scan result
     function saveCurrentResult() {
       if (studentAnswers.length === 0) {
         alert('No valid scan result available.');
@@ -541,7 +536,6 @@
       debugLog(`Result saved. Total results: ${allStudentResults.length}`);
     }
 
-    // Display aggregate statistics for saved results
     function displayAggregateStats() {
       if (allStudentResults.length === 0) {
         alert('No scan results saved yet.');
@@ -571,7 +565,6 @@
       document.getElementById('aggregate').classList.add('hide');
     }
 
-    // Stop the camera stream
     function stopCamera() {
       if (videoStream) {
         videoStream.getTracks().forEach(track => track.stop());
@@ -582,7 +575,6 @@
       document.getElementById('cameraOverlayResults').style.display = 'none';
     }
 
-    // Toggle full-screen view for the camera container
     function toggleFullscreen() {
       const container = document.querySelector('.container');
       const cameraContainer = document.getElementById('cameraContainer');
