@@ -523,152 +523,183 @@
         });
       }
 
-      async function processImageForScanning(canvas) {
-        if (!AppState.opencvReady) {
-          debugLog("OpenCV not ready for scanning.");
-          return;
-        }
-        let src = null, gray = null, equalized = null, binaryMarkers = null, contours = null, hierarchy = null;
-        try {
-          src = cv.imread(canvas);
-          gray = new cv.Mat();
-          cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+      
+  // Helper function: orders 4 points to [top-left, top-right, bottom-right, bottom-left]
+  function orderPoints(pts) {
+    // pts: array of 4 points with properties x and y
+    let sumSorted = pts.slice().sort((a, b) => (a.x + a.y) - (b.x + b.y));
+    let diffSorted = pts.slice().sort((a, b) => (a.y - a.x) - (b.y - b.x));
+    return [
+      sumSorted[0],             // top-left: smallest sum
+      diffSorted[0],            // top-right: smallest difference
+      sumSorted[3],             // bottom-right: largest sum
+      diffSorted[3]             // bottom-left: largest difference
+    ];
+  }
 
-          equalized = new cv.Mat();
-          cv.equalizeHist(gray, equalized);
+  async function processImageForScanning(canvas) {
+    if (!AppState.opencvReady) {
+      debugLog("OpenCV not ready for scanning.");
+      return;
+    }
+    let src = null, gray = null, equalized = null, binaryMarkers = null, contours = null, hierarchy = null;
+    try {
+      src = cv.imread(canvas);
+      
+      // Convert to grayscale and reduce noise
+      gray = new cv.Mat();
+      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+      cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
 
-          binaryMarkers = new cv.Mat();
-          cv.adaptiveThreshold(equalized, binaryMarkers, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 11, 2);
+      // Improve contrast with histogram equalization
+      equalized = new cv.Mat();
+      cv.equalizeHist(gray, equalized);
 
-          contours = new cv.MatVector();
-          hierarchy = new cv.Mat();
-          cv.findContours(binaryMarkers, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+      // Adaptive thresholding for marker detection
+      binaryMarkers = new cv.Mat();
+      cv.adaptiveThreshold(equalized, binaryMarkers, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 11, 2);
+      
+      // Apply a morphological open operation to remove noise
+      let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
+      cv.morphologyEx(binaryMarkers, binaryMarkers, cv.MORPH_OPEN, kernel);
+      kernel.delete();
 
-          let detectedMarkers = [];
-          const minArea = 50, maxArea = 300, approxFactor = 0.04;
-          for (let i = 0; i < contours.size(); i++) {
-            let contour = contours.get(i);
-            let area = cv.contourArea(contour);
-            if (area > minArea && area < maxArea) {
-              let approx = new cv.Mat();
-              let epsilon = approxFactor * cv.arcLength(contour, true);
-              cv.approxPolyDP(contour, approx, epsilon, true);
-              if (approx.rows === 4) {
-                let pts = [];
-                for (let j = 0; j < 4; j++) {
-                  pts.push({
-                    x: approx.intPtr(j, 0)[0],
-                    y: approx.intPtr(j, 0)[1]
-                  });
-                }
-                detectedMarkers.push(pts);
-                pts.forEach(pt => {
-                  cv.circle(src, new cv.Point(pt.x, pt.y), 4, new cv.Scalar(255, 0, 0, 255), -1);
-                });
-              }
-              approx.delete();
+      contours = new cv.MatVector();
+      hierarchy = new cv.Mat();
+      cv.findContours(binaryMarkers, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+      let detectedMarkers = [];
+      const minArea = 50, maxArea = 300, approxFactor = 0.04;
+      for (let i = 0; i < contours.size(); i++) {
+        let contour = contours.get(i);
+        let area = cv.contourArea(contour);
+        if (area > minArea && area < maxArea) {
+          let approx = new cv.Mat();
+          let epsilon = approxFactor * cv.arcLength(contour, true);
+          cv.approxPolyDP(contour, approx, epsilon, true);
+          if (approx.rows === 4) {
+            let pts = [];
+            for (let j = 0; j < 4; j++) {
+              pts.push({
+                x: approx.intPtr(j, 0)[0],
+                y: approx.intPtr(j, 0)[1]
+              });
             }
-          }
-          debugLog(`Detected ${detectedMarkers.length} marker(s).`);
-
-          if (detectedMarkers.length === 4) {
-            let centroids = detectedMarkers.map(marker => {
-              let sumX = 0, sumY = 0;
-              marker.forEach(pt => { sumX += pt.x; sumY += pt.y; });
-              return { x: sumX / marker.length, y: sumY / marker.length };
+            detectedMarkers.push(pts);
+            // For visual debugging: draw detected markers
+            pts.forEach(pt => {
+              cv.circle(src, new cv.Point(pt.x, pt.y), 4, new cv.Scalar(255, 0, 0, 255), -1);
             });
-            centroids.forEach(c => {
-              cv.circle(src, new cv.Point(c.x, c.y), 4, new cv.Scalar(0, 255, 0, 255), -1);
-            });
-            const center = centroids.reduce((acc, pt) => ({ x: acc.x + pt.x, y: acc.y + pt.y }), { x: 0, y: 0 });
-            center.x /= centroids.length;
-            center.y /= centroids.length;
-            centroids.sort((a, b) => Math.atan2(a.y - center.y, a.x - center.x) - Math.atan2(b.y - center.y, b.x - center.x));
-            const targetWidth = 595, targetHeight = 842;
-            let srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
-              centroids[0].x, centroids[0].y,
-              centroids[1].x, centroids[1].y,
-              centroids[2].x, centroids[2].y,
-              centroids[3].x, centroids[3].y
-            ]);
-            let dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
-              0, 0,
-              targetWidth, 0,
-              targetWidth, targetHeight / 2,
-              0, targetHeight / 2
-            ]);
-            let M = cv.getPerspectiveTransform(srcPts, dstPts);
-            let warped = new cv.Mat();
-            cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight / 2), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
-            processScannedOptions(warped);
-            cv.imshow('captureCanvas', warped);
-            safeDelete(warped, M, srcPts, dstPts);
-          } else {
-            let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
-            processScannedOptions(roi);
-            cv.imshow('captureCanvas', roi);
-            roi.delete();
           }
-        } catch (error) {
-          console.error("Scanning error:", error);
-          debugLog("Error processing image, please try again.");
-        } finally {
-          safeDelete(src, gray, equalized, binaryMarkers, contours, hierarchy);
+          approx.delete();
         }
       }
+      debugLog(`Detected ${detectedMarkers.length} marker(s).`);
 
-      function processScannedOptions(processedImage) {
-        const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-        const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
-        AppState.studentAnswers = Array.from({ length: questionCount }, () => ({ answer: null, score: 0 }));
-        const config = ANSWER_SHEET_CONFIG;
-        const options = ['A', 'B', 'C', 'D', 'E', 'F'].slice(0, optionCount);
-        let gray = new cv.Mat(), binary = new cv.Mat();
-        try {
-          cv.cvtColor(processedImage, gray, cv.COLOR_RGBA2GRAY, 0);
-          cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
-          cv.imshow('binaryCanvas', binary);
-          document.getElementById('binaryCanvas').classList.remove('hide');
-
-          const captureCanvas = document.getElementById('captureCanvas');
-          const captureCtx = captureCanvas.getContext('2d');
-          captureCtx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
-
-          for (let i = 0; i < questionCount; i++) {
-            const row = i % config.questionsPerColumn;
-            const col = Math.floor(i / config.questionsPerColumn);
-            const questionX = config.questionsStartX + col * (config.horizontalSpacingBetweenOptions * optionCount + config.boxSize + config.optionOffsetX + 12);
-            const questionY = config.answerStartY + row * config.verticalSpacingBetweenQuestions;
-            let bestMatch = { option: null, fillRatio: 0 };
-
-            for (let j = 0; j < optionCount; j++) {
-              const optionX = questionX + j * config.horizontalSpacingBetweenOptions;
-              const roiRect = new cv.Rect(optionX, questionY, config.boxSize, config.boxSize);
-              let optionRoi = binary.roi(roiRect);
-              let filledPixels = cv.countNonZero(optionRoi);
-              optionRoi.delete();
-              const fillRatio = filledPixels / (config.boxSize * config.boxSize);
-              captureCtx.strokeStyle = fillRatio > OPTION_THRESHOLD ? 'rgba(0, 255, 0, 0.8)' : 'rgba(255, 0, 0, 0.5)';
-              if (fillRatio > OPTION_THRESHOLD && fillRatio > bestMatch.fillRatio) {
-                bestMatch.option = options[j];
-                bestMatch.fillRatio = fillRatio;
-              }
-              captureCtx.strokeRect(optionX, questionY, config.boxSize, config.boxSize);
-              captureCtx.font = "10px Arial";
-              captureCtx.fillStyle = 'black';
-              captureCtx.fillText(options[j], optionX + 1, questionY + config.boxSize / 2 + 3);
-            }
-            AppState.studentAnswers[i].answer = bestMatch.option;
-          }
-          debugLog("Scanning complete. Detected answers: " + AppState.studentAnswers.map(ans => ans.answer).join(','));
-          calculateScore();
-        } catch (error) {
-          console.error("Error processing scanned options:", error);
-          debugLog("Error processing scanned options.");
-        } finally {
-          safeDelete(gray, binary);
-        }
+      if (detectedMarkers.length === 4) {
+        // Compute centroids for each detected marker
+        let centroids = detectedMarkers.map(marker => {
+          let sumX = 0, sumY = 0;
+          marker.forEach(pt => { sumX += pt.x; sumY += pt.y; });
+          return { x: sumX / marker.length, y: sumY / marker.length };
+        });
+        // Order the centroids for robust perspective correction
+        let orderedPts = orderPoints(centroids);
+        // Draw centroids for debugging
+        orderedPts.forEach(pt => {
+          cv.circle(src, new cv.Point(pt.x, pt.y), 4, new cv.Scalar(0, 255, 0, 255), -1);
+        });
+        const targetWidth = 595, targetHeight = 842;
+        let srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
+          orderedPts[0].x, orderedPts[0].y,
+          orderedPts[1].x, orderedPts[1].y,
+          orderedPts[2].x, orderedPts[2].y,
+          orderedPts[3].x, orderedPts[3].y
+        ]);
+        let dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
+          0, 0,
+          targetWidth, 0,
+          targetWidth, targetHeight / 2,
+          0, targetHeight / 2
+        ]);
+        let M = cv.getPerspectiveTransform(srcPts, dstPts);
+        let warped = new cv.Mat();
+        cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight / 2), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+        processScannedOptions(warped);
+        cv.imshow('captureCanvas', warped);
+        // Cleanup perspective transform mats
+        safeDelete(warped, M, srcPts, dstPts);
+      } else {
+        // Fallback: use the upper half of the captured image if markers aren't detected
+        let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
+        processScannedOptions(roi);
+        cv.imshow('captureCanvas', roi);
+        roi.delete();
       }
+    } catch (error) {
+      console.error("Scanning error:", error);
+      debugLog("Error processing image, please try again.");
+    } finally {
+      safeDelete(src, gray, equalized, binaryMarkers, contours, hierarchy);
+    }
+  }
+
+  function processScannedOptions(processedImage) {
+    const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+    const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
+    AppState.studentAnswers = Array.from({ length: questionCount }, () => ({ answer: null, score: 0 }));
+    const config = ANSWER_SHEET_CONFIG;
+    const options = ['A', 'B', 'C', 'D', 'E', 'F'].slice(0, optionCount);
+    let gray = new cv.Mat(), binary = new cv.Mat();
+    try {
+      cv.cvtColor(processedImage, gray, cv.COLOR_RGBA2GRAY, 0);
+      cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
+      cv.imshow('binaryCanvas', binary);
+      document.getElementById('binaryCanvas').classList.remove('hide');
+
+      const captureCanvas = document.getElementById('captureCanvas');
+      const captureCtx = captureCanvas.getContext('2d');
+      captureCtx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
+
+      for (let i = 0; i < questionCount; i++) {
+        const row = i % config.questionsPerColumn;
+        const col = Math.floor(i / config.questionsPerColumn);
+        const questionX = config.questionsStartX + col * (config.horizontalSpacingBetweenOptions * optionCount + config.boxSize + config.optionOffsetX + 12);
+        const questionY = config.answerStartY + row * config.verticalSpacingBetweenQuestions;
+        let bestMatch = { option: null, fillRatio: 0 };
+
+        for (let j = 0; j < optionCount; j++) {
+          const optionX = questionX + j * config.horizontalSpacingBetweenOptions;
+          const roiRect = new cv.Rect(optionX, questionY, config.boxSize, config.boxSize);
+          let optionRoi = binary.roi(roiRect);
+          let filledPixels = cv.countNonZero(optionRoi);
+          optionRoi.delete();
+          const fillRatio = filledPixels / (config.boxSize * config.boxSize);
+          captureCtx.strokeStyle = fillRatio > OPTION_THRESHOLD ? 'rgba(0, 255, 0, 0.8)' : 'rgba(255, 0, 0, 0.5)';
+          if (fillRatio > OPTION_THRESHOLD && fillRatio > bestMatch.fillRatio) {
+            bestMatch.option = options[j];
+            bestMatch.fillRatio = fillRatio;
+          }
+          captureCtx.strokeRect(optionX, questionY, config.boxSize, config.boxSize);
+          captureCtx.font = "10px Arial";
+          captureCtx.fillStyle = 'black';
+          captureCtx.fillText(options[j], optionX + 1, questionY + config.boxSize / 2 + 3);
+        }
+        AppState.studentAnswers[i].answer = bestMatch.option;
+      }
+      debugLog("Scanning complete. Detected answers: " + AppState.studentAnswers.map(ans => ans.answer).join(','));
+      calculateScore();
+    } catch (error) {
+      console.error("Error processing scanned options:", error);
+      debugLog("Error processing scanned options.");
+    } finally {
+      safeDelete(gray, binary);
+    }
+  }
+ 
+
+
+     
 
       function calculateScore() {
         if (AppState.answerKey.length === 0) {
