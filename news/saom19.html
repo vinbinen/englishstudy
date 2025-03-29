@@ -563,170 +563,220 @@ function orderPoints(pts) {
       
 
   async function processImageForScanning(canvas) {
-    if (!AppState.opencvReady) {
-      debugLog("OpenCV not ready for scanning.");
-      return;
-    }
-    let src = null, gray = null, equalized = null, binaryMarkers = null, contours = null, hierarchy = null;
-    try {
-      src = cv.imread(canvas);
-      
-      // Convert to grayscale and reduce noise
-      gray = new cv.Mat();
-      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-      cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
+  if (!AppState.isCameraActive || !AppState.opencvReady) {
+    debugLog("Camera not active or OpenCV not ready.");
+    return;
+  }
 
-      // Improve contrast with histogram equalization
-      equalized = new cv.Mat();
-      cv.equalizeHist(gray, equalized);
+  let src = null, gray = null, equalized = null, binaryMarkers = null, contours = null, hierarchy = null;
+  try {
+    src = cv.imread(canvas);
+    
+    // ===================== 图像预处理 =====================
+    // 转换为灰度图并降噪
+    gray = new cv.Mat();
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+    cv.GaussianBlur(gray, gray, new cv.Size(7, 7), 0); // 增大模糊核
 
-      // Adaptive thresholding for marker detection
-      binaryMarkers = new cv.Mat();
-      cv.adaptiveThreshold(equalized, binaryMarkers, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 11, 2);
-      
-      // Apply a morphological open operation to remove noise
-      let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
-      cv.morphologyEx(binaryMarkers, binaryMarkers, cv.MORPH_OPEN, kernel);
-      kernel.delete();
+    // 直方图均衡化增强对比度
+    equalized = new cv.Mat();
+    cv.equalizeHist(gray, equalized);
 
-      contours = new cv.MatVector();
-      hierarchy = new cv.Mat();
-      cv.findContours(binaryMarkers, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+    // 自适应阈值化检测标记
+    binaryMarkers = new cv.Mat();
+    cv.adaptiveThreshold(equalized, binaryMarkers, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 11, 2);
 
-      let detectedMarkers = [];
-      const minArea = 50, maxArea = 300, approxFactor = 0.04;
-      for (let i = 0; i < contours.size(); i++) {
-        let contour = contours.get(i);
-        let area = cv.contourArea(contour);
-        if (area > minArea && area < maxArea) {
-          let approx = new cv.Mat();
-          let epsilon = approxFactor * cv.arcLength(contour, true);
-          cv.approxPolyDP(contour, approx, epsilon, true);
-          if (approx.rows === 4) {
-            let pts = [];
-            for (let j = 0; j < 4; j++) {
-              pts.push({
-                x: approx.intPtr(j, 0)[0],
-                y: approx.intPtr(j, 0)[1]
-              });
-            }
-            detectedMarkers.push(pts);
-            // For visual debugging: draw detected markers
-            pts.forEach(pt => {
-              cv.circle(src, new cv.Point(pt.x, pt.y), 4, new cv.Scalar(255, 0, 0, 255), -1);
+    // 形态学开运算去噪
+    const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
+    cv.morphologyEx(binaryMarkers, binaryMarkers, cv.MORPH_OPEN, kernel);
+    kernel.delete();
+
+    // ===================== 角点检测 =====================
+    contours = new cv.MatVector();
+    hierarchy = new cv.Mat();
+    cv.findContours(binaryMarkers, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+    let detectedMarkers = [];
+    const minArea = 50, maxArea = 300, approxFactor = 0.04;
+    for (let i = 0; i < contours.size(); i++) {
+      let contour = contours.get(i);
+      let area = cv.contourArea(contour);
+      if (area > minArea && area < maxArea) {
+        let approx = new cv.Mat();
+        let epsilon = approxFactor * cv.arcLength(contour, true);
+        cv.approxPolyDP(contour, approx, epsilon, true);
+        if (approx.rows === 4 && cv.isContourConvex(approx)) { // 筛选凸四边形
+          let pts = [];
+          for (let j = 0; j < 4; j++) {
+            pts.push({
+              x: approx.intPtr(j, 0)[0],
+              y: approx.intPtr(j, 0)[1]
             });
           }
+          detectedMarkers.push(pts);
           approx.delete();
         }
       }
-      debugLog(`Detected ${detectedMarkers.length} marker(s).`);
+    }
+    debugLog(`Detected ${detectedMarkers.length} markers.`);
 
-      if (detectedMarkers.length === 4) {
-  // Calculate centroids for each detected marker
-  let centroids = detectedMarkers.map(marker => {
-    let sumX = 0, sumY = 0;
-    marker.forEach(pt => { sumX += pt.x; sumY += pt.y; });
-    return { x: sumX / marker.length, y: sumY / marker.length };
-  });
-  
-  // Order the centroids for robust perspective correction
-  let orderedPts = orderPoints(centroids);
-  
-  // Draw ordered points with larger red circles for better visibility
-  orderedPts.forEach(pt => {
-    // Increased circle radius to 8 pixels
-    cv.circle(src, new cv.Point(pt.x, pt.y), 8, new cv.Scalar(255, 0, 0, 255), -1);
-  });
-  
-  const targetWidth = 595, targetHeight = 842;
-  let srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
-    orderedPts[0].x, orderedPts[0].y,
-    orderedPts[1].x, orderedPts[1].y,
-    orderedPts[2].x, orderedPts[2].y,
-    orderedPts[3].x, orderedPts[3].y
-  ]);
-  let dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
-    0, 0,
-    targetWidth, 0,
-    targetWidth, targetHeight / 2,
-    0, targetHeight / 2
-  ]);
-  let M = cv.getPerspectiveTransform(srcPts, dstPts);
-  let warped = new cv.Mat();
-  cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight / 2), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
-  processScannedOptions(warped);
-  cv.imshow('captureCanvas', warped);
-  safeDelete(warped, M, srcPts, dstPts);
-} else {
-  // Fallback: use the upper half of the captured image if markers aren't detected
-  let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
-  processScannedOptions(roi);
-  cv.imshow('captureCanvas', roi);
-  roi.delete();
+    // ===================== 角点处理逻辑 =====================
+    if (detectedMarkers.length === 3) { 
+      // 动态补全第4个角点（基于矩形对称性）
+      const orderedPts = orderPoints(detectedMarkers.flat());
+      const pt4 = {
+        x: orderedPts[0].x + (orderedPts[1].x - orderedPts[0].x),
+        y: orderedPts[2].y
+      };
+      orderedPts.push(pt4);
+
+      // 透视校正参数（目标为半页答题卡）
+      const targetWidth = 595, targetHeight = 421; // A4半页尺寸
+      let srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
+        orderedPts[0].x, orderedPts[0].y,
+        orderedPts[1].x, orderedPts[1].y,
+        orderedPts[2].x, orderedPts[2].y,
+        pt4.x, pt4.y
+      ]);
+      let dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
+        0, 0,
+        targetWidth, 0,
+        targetWidth, targetHeight,
+        0, targetHeight
+      ]);
+      
+      // 执行透视变换
+      let M = cv.getPerspectiveTransform(srcPts, dstPts);
+      let warped = new cv.Mat();
+      cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight));
+      processScannedOptions(warped);
+      cv.imshow('captureCanvas', warped);
+      safeDelete(warped, M, srcPts, dstPts);
+    } else {
+      // ===================== 动态截取上下半页 =====================
+      const halfHeight = src.rows / 2;
+      
+      // 尝试识别上半页
+      let upperHalf = src.roi(new cv.Rect(0, 0, src.cols, halfHeight));
+      processScannedOptions(upperHalf);
+      upperHalf.delete();
+
+      // 若上半页未检测到答案，尝试下半页
+      if (AppState.studentAnswers.every(ans => !ans.answer)) {
+        let lowerHalf = src.roi(new cv.Rect(0, halfHeight, src.cols, halfHeight));
+        processScannedOptions(lowerHalf);
+        lowerHalf.delete();
+      }
+    }
+  } catch (error) {
+    console.error("Scanning error:", error);
+    debugLog("Error processing image. Please try again.");
+  } finally {
+    safeDelete(src, gray, equalized, binaryMarkers, contours, hierarchy);
+  }
 }
 
-    } catch (error) {
-      console.error("Scanning error:", error);
-      debugLog("Error processing image, please try again.");
-    } finally {
-      safeDelete(src, gray, equalized, binaryMarkers, contours, hierarchy);
-    }
-  }
+// ===================== 辅助函数 =====================
+function orderPoints(pts) {
+  // 按X坐标排序，分离左右点
+  pts.sort((a, b) => a.x - b.x);
+  let leftMost = pts.slice(0, 2).sort((a, b) => a.y - b.y);
+  let rightMost = pts.slice(2).sort((a, b) => a.y - b.y);
+  return [leftMost[0], rightMost[0], rightMost[1], leftMost[1]];
+}
 
   function processScannedOptions(processedImage) {
-    const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-    const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
-    AppState.studentAnswers = Array.from({ length: questionCount }, () => ({ answer: null, score: 0 }));
-    const config = ANSWER_SHEET_CONFIG;
-    const options = ['A', 'B', 'C', 'D', 'E', 'F'].slice(0, optionCount);
-    let gray = new cv.Mat(), binary = new cv.Mat();
-    try {
-      cv.cvtColor(processedImage, gray, cv.COLOR_RGBA2GRAY, 0);
-      cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
-      cv.imshow('binaryCanvas', binary);
-      document.getElementById('binaryCanvas').classList.remove('hide');
+  const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+  const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
+  const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 1;
+  const config = ANSWER_SHEET_CONFIG;
+  const options = ['A', 'B', 'C', 'D', 'E', 'F'].slice(0, optionCount);
+  AppState.studentAnswers = Array.from({ length: questionCount }, () => ({ answer: null, score: 0 }));
+  
+  let gray = new cv.Mat(), binary = new cv.Mat();
+  const captureCanvas = document.getElementById('captureCanvas');
+  const captureCtx = captureCanvas.getContext('2d');
+  
+  try {
+    // ===================== 图像预处理 =====================
+    // 转换为灰度图并进行自适应阈值化
+    cv.cvtColor(processedImage, gray, cv.COLOR_RGBA2GRAY, 0);
+    cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
+    
+    // 显示二值化图像（调试用）
+    cv.imshow('binaryCanvas', binary);
+    document.getElementById('binaryCanvas').classList.remove('hide');
 
-      const captureCanvas = document.getElementById('captureCanvas');
-      const captureCtx = captureCanvas.getContext('2d');
-      captureCtx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
+    // 清空捕获画布
+    captureCtx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
 
-      for (let i = 0; i < questionCount; i++) {
-        const row = i % config.questionsPerColumn;
-        const col = Math.floor(i / config.questionsPerColumn);
-        const questionX = config.questionsStartX + col * (config.horizontalSpacingBetweenOptions * optionCount + config.boxSize + config.optionOffsetX + 12);
-        const questionY = config.answerStartY + row * config.verticalSpacingBetweenQuestions;
-        let bestMatch = { option: null, fillRatio: 0 };
+    // ===================== 遍历所有题目和选项 =====================
+    for (let i = 0; i < questionCount; i++) {
+      const row = i % config.questionsPerColumn;
+      const col = Math.floor(i / config.questionsPerColumn);
+      const questionX = config.questionsStartX + col * (config.horizontalSpacingBetweenOptions * optionCount + config.boxSize + config.optionOffsetX + 12);
+      const questionY = config.answerStartY + row * config.verticalSpacingBetweenQuestions;
+      let bestMatch = { option: null, fillRatio: 0 };
 
-        for (let j = 0; j < optionCount; j++) {
-          const optionX = questionX + j * config.horizontalSpacingBetweenOptions;
-          const roiRect = new cv.Rect(optionX, questionY, config.boxSize, config.boxSize);
-          let optionRoi = binary.roi(roiRect);
-          let filledPixels = cv.countNonZero(optionRoi);
-          optionRoi.delete();
-          const fillRatio = filledPixels / (config.boxSize * config.boxSize);
-          captureCtx.strokeStyle = fillRatio > OPTION_THRESHOLD ? 'rgba(0, 255, 0, 0.8)' : 'rgba(255, 0, 0, 0.5)';
-          if (fillRatio > OPTION_THRESHOLD && fillRatio > bestMatch.fillRatio) {
-            bestMatch.option = options[j];
-            bestMatch.fillRatio = fillRatio;
-          }
-          captureCtx.strokeRect(optionX, questionY, config.boxSize, config.boxSize);
-          captureCtx.font = "10px Arial";
-          captureCtx.fillStyle = 'black';
-          captureCtx.fillText(options[j], optionX + 1, questionY + config.boxSize / 2 + 3);
+      // 遍历每个选项
+      for (let j = 0; j < optionCount; j++) {
+        const optionX = questionX + j * config.horizontalSpacingBetweenOptions;
+        const roiRect = new cv.Rect(optionX, questionY, config.boxSize, config.boxSize);
+        let optionRoi = binary.roi(roiRect);
+        let filledPixels = cv.countNonZero(optionRoi);
+        optionRoi.delete();
+        const fillRatio = filledPixels / (config.boxSize * config.boxSize);
+
+        // ============== 动态颜色编码逻辑 ==============
+        let fillColor, borderColor;
+        if (fillRatio > OPTION_THRESHOLD) {
+          const isCorrect = options[j] === AppState.answerKey[i];
+          fillColor = isCorrect ? COLOR.CORRECT : COLOR.SELECTED;
+          borderColor = isCorrect ? 'darkgreen' : 'darkorange';
+        } else {
+          fillColor = COLOR.UNFILLED;
+          borderColor = 'darkred';
         }
-        AppState.studentAnswers[i].answer = bestMatch.option;
-      }
-      debugLog("Scanning complete. Detected answers: " + AppState.studentAnswers.map(ans => ans.answer).join(','));
-      calculateScore();
-    } catch (error) {
-      console.error("Error processing scanned options:", error);
-      debugLog("Error processing scanned options.");
-    } finally {
-      safeDelete(gray, binary);
-    }
-  }
- 
 
+        // ============== 绘制颜色方框和边框 ==============
+        captureCtx.fillStyle = fillColor;
+        captureCtx.fillRect(optionX, questionY, config.boxSize, config.boxSize);
+        captureCtx.strokeStyle = borderColor;
+        captureCtx.lineWidth = 2;
+        captureCtx.strokeRect(optionX, questionY, config.boxSize, config.boxSize);
+
+        // ============== 调试模式：显示填充比例 ==============
+        if (debugMode) {
+          captureCtx.fillStyle = 'black';
+          captureCtx.font = '8px Arial';
+          captureCtx.fillText(
+            `${Math.round(fillRatio * 100)}%`,
+            optionX + 2,
+            questionY + config.boxSize - 2
+          );
+        }
+
+        // 更新最佳匹配选项
+        if (fillRatio > OPTION_THRESHOLD && fillRatio > bestMatch.fillRatio) {
+          bestMatch.option = options[j];
+          bestMatch.fillRatio = fillRatio;
+        }
+      }
+
+      // 记录学生答案
+      AppState.studentAnswers[i].answer = bestMatch.option;
+    }
+
+    // ===================== 计算得分并展示 =====================
+    calculateScore();
+  } catch (error) {
+    console.error("Error processing scanned options:", error);
+    debugLog("Failed to process options. Check console for details.");
+  } finally {
+    // ===================== 资源释放 =====================
+    safeDelete(gray, binary);
+  }
+}
 
      
 
