@@ -524,18 +524,24 @@
       }
 
       
-  // Helper function: orders 4 points to [top-left, top-right, bottom-right, bottom-left]
-  function orderPoints(pts) {
-    // pts: array of 4 points with properties x and y
-    let sumSorted = pts.slice().sort((a, b) => (a.x + a.y) - (b.x + b.y));
-    let diffSorted = pts.slice().sort((a, b) => (a.y - a.x) - (b.y - b.x));
-    return [
-      sumSorted[0],             // top-left: smallest sum
-      diffSorted[0],            // top-right: smallest difference
-      sumSorted[3],             // bottom-right: largest sum
-      diffSorted[3]             // bottom-left: largest difference
-    ];
-  }
+      
+// New ordering function: sorts points to return [top-left, top-right, bottom-right, bottom-left]
+function orderPoints(pts) {
+  // Ensure there are exactly 4 points
+  if (pts.length !== 4) return pts;
+  
+  // Sort by x-coordinate (ascending)
+  pts.sort((a, b) => a.x - b.x);
+  
+  // The two left-most points are candidates for top-left and bottom-left
+  let leftMost = pts.slice(0, 2).sort((a, b) => a.y - b.y);
+  // The two right-most points are candidates for top-right and bottom-right
+  let rightMost = pts.slice(2).sort((a, b) => a.y - b.y);
+  
+  // Return ordered points: [top-left, top-right, bottom-right, bottom-left]
+  return [leftMost[0], rightMost[0], rightMost[1], leftMost[1]];
+}
+      
 
   async function processImageForScanning(canvas) {
     if (!AppState.opencvReady) {
@@ -597,45 +603,49 @@
       debugLog(`Detected ${detectedMarkers.length} marker(s).`);
 
       if (detectedMarkers.length === 4) {
-        // Compute centroids for each detected marker
-        let centroids = detectedMarkers.map(marker => {
-          let sumX = 0, sumY = 0;
-          marker.forEach(pt => { sumX += pt.x; sumY += pt.y; });
-          return { x: sumX / marker.length, y: sumY / marker.length };
-        });
-        // Order the centroids for robust perspective correction
-        let orderedPts = orderPoints(centroids);
-        // Draw centroids for debugging
-        orderedPts.forEach(pt => {
-          cv.circle(src, new cv.Point(pt.x, pt.y), 4, new cv.Scalar(0, 255, 0, 255), -1);
-        });
-        const targetWidth = 595, targetHeight = 842;
-        let srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
-          orderedPts[0].x, orderedPts[0].y,
-          orderedPts[1].x, orderedPts[1].y,
-          orderedPts[2].x, orderedPts[2].y,
-          orderedPts[3].x, orderedPts[3].y
-        ]);
-        let dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
-          0, 0,
-          targetWidth, 0,
-          targetWidth, targetHeight / 2,
-          0, targetHeight / 2
-        ]);
-        let M = cv.getPerspectiveTransform(srcPts, dstPts);
-        let warped = new cv.Mat();
-        cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight / 2), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
-        processScannedOptions(warped);
-        cv.imshow('captureCanvas', warped);
-        // Cleanup perspective transform mats
-        safeDelete(warped, M, srcPts, dstPts);
-      } else {
-        // Fallback: use the upper half of the captured image if markers aren't detected
-        let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
-        processScannedOptions(roi);
-        cv.imshow('captureCanvas', roi);
-        roi.delete();
-      }
+  // Calculate centroids for each detected marker
+  let centroids = detectedMarkers.map(marker => {
+    let sumX = 0, sumY = 0;
+    marker.forEach(pt => { sumX += pt.x; sumY += pt.y; });
+    return { x: sumX / marker.length, y: sumY / marker.length };
+  });
+  
+  // Order the centroids for robust perspective correction
+  let orderedPts = orderPoints(centroids);
+  
+  // Draw ordered points with larger red circles for better visibility
+  orderedPts.forEach(pt => {
+    // Increased circle radius to 8 pixels
+    cv.circle(src, new cv.Point(pt.x, pt.y), 8, new cv.Scalar(255, 0, 0, 255), -1);
+  });
+  
+  const targetWidth = 595, targetHeight = 842;
+  let srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
+    orderedPts[0].x, orderedPts[0].y,
+    orderedPts[1].x, orderedPts[1].y,
+    orderedPts[2].x, orderedPts[2].y,
+    orderedPts[3].x, orderedPts[3].y
+  ]);
+  let dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
+    0, 0,
+    targetWidth, 0,
+    targetWidth, targetHeight / 2,
+    0, targetHeight / 2
+  ]);
+  let M = cv.getPerspectiveTransform(srcPts, dstPts);
+  let warped = new cv.Mat();
+  cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight / 2), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+  processScannedOptions(warped);
+  cv.imshow('captureCanvas', warped);
+  safeDelete(warped, M, srcPts, dstPts);
+} else {
+  // Fallback: use the upper half of the captured image if markers aren't detected
+  let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
+  processScannedOptions(roi);
+  cv.imshow('captureCanvas', roi);
+  roi.delete();
+}
+
     } catch (error) {
       console.error("Scanning error:", error);
       debugLog("Error processing image, please try again.");
