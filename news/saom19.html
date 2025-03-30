@@ -274,10 +274,17 @@
         opencvReady: false
       };
 
+      // ===================== 全局颜色配置 =====================
+const COLOR = {
+  CORRECT: 'rgba(0, 255, 0, 0.6)',    // 绿色：正确填涂
+  SELECTED: 'rgba(255, 165, 0, 0.6)', // 橙色：误填
+  UNFILLED: 'rgba(255, 0, 0, 0.3)'    // 红色：未填涂
+};
+
       const ANSWER_SHEET_CONFIG = {
         sheetWidth: 595,
         sheetHeight: 842,
-        nameY: 40,
+        nameY: 50,
         classY: 65,
         studentIdY: 90,
         instructionsY: 120,
@@ -293,8 +300,8 @@
         optionOffsetX: 8,
         questionsPerColumn: 15,
         columnSpacing: 15,
-        markerSize: 8,
-        markerMargin: 20
+        markerSize: 6,
+        markerMargin: 30
       };
 
       const OPTION_THRESHOLD = 0.65; // For bubble detection
@@ -386,73 +393,117 @@
   
   // 定义绘图函数（支持上下半页独立绘制）
   function drawSheetPart(offsetY, isLowerHalf = false) {
-    // 基础文本样式
-    ctx.font = "16px Arial";
-    ctx.fillStyle = "black";
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 1;
+  const questionCount = parseInt(document.getElementById('questionCount').value) || 100;
+  const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
+  const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value) || 10;
+  const canvas = document.getElementById('answerSheetCanvas');
+  const ctx = canvas.getContext('2d');
+  const config = ANSWER_SHEET_CONFIG;
+  
+  // ============== 重置画布缩放 ==============
+  const scaleX = canvas.width / config.sheetWidth;
+  const scaleY = canvas.height / config.sheetHeight;
+  ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+  ctx.clearRect(0, 0, config.sheetWidth, config.sheetHeight);
 
-    // ============== 标题和基础信息 ==============
-    ctx.fillText("Answer Sheet Template", 20, 25 + offsetY);
-    
-    // ============== 学生信息字段 ==============
-    ctx.font = "12px Arial";
-    ctx.fillText("Name:", 20, config.nameY + offsetY);
-    ctx.strokeRect(60, config.nameY - 10 + offsetY, 100, 15);
-    ctx.fillText("Class:", 20, config.classY + offsetY);
-    ctx.strokeRect(60, config.classY - 10 + offsetY, 100, 15);
-    ctx.fillText("Student ID:", 20, config.studentIdY + offsetY);
-    ctx.strokeRect(60, config.studentIdY - 10 + offsetY, 100, 15);
+  // ============== 标题位置下移（避开角点） ==============
+  ctx.font = "16px Arial";
+  ctx.fillStyle = "black";
+  ctx.fillText("Answer Sheet Template", 20, 50 + offsetY); // 原25→50
 
-    // ============== 学生ID数字框 ==============
-    ctx.fillText("Student ID:", 20, config.studentIdLabelY + offsetY);
-    const digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    for (let i = 0; i < studentIdDigits; i++) {
-      const startX = config.studentIdStartX + i * (config.studentIdBoxSize + config.studentIdBoxSpacing);
-      for (let j = 0; j < digits.length; j++) {
-        const startY = config.studentIdLabelY + 8 + j * (config.studentIdBoxSize + config.studentIdBoxSpacing) + offsetY;
-        ctx.strokeRect(startX, startY, config.studentIdBoxSize, config.studentIdBoxSize);
-        ctx.font = "7px Arial";
-        ctx.fillText(digits[j], startX + 1, startY + config.studentIdBoxSize - 1);
-      }
+  // ============== 学生信息字段 ==============
+  ctx.font = "12px Arial";
+  ctx.fillText("Name:", 20, config.nameY + offsetY);
+  ctx.strokeRect(60, config.nameY - 10 + offsetY, 100, 15);
+  ctx.fillText("Class:", 20, config.classY + offsetY);
+  ctx.strokeRect(60, config.classY - 10 + offsetY, 100, 15);
+  ctx.fillText("Student ID:", 20, config.studentIdY + offsetY);
+  ctx.strokeRect(60, config.studentIdY - 10 + offsetY, 100, 15);
+
+  // ============== 学生ID数字框 ==============
+  ctx.fillText("Student ID:", 20, config.studentIdLabelY + offsetY);
+  const digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  for (let i = 0; i < studentIdDigits; i++) {
+    const startX = config.studentIdStartX + i * (config.studentIdBoxSize + config.studentIdBoxSpacing);
+    for (let j = 0; j < digits.length; j++) {
+      const startY = config.studentIdLabelY + 8 + j * (config.studentIdBoxSize + config.studentIdBoxSpacing) + offsetY;
+      ctx.strokeRect(startX, startY, config.studentIdBoxSize, config.studentIdBoxSize);
+      ctx.font = "7px Arial";
+      ctx.fillText(digits[j], startX + 1, startY + config.studentIdBoxSize - 1);
     }
+  }
 
-    // ============== 题目和选项区域 ==============
-    ctx.font = "10px Arial";
-    for (let i = 0; i < questionCount; i++) {
-      const row = i % config.questionsPerColumn;
-      const col = Math.floor(i / config.questionsPerColumn);
-      const questionX = config.questionsStartX + col * (config.columnSpacing + (optionCount * config.horizontalSpacingBetweenOptions + config.boxSize + config.optionOffsetX + 3));
-      const questionY = (isLowerHalf ? config.answerStartY : config.answerStartY + offsetY) + row * config.verticalSpacingBetweenQuestions;
-      
-      // 题目编号
-      ctx.fillText(`${i + 1}.`, questionX, questionY + config.boxSize / 2 + 2);
-      
-      // 选项框
-      const options = ['A', 'B', 'C', 'D', 'E', 'F'].slice(0, optionCount);
-      for (let j = 0; j < optionCount; j++) {
-        const optionX = questionX + config.boxSize + config.optionOffsetX + j * config.horizontalSpacingBetweenOptions;
-        ctx.strokeRect(optionX, questionY, config.boxSize, config.boxSize);
-        ctx.fillText(options[j], optionX + 1, questionY + config.boxSize / 2 + 2);
-      }
-    }
+  // ============== 动态计算题目起始Y坐标 ==============
+  const localAnswerStartY = isLowerHalf 
+    ? 30  // 下半页固定从Y=30开始
+    : config.answerStartY + offsetY; // 上半页正常叠加偏移量
 
-    // ============== 角点标记（每半页3个） ==============
-    ctx.fillStyle = "black";
-    const halfHeight = config.sheetHeight / 2;
-    
-    // 上半页：左上、右上、左下
-    if (!isLowerHalf) {
-      ctx.fillRect(config.markerMargin, config.markerMargin + offsetY, config.markerSize, config.markerSize); // 左上
-      ctx.fillRect(config.sheetWidth - config.markerMargin - config.markerSize, config.markerMargin + offsetY, config.markerSize, config.markerSize); // 右上
-      ctx.fillRect(config.markerMargin, offsetY + halfHeight - config.markerMargin - config.markerSize, config.markerSize, config.markerSize); // 左下
-    } 
-    // 下半页：左上、左下、右下
-    else {
-      ctx.fillRect(config.markerMargin, offsetY + config.markerMargin, config.markerSize, config.markerSize); // 左上（下半页顶部）
-      ctx.fillRect(config.markerMargin, offsetY + halfHeight - config.markerMargin - config.markerSize, config.markerSize, config.markerSize); // 左下
-      ctx.fillRect(config.sheetWidth - config.markerMargin - config.markerSize, offsetY + halfHeight - config.markerMargin - config.markerSize, config.markerSize, config.markerSize); // 右下
+  // ============== 题目和选项区域 ==============
+  ctx.font = "10px Arial";
+  for (let i = 0; i < questionCount; i++) {
+    const row = i % config.questionsPerColumn;
+    const col = Math.floor(i / config.questionsPerColumn);
+    const questionX = config.questionsStartX + col * (config.columnSpacing + (optionCount * config.horizontalSpacingBetweenOptions + config.boxSize + config.optionOffsetX + 3));
+    const questionY = localAnswerStartY + row * config.verticalSpacingBetweenQuestions;
+
+    // 题目编号
+    ctx.fillText(`${i + 1}.`, questionX, questionY + config.boxSize / 2 + 2);
+
+    // 选项框
+    const options = ['A', 'B', 'C', 'D', 'E', 'F'].slice(0, optionCount);
+    for (let j = 0; j < optionCount; j++) {
+      const optionX = questionX + config.boxSize + config.optionOffsetX + j * config.horizontalSpacingBetweenOptions;
+      ctx.strokeRect(optionX, questionY, config.boxSize, config.boxSize);
+      ctx.fillText(options[j], optionX + 1, questionY + config.boxSize / 2 + 2);
     }
+  }
+
+  // ============== 角点标记（修复覆盖问题） ==============
+  ctx.fillStyle = "black";
+  const halfHeight = config.sheetHeight / 2;
+  
+  // 上半页：左上、右上、左下（边距+20）
+  if (!isLowerHalf) {
+    ctx.fillRect(
+      config.markerMargin,
+      config.markerMargin + 20 + offsetY,  // 增加垂直边距
+      config.markerSize,
+      config.markerSize
+    );
+    ctx.fillRect(
+      config.sheetWidth - config.markerMargin - config.markerSize,
+      config.markerMargin + 20 + offsetY,
+      config.markerSize,
+      config.markerSize
+    );
+    ctx.fillRect(
+      config.markerMargin,
+      offsetY + halfHeight - config.markerMargin - config.markerSize,
+      config.markerSize,
+      config.markerSize
+    );
+  } 
+  // 下半页：左上、左下、右下
+  else {
+    ctx.fillRect(
+      config.markerMargin,
+      offsetY + config.markerMargin + 20,  // 增加垂直边距
+      config.markerSize,
+      config.markerSize
+    );
+    ctx.fillRect(
+      config.markerMargin,
+      offsetY + halfHeight - config.markerMargin - config.markerSize,
+      config.markerSize,
+      config.markerSize
+    );
+    ctx.fillRect(
+      config.sheetWidth - config.markerMargin - config.markerSize,
+      offsetY + halfHeight - config.markerMargin - config.markerSize,
+      config.markerSize,
+      config.markerSize
+    );
+  }
   }
 
   // ============== 生成上下两半独立答题卡 ==============
