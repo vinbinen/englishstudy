@@ -427,7 +427,7 @@
                 const isValid = answers.every(ans => validOptions.includes(ans));
                 if (isValid) {
                     AppState.answerKey = answers;
-                    debugLog("Answer key set: " + AppState.answerKey.join(','));
+                    showFloatingMessage("Answer key set successfully!");
                     document.getElementById('answerKeyDialog').close();
                 } else {
                     alert(`Invalid answer key format. Please use comma-separated values (e.g., A,B,C) with valid options (${validOptions.join(', ')}).`);
@@ -465,7 +465,7 @@
                     document.getElementById('cameraContainer').classList.remove('hide');
                     document.getElementById('cameraOverlayResults').style.display = 'block';
                     await waitForOpenCvReady();
-                    debugLog("Camera started.");
+                    showFloatingMessage("Camera started. Point the camera at the answer sheet.");
                     // Start continuous scanning
                     scanningInterval = setInterval(processCameraFrame, 200);
                 } catch (err) {
@@ -476,7 +476,7 @@
 
             function capturePhoto() {
                 if (!AppState.isCameraActive || !AppState.opencvReady) {
-                    debugLog("Camera not active or OpenCV not ready.");
+                    showFloatingMessage("Camera not active or OpenCV not ready.");
                     return;
                 }
                 const video = document.getElementById('cameraPreview');
@@ -519,7 +519,7 @@
 
             async function processImageForScanning(canvas, continuousMode = false) {
                 if (!AppState.opencvReady) {
-                    debugLog("OpenCV not ready for scanning.");
+                    showFloatingMessage("OpenCV not ready for scanning.");
                     return;
                 }
                 let src = null, gray = null, equalized = null, binaryMarkers = null, contours = null, hierarchy = null;
@@ -672,7 +672,7 @@
             function calculateScore(originalImage, continuousMode = false) {
                 if (AppState.answerKey.length === 0) {
                     if (!continuousMode) {
-                        alert('Please set the answer key first.');
+                        showFloatingMessage("Please set the answer key first.");
                     }
                     return;
                 }
@@ -709,25 +709,25 @@
                     document.getElementById('totalScore').textContent = score;
                     document.getElementById('results').classList.remove('hide');
                     document.getElementById('aggregate').classList.add('hide');
+                    showFloatingMessage(`Scanning completed. Total score: ${score}`);
                 }
             }
 
             function saveCurrentResult() {
                 if (AppState.studentAnswers.length === 0) {
-                    alert('No result to save.');
+                    showFloatingMessage("No result to save.");
                     return;
                 }
                 if (!window.allStudentResults) {
                     window.allStudentResults = [];
                 }
                 window.allStudentResults.push({ answers: [...AppState.studentAnswers], score: parseInt(document.getElementById('totalScore').textContent) });
-                debugLog("Result saved. Total saved: " + window.allStudentResults.length);
-                alert('Result saved!');
+                showFloatingMessage("Result saved successfully!");
             }
 
             function displayAggregateStats() {
                 if (!window.allStudentResults || window.allStudentResults.length === 0) {
-                    alert('No results available.');
+                    showFloatingMessage("No results available.");
                     return;
                 }
                 const aggregateStatsDiv = document.getElementById('aggregateStats');
@@ -753,6 +753,7 @@
                     document.getElementById('cameraPreview').classList.add('hide');
                     document.getElementById('cameraOverlayResults').style.display = 'none';
                     clearInterval(scanningInterval);
+                    showFloatingMessage("Camera stopped.");
                 }
             }
 
@@ -760,7 +761,7 @@
                 const cameraContainer = document.getElementById('cameraContainer');
                 if (!document.fullscreenElement) {
                     cameraContainer.requestFullscreen().catch(err => {
-                        alert(`Error attempting to enable full-screen mode: ${err.message}`);
+                        showFloatingMessage(`Error enabling full-screen mode: ${err.message}`);
                     });
                 } else {
                     document.exitFullscreen();
