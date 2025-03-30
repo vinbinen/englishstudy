@@ -201,6 +201,16 @@
                 margin-bottom: 10px;
             }
         }
+
+        #cameraOverlayGuide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allows clicks to pass through */
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
@@ -496,11 +506,14 @@
                     video.classList.remove('hide');
                     document.getElementById('cameraContainer').classList.remove('hide');
                     document.getElementById('cameraOverlayResults').style.display = 'block';
+                    document.getElementById('cameraOverlayGuide').style.display = 'block'; // Show the guide
                     await waitForOpenCvReady();
                     debugLog("Camera started.");
+                    
 
                     // Start continuous scanning
                     scanningInterval = setInterval(processCameraFrame, 200); // Adjust interval as needed
+                    drawFocusGuide(); // Draw the focus guide initially
                 } catch (err) {
                     alert(`Camera start failed: ${err.message}`);
                     debugLog(`Camera error: ${err.stack}`);
@@ -531,6 +544,8 @@
                 const ctx = captureCanvas.getContext('2d');
                 ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
                 processImageForScanning(captureCanvas, true); // Pass a flag for continuous mode
+                drawFocusGuide(); // Redraw the focus guide in each frame
+            
             }
 
             // Helper for safe deletion of cv.Mat objects
@@ -561,7 +576,8 @@
             }
 
 
-            async function processImageForScanning(canvas, continuousMode = false) {
+
+                        async function processImageForScanning(canvas, continuousMode = false) {
                 if (!AppState.opencvReady) {
                     debugLog("OpenCV not ready for scanning.");
                     return;
@@ -686,7 +702,6 @@
                     safeDelete(src, gray, equalized, binaryMarkers, contours, hierarchy);
                 }
             }
-                            
 
             function processScannedOptions(processedImage, originalImage, continuousMode = false) {
                 const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
@@ -751,58 +766,55 @@
                 }
             }
 
+ 
 
-            function calculateScore(originalImage) {
+
+            function calculateScore(originalImage, continuousMode = false) {
                 if (AppState.answerKey.length === 0) {
-                    alert('Please set the answer key first.');
-return;
-}
-let score = 0;
-const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 1;
-const questionStatsDiv = document.getElementById('questionStats');
-const overlayQuestionStatsDiv = document.getElementById('overlayQuestionStats');
-questionStatsDiv.innerHTML = '';
-overlayQuestionStatsDiv.innerHTML = '';
-          const captureCanvas = document.getElementById('captureCanvas');
-            const captureCtx = captureCanvas.getContext('2d');
-            // Optionally clear the canvas before drawing score
-            // captureCtx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
-            // captureCtx.drawImage(originalImage, 0, 0, captureCanvas.width, captureCanvas.height); // Redraw the image
-
-            AppState.studentAnswers.forEach((ans, index) => {
-                const isCorrect = ans.answer === AppState.answerKey[index];
-                if (isCorrect) {
-                    score += scorePerQuestion;
-                    ans.score = scorePerQuestion;
-                    captureCtx.fillStyle = 'green';
-                } else {
-                    ans.score = 0;
-                    captureCtx.fillStyle = 'red';
+                    if (!continuousMode) {
+                        alert('Please set the answer key first.');
+                    }
+                    return;
                 }
-                const resultDiv = document.createElement('div');
-                resultDiv.classList.add('question-result');
-                resultDiv.innerHTML = `${index + 1}: ${ans.answer || '-'} (${isCorrect ? 'Correct' : 'Incorrect'})`;
-                resultDiv.style.backgroundColor = isCorrect ? '#d4edda' : '#f8d7da';
-                resultDiv.style.borderColor = isCorrect ? '#c3e6cb' : '#f5c6cb';
-                questionStatsDiv.appendChild(resultDiv);
-                const overlayResultDiv = document.createElement('div');
-                overlayResultDiv.innerHTML = `${index + 1}: ${ans.answer || '-'} (${isCorrect ? 'OK' : 'X'})`;
-                overlayQuestionStatsDiv.appendChild(overlayResultDiv);
+                let score = 0;
+                const scorePerQuestion = parseInt(document.getElementById('scorePerQuestion').value) || 1;
+                const overlayQuestionStatsDiv = document.getElementById('overlayQuestionStats');
+                overlayQuestionStatsDiv.innerHTML = '';
 
-                // Visualize score on the camera screen
-                const row = index % ANSWER_SHEET_CONFIG.questionsPerColumn;
-                const col = Math.floor(index / ANSWER_SHEET_CONFIG.questionsPerColumn);
-                const questionX = ANSWER_SHEET_CONFIG.questionsStartX + col * (ANSWER_SHEET_CONFIG.horizontalSpacingBetweenOptions * ANSWER_SHEET_CONFIG.optionCount + ANSWER_SHEET_CONFIG.boxSize + ANSWER_SHEET_CONFIG.optionOffsetX + 12);
-                const questionY = ANSWER_SHEET_CONFIG.answerStartY + row * ANSWER_SHEET_CONFIG.verticalSpacingBetweenQuestions;
-                captureCtx.font = "14px Arial";
-                captureCtx.fillText(isCorrect ? '✓' : '✗', questionX - 25, questionY + ANSWER_SHEET_CONFIG.boxSize / 2 + 5);
-            });
-            document.getElementById('totalScore').textContent = score;
-            document.getElementById('overlayTotalScore').textContent = score;
-            document.getElementById('results').classList.remove('hide');
-            document.getElementById('aggregate').classList.add('hide');
-        }
+                const captureCanvas = document.getElementById('captureCanvas');
+                const captureCtx = captureCanvas.getContext('2d');
+                captureCtx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
+                captureCtx.drawImage(originalImage, 0, 0, captureCanvas.width, captureCanvas.height);
 
+                AppState.studentAnswers.forEach((ans, index) => {
+                    const isCorrect = ans.answer === AppState.answerKey[index];
+                    if (isCorrect) {
+                        score += scorePerQuestion;
+                        ans.score = scorePerQuestion;
+                        captureCtx.fillStyle = 'green';
+                    } else {
+                        ans.score = 0;
+                        captureCtx.fillStyle = 'red';
+                    }
+                    const overlayResultDiv = document.createElement('div');
+                    overlayResultDiv.innerHTML = `${index + 1}: ${ans.answer || '-'} (${isCorrect ? 'OK' : 'X'})`;
+                    overlayQuestionStatsDiv.appendChild(overlayResultDiv);
+
+                    // Visualize score on the camera screen
+                    const row = index % ANSWER_SHEET_CONFIG.questionsPerColumn;
+                    const col = Math.floor(index / ANSWER_SHEET_CONFIG.questionsPerColumn);
+                    const questionX = ANSWER_SHEET_CONFIG.questionsStartX + col * (ANSWER_SHEET_CONFIG.horizontalSpacingBetweenOptions * ANSWER_SHEET_CONFIG.optionCount + ANSWER_SHEET_CONFIG.boxSize + ANSWER_SHEET_CONFIG.optionOffsetX + 12);
+                    const questionY = ANSWER_SHEET_CONFIG.answerStartY + row * ANSWER_SHEET_CONFIG.verticalSpacingBetweenQuestions;
+                    captureCtx.font = "14px Arial";
+                    captureCtx.fillText(isCorrect ? '✓' : '✗', questionX - 25, questionY + ANSWER_SHEET_CONFIG.boxSize / 2 + 5);
+                });
+                document.getElementById('overlayTotalScore').textContent = score;
+                if (!continuousMode) {
+                    document.getElementById('totalScore').textContent = score;
+                    document.getElementById('results').classList.remove('hide');
+                    document.getElementById('aggregate').classList.add('hide');
+                }
+            }
         function saveCurrentResult() {
             if (AppState.studentAnswers.length === 0) {
                 alert('No result to save.');
@@ -842,11 +854,58 @@ overlayQuestionStatsDiv.innerHTML = '';
                     AppState.isCameraActive = false;
                     document.getElementById('cameraPreview').classList.add('hide');
                     document.getElementById('cameraOverlayResults').style.display = 'none';
+                   document.getElementById('cameraOverlayGuide').style.display = 'none'; // Hide the guide
                     debugLog("Camera stopped.");
+ 
+                   
 
                     // Stop continuous scanning
                     clearInterval(scanningInterval);
                 }
+            }
+
+            function drawFocusGuide() {
+                const guideCanvas = document.getElementById('cameraOverlayGuide');
+                const video = document.getElementById('cameraPreview');
+                const guideCtx = guideCanvas.getContext('2d');
+
+                // Set canvas dimensions to match video
+                guideCanvas.width = video.videoWidth;
+                guideCanvas.height = video.videoHeight;
+
+                const width = guideCanvas.width;
+                const height = guideCanvas.height;
+                const guideWidth = width * 0.8; // Adjust as needed
+                const guideHeight = height * 0.6; // Adjust as needed
+                const guideX = (width - guideWidth) / 2;
+                const guideY = (height - guideHeight) / 2;
+
+                guideCtx.clearRect(0, 0, width, height);
+
+                // Draw the rectangle guide
+                guideCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                guideCtx.lineWidth = 2;
+                guideCtx.strokeRect(guideX, guideY, guideWidth, guideHeight);
+
+                // Optionally, add corner indicators
+                const cornerSize = 20;
+                guideCtx.beginPath();
+                guideCtx.moveTo(guideX, guideY + cornerSize);
+                guideCtx.lineTo(guideX, guideY);
+                guideCtx.lineTo(guideX + cornerSize, guideY);
+
+                guideCtx.moveTo(guideX + guideWidth - cornerSize, guideY);
+                guideCtx.lineTo(guideX + guideWidth, guideY);
+                guideCtx.lineTo(guideX + guideWidth, guideY + cornerSize);
+
+                guideCtx.moveTo(guideX + guideWidth, guideY + guideHeight - cornerSize);
+                guideCtx.lineTo(guideX + guideWidth, guideY + guideHeight);
+                guideCtx.lineTo(guideX + guideWidth - cornerSize, guideY + guideHeight);
+
+                guideCtx.moveTo(guideX + cornerSize, guideY + guideHeight);
+                guideCtx.lineTo(guideX, guideY + guideHeight);
+                guideCtx.lineTo(guideX, guideY + guideHeight - cornerSize);
+                guideCtx.stroke();
             }
 
         function toggleFullscreen() {
