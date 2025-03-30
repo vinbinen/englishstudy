@@ -527,9 +527,9 @@
                     src = cv.imread(canvas);
                     gray = new cv.Mat();
                     cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-                    cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
+                    cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0); // 去噪
                     equalized = new cv.Mat();
-                    cv.equalizeHist(gray, equalized);
+                    cv.equalizeHist(gray, equalized); // 增加对比度
                     binaryMarkers = new cv.Mat();
                     cv.adaptiveThreshold(equalized, binaryMarkers, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 11, 2);
                     let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
@@ -598,18 +598,12 @@
                             cv.imshow('captureCanvas', src);
                         }
                         safeDelete(warped, M, srcPts, dstPts);
-                    } else if (continuousMode) {
-                        let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
-                        processScannedOptions(roi, src, continuousMode);
-                        roi.delete();
                     } else {
-                        let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
-                        processScannedOptions(roi, src, continuousMode);
-                        cv.imshow('captureCanvas', src);
-                        roi.delete();
+                        showFloatingMessage("Failed to detect answer sheet markers. Please ensure the answer sheet is properly aligned.");
                     }
                 } catch (error) {
                     console.error("Scanning error:", error);
+                    showFloatingMessage("Error processing image. Please try again.");
                 } finally {
                     safeDelete(src, gray, equalized, binaryMarkers, contours, hierarchy);
                 }
@@ -664,6 +658,7 @@
                     calculateScore(originalImage, continuousMode);
                 } catch (error) {
                     console.error("Error processing scanned options:", error);
+                    showFloatingMessage("Error processing scanned options. Please try again.");
                 } finally {
                     safeDelete(gray, binary);
                 }
