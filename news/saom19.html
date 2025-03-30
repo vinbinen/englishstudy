@@ -274,6 +274,8 @@
                 opencvReady: false
             };
 
+            let scanningInterval; // To hold the interval for continuous scanning
+
             const ANSWER_SHEET_CONFIG = {
                 sheetWidth: 595,
                 sheetHeight: 842,
@@ -496,13 +498,17 @@
                     document.getElementById('cameraOverlayResults').style.display = 'block';
                     await waitForOpenCvReady();
                     debugLog("Camera started.");
+
+                    // Start continuous scanning
+                    scanningInterval = setInterval(processCameraFrame, 200); // Adjust interval as needed
                 } catch (err) {
                     alert(`Camera start failed: ${err.message}`);
                     debugLog(`Camera error: ${err.stack}`);
                 }
             }
-
+            
             function capturePhoto() {
+                // Keep the capture button functionality as is, if needed
                 if (!AppState.isCameraActive || !AppState.opencvReady) {
                     debugLog("Camera not active or OpenCV not ready.");
                     return;
@@ -512,6 +518,19 @@
                 const ctx = captureCanvas.getContext('2d');
                 ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
                 processImageForScanning(captureCanvas);
+            }
+
+            async function processCameraFrame() {
+                if (!AppState.isCameraActive || !AppState.opencvReady) {
+                    return;
+                }
+                const video = document.getElementById('cameraPreview');
+                const captureCanvas = document.getElementById('captureCanvas');
+                captureCanvas.width = video.videoWidth;
+                captureCanvas.height = video.videoHeight;
+                const ctx = captureCanvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+                processImageForScanning(captureCanvas, true); // Pass a flag for continuous mode
             }
 
             // Helper for safe deletion of cv.Mat objects
@@ -542,7 +561,7 @@
             }
 
 
-            async function processImageForScanning(canvas) {
+            async function processImageForScanning(canvas, continuousMode = false) {
                 if (!AppState.opencvReady) {
                     debugLog("OpenCV not ready for scanning.");
                     return;
@@ -592,9 +611,11 @@
                                 }
                                 detectedMarkers.push(pts);
                                 // For visual debugging: draw detected markers
-                                pts.forEach(pt => {
-                                    cv.circle(src, new cv.Point(pt.x, pt.y), 4, new cv.Scalar(255, 0, 0, 255), -1);
-                                });
+                                if (continuousMode) {
+                                    pts.forEach(pt => {
+                                        cv.circle(src, new cv.Point(pt.x, pt.y), 4, new cv.Scalar(255, 0, 0, 255), -1);
+                                    });
+                                }
                             }
                             approx.delete();
                         }
@@ -613,10 +634,12 @@
                         let orderedPts = orderPoints(centroids);
 
                         // Draw ordered points with larger red circles for better visibility
-                        orderedPts.forEach(pt => {
-                            // Increased circle radius to 8 pixels
-                            cv.circle(src, new cv.Point(pt.x, pt.y), 8, new cv.Scalar(255, 0, 0, 255), -1);
-                        });
+                        if (continuousMode) {
+                            orderedPts.forEach(pt => {
+                                // Increased circle radius to 8 pixels
+                                cv.circle(src, new cv.Point(pt.x, pt.y), 8, new cv.Scalar(255, 0, 0, 255), -1);
+                            });
+                        }
 
                         const targetWidth = 595, targetHeight = 842;
                         let srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
@@ -634,26 +657,38 @@
                         let M = cv.getPerspectiveTransform(srcPts, dstPts);
                         let warped = new cv.Mat();
                         cv.warpPerspective(src, warped, M, new cv.Size(targetWidth, targetHeight / 2), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
-                        processScannedOptions(warped, src); // Pass the original src for drawing
-                        cv.imshow('captureCanvas', src); // Show the original image with drawings
+                        processScannedOptions(warped, src, continuousMode); // Pass continuousMode
+                        if (!continuousMode) {
+                            cv.imshow('captureCanvas', src); // Only show on capture
+                        }
                         safeDelete(warped, M, srcPts, dstPts);
-                    } else {
-                        // Fallback: use the upper half of the captured image if markers aren't detected
+                    } else if (continuousMode) {
+                        // If no markers in continuous mode, still process the frame
                         let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
-                        processScannedOptions(roi, src); // Pass the original src for drawing
-                        cv.imshow('captureCanvas', src); // Show the original image with drawings
+                        processScannedOptions(roi, src, continuousMode);
+                        roi.delete();
+                    } else {
+                        let roi = src.roi(new cv.Rect(0, 0, src.cols, src.rows / 2));
+                        processScannedOptions(roi, src, continuousMode);
+                        cv.imshow('captureCanvas', src); // Show on capture
                         roi.delete();
                     }
 
                 } catch (error) {
                     console.error("Scanning error:", error);
-                    debugLog("Error processing image, please try again.");
+                    if (continuousMode) {
+                        // Avoid flooding with errors in continuous mode
+                        debugLog("Error processing frame.");
+                    } else {
+                        debugLog("Error processing image, please try again.");
+                    }
                 } finally {
                     safeDelete(src, gray, equalized, binaryMarkers, contours, hierarchy);
                 }
             }
+                            
 
-            function processScannedOptions(processedImage, originalImage) {
+            function processScannedOptions(processedImage, originalImage, continuousMode = false) {
                 const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
                 const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
                 AppState.studentAnswers = Array.from({ length: questionCount }, () => ({ answer: null, score: 0 }));
@@ -663,12 +698,15 @@
                 try {
                     cv.cvtColor(processedImage, gray, cv.COLOR_RGBA2GRAY, 0);
                     cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
-                    cv.imshow('binaryCanvas', binary);
-                    document.getElementById('binaryCanvas').classList.remove('hide');
+                    if (!continuousMode) {
+                        cv.imshow('binaryCanvas', binary);
+                        document.getElementById('binaryCanvas').classList.remove('hide');
+                    }
 
                     const captureCanvas = document.getElementById('captureCanvas');
                     const captureCtx = captureCanvas.getContext('2d');
-                    // captureCtx.clearRect(0, 0, captureCanvas.width, captureCanvas.height); // Don't clear, draw on original
+                    captureCtx.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
+                    captureCtx.drawImage(originalImage, 0, 0, captureCanvas.width, captureCanvas.height);
 
                     for (let i = 0; i < questionCount; i++) {
                         const row = i % config.questionsPerColumn;
@@ -700,11 +738,14 @@
                         }
                         AppState.studentAnswers[i].answer = bestMatch.option;
                     }
-                    debugLog("Scanning complete. Detected answers: " + AppState.studentAnswers.map(ans => ans.answer).join(','));
-                    calculateScore(originalImage); // Pass original image for drawing score
+                    calculateScore(originalImage, continuousMode); // Pass continuousMode
                 } catch (error) {
                     console.error("Error processing scanned options:", error);
-                    debugLog("Error processing scanned options.");
+                    if (continuousMode) {
+                        debugLog("Error processing scan.");
+                    } else {
+                        debugLog("Error processing scanned options.");
+                    }
                 } finally {
                     safeDelete(gray, binary);
                 }
@@ -795,15 +836,18 @@ overlayQuestionStatsDiv.innerHTML = '';
         }
 
         function stopCamera() {
-            if (AppState.isCameraActive) {
-                AppState.videoStream.getTracks().forEach(track => track.stop());
-                AppState.videoStream = null;
-                AppState.isCameraActive = false;
-                document.getElementById('cameraPreview').classList.add('hide');
-                document.getElementById('cameraOverlayResults').style.display = 'none';
-                debugLog("Camera stopped.");
+                if (AppState.isCameraActive) {
+                    AppState.videoStream.getTracks().forEach(track => track.stop());
+                    AppState.videoStream = null;
+                    AppState.isCameraActive = false;
+                    document.getElementById('cameraPreview').classList.add('hide');
+                    document.getElementById('cameraOverlayResults').style.display = 'none';
+                    debugLog("Camera stopped.");
+
+                    // Stop continuous scanning
+                    clearInterval(scanningInterval);
+                }
             }
-        }
 
         function toggleFullscreen() {
             const cameraContainer = document.getElementById('cameraContainer');
