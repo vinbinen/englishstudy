@@ -5,453 +5,346 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enhanced Answer Sheet Scanner</title>
     <style>
-        /* Base styling */
         body {
-            font-family: sans-serif;
-            margin: 20px;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
+
         .container {
-            max-width: 960px;
-            margin: 0 auto;
-            padding: 0 10px;
-        }
-        h1 {
+            width: 90%;
+            max-width: 800px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+            margin-bottom: 20px;
             text-align: center;
         }
-        .config-panel,
-        #answerSheetContainer,
-        #cameraContainer,
-        #results,
-        #aggregate,
-        .controls {
-            margin-bottom: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #f9f9f9;
+
+        h1 {
+            color: #333;
         }
-        .config-panel input[type="number"],
-        .config-panel button,
-        .controls button,
-        .scan-save-btn,
-        .stats-btn,
-        .export-btn {
-            margin-right: 10px;
-            padding: 8px 15px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .export-btn {
-            background-color: #5cb85c;
-            color: white;
-            border-color: #4cae4c;
-        }
-        .export-btn:hover {
-            background-color: #4cae4c;
-        }
-        .start-btn {
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
             background-color: #007bff;
             color: white;
-            border-color: #007bff;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
         }
-        .start-btn:hover {
+
+        button:hover {
             background-color: #0056b3;
         }
-        .stop-btn {
-            background-color: #dc3545;
-            color: white;
-            border-color: #dc3545;
-        }
-        .stop-btn:hover {
-            background-color: #c82333;
-        }
+
         #answerSheetContainer {
             display: none;
-            text-align: center;
+            margin-top: 20px;
         }
+
         #answerSheetCanvas {
             border: 1px solid #ccc;
             max-width: 100%;
             height: auto;
         }
-        #cameraContainer.hide,
-        #results.hide,
-        #aggregate.hide {
+
+        #cameraContainer {
+            position: relative;
+            display: none;
+            margin-top: 20px;
+        }
+
+        #cameraPreview {
+            width: 100%;
+            max-height: 70vh; /* 限制高度防止溢出 */
+            object-fit: contain; /* 保持比例完整显示 */
+            background: #000;
+        }
+
+        #cameraOverlayGuide {
+            position: absolute;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #cameraOverlayText {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ff00;
+            font-size: 1.2em;
+            text-shadow: 1px 1px 2px black;
+            z-index: 11; /* 确保在引导层上方 */
+            text-align: center;
+        }
+
+        #captureCanvas {
             display: none;
         }
-        #cameraContainer.fullscreen-camera {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: black;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        #cameraContainer.fullscreen-camera video {
-            max-width: 95%;
-            max-height: 80%;
-        }
-        .container.hide-others > *:not(#cameraContainer) {
-            display: none !important;
-        }
-        #cameraOverlayResults {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 10;
-            font-size: 0.9em;
-        }
-        .score-display {
-            font-size: 1.1em;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        #overlayQuestionStats > div {
-            margin-bottom: 3px;
-        }
-        #questionStats {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .question-result {
-            border: 1px solid #ccc;
-            padding: 8px;
-            border-radius: 4px;
-        }
-        .aggregate-item {
+
+        #binaryCanvas {
+            display: none;
             border: 1px solid #eee;
-            padding: 8px;
-            margin-right: 10px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            background-color: #fff;
+            margin-top: 10px;
+            max-width: 100%;
+            height: auto;
         }
+
+        #results {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            text-align: left;
+        }
+
+        #results h2 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .question-result {
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+
+        #aggregate {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            text-align: left;
+        }
+
+        #aggregate h2 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .aggregate-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .aggregate-item:last-child {
+            border-bottom: none;
+        }
+
         .hide {
             display: none !important;
         }
-        /* Responsive camera preview */
-        #cameraPreview {
-            width: 100%;
-            max-height: 400px;
-            background: #000;
-        }
-        /* Loading overlay */
+
         #loading {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(255, 255, 255, 0.8);
             display: flex;
             justify-content: center;
             align-items: center;
-            color: white;
             font-size: 1.5em;
-            z-index: 1002;
-        }
-        /* Answer Key Dialog */
-        #answerKeyDialog {
-            border: 1px solid #ccc;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        #answerKeyDialog label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        #answerKeyInput {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        #answerKeyDialog button {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            background-color: #007bff;
-            color: white;
-        }
-        #answerKeyDialog button:hover {
-            background-color: #0056b3;
-        }
-        /* Media Queries for responsiveness */
-        @media (max-width: 600px) {
-            .config-panel,
-            .controls {
-                flex-direction: column;
-            }
-            .config-panel input, .config-panel button {
-                margin-bottom: 10px;
-            }
         }
 
-        #cameraOverlayGuide {
+        #cameraOverlayResults {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none; /* Allows clicks to pass through */
-            z-index: 10;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            z-index: 12;
         }
     </style>
 </head>
 <body>
+    <div id="loading" class="hide">Loading OpenCV.js ...</div>
     <div class="container">
-        <h1>Enhanced Answer Sheet Scanner</h1>
-        <div class="config-panel">
-            <input type="number" id="questionCount" placeholder="Total Questions" value="100" min="1" max="200">
-            <input type="number" id="optionCount" placeholder="Options per Question" value="4" min="2" max="10">
-            <input type="number" id="studentIdDigits" placeholder="Student ID Digits" value="10" min="1" max="20">
-            <input type="number" id="scorePerQuestion" placeholder="Score per Question" value="1" min="1">
-            <button id="generateBtn">Generate Answer Sheet</button>
-            <button id="setAnswerKeyBtn">Set Answer Key</button>
-            <button class="export-btn" id="exportImgBtn">Export Sheet Image</button>
-        </div>
+        <h1>Answer Sheet Scanner</h1>
+        <button id="generateSheetBtn">Generate Answer Sheet</button>
+        <button id="setAnswerKeyBtn">Set Answer Key</button>
+        <button id="exportSheetBtn">Export Answer Sheet as Image</button>
+        <br>
+        <label for="questionCount">Question Count:</label>
+        <input type="number" id="questionCount" value="10" min="1">
+        <label for="optionCount">Option Count:</label>
+        <input type="number" id="optionCount" value="4" min="1" max="6">
+        <label for="scorePerQuestion">Score per Question:</label>
+        <input type="number" id="scorePerQuestion" value="1" min="0">
+        <br>
+        <button id="showCameraBtn">Show Camera</button>
+        <button id="stopCameraBtn" class="hide">Stop Camera</button>
+        <button id="captureBtn">Capture & Scan</button>
+        <button id="saveResultBtn">Save Result</button>
+        <button id="showAggregateBtn">Show All Results</button>
+        <button id="hideAggregateBtn" class="hide">Hide All Results</button>
+        <button id="toggleFullscreenBtn">Toggle Fullscreen</button>
+
         <div id="answerSheetContainer">
-            <canvas id="answerSheetCanvas" width="595" height="842"></canvas>
+            <h2>Answer Sheet</h2>
+            <canvas id="answerSheetCanvas"></canvas>
         </div>
+
         <div id="cameraContainer" class="hide">
             <canvas id="cameraOverlayGuide"></canvas>
-            <video id="cameraPreview" autoplay></video>
+            <video id="cameraPreview" autoplay playsinline></video>
+            <div id="cameraOverlayText">请将答题卡对准绿色框区域，保持光线充足</div>
+            <div id="cameraOverlayResults">Total Score: <span id="overlayTotalScore">0</span></div>
             <canvas id="captureCanvas" width="640" height="480"></canvas>
-            <canvas id="binaryCanvas" width="640" height="480" class="hide"></canvas>
-            <div class="controls">
-                <button class="start-btn" id="startCameraBtn">Start Camera</button>
-                <button class="stop-btn" id="stopCameraBtn">Stop Camera</button>
-                <button id="capturePhotoBtn">Capture &amp; Scan</button>
-                <button id="toggleFullscreenBtn">Toggle Fullscreen</button>
-            </div>
-            <div id="cameraOverlayResults" style="display: none;">
-                <div class="score-display">Total Score: <span id="overlayTotalScore">0</span></div>
-                <div id="overlayQuestionStats"></div>
-            </div>
+            <canvas id="binaryCanvas"></canvas>
         </div>
+
         <div id="results" class="hide">
-            <div class="score-display">Score: <span id="totalScore">0</span></div>
+            <h2>Scan Results</h2>
             <div id="questionStats"></div>
-            <button class="scan-save-btn" id="saveResultBtn">Save Result</button>
+            <p>Total Score: <span id="totalScore">0</span></p>
         </div>
+
         <div id="aggregate" class="hide">
-            <h3>Aggregate Statistics</h3>
+            <h2>Aggregate Statistics</h2>
             <div id="aggregateStats"></div>
-            <button class="stats-btn" id="hideAggregateBtn">Close Stats</button>
-        </div>
-        <div class="controls">
-            <button id="showCameraBtn">Show Camera</button>
-            <button id="showAggregateBtn">Show All Results</button>
         </div>
     </div>
 
-    <div id="floatingMessageContainer" style="position: fixed; bottom: 20px; left: 20px; z-index: 1001;"></div>
-    <div id="loading" style="display: none;">Loading OpenCV.js ...</div>
-
     <dialog id="answerKeyDialog">
         <h2>Set Answer Key</h2>
-        <label for="answerKeyInput">Enter answer key (comma-separated, e.g., A,B,C,A):</label>
-        <input type="text" id="answerKeyInput">
-        <button id="submitAnswerKeyBtn">Submit</button>
+        <label for="answerKeyInput">Enter Answer Key (comma-separated, e.g., A,B,C):</label><br>
+        <input type="text" id="answerKeyInput"><br><br>
+        <button id="setKeyConfirmBtn">Confirm Answer Key</button>
+        <button id="setKeyCancelBtn">Cancel</button>
     </dialog>
 
-    <script async src="https://docs.opencv.org/4.5.3/opencv.js" onload="onOpenCvReady();"></script>
     <script>
         (function() {
             "use strict";
 
-            // Configuration and state management
-            const debugMode = false; // Set to false for production
+            const ANSWER_SHEET_CONFIG = {
+                sheetWidth: 595, // A4 width in pixels (72 DPI)
+                sheetHeight: 842, // A4 height in pixels (72 DPI)
+                markerSize: 20,
+                markerMargin: 20,
+                studentIdLabelY: 50,
+                studentIdStartX: 50,
+                studentIdBoxSize: 15,
+                studentIdBoxSpacing: 5,
+                studentIdDigits: 10,
+                answerStartY: 150,
+                questionsStartX: 50,
+                boxSize: 15,
+                horizontalSpacingBetweenOptions: 25,
+                verticalSpacingBetweenQuestions: 30,
+                optionOffsetX: 10,
+                questionsPerColumn: 22, // Adjusted for full A4 sheet
+                columnSpacing: 20
+            };
+
+            const OPTION_THRESHOLD = 0.6; // Threshold for considering an option filled
+
             const AppState = {
+                opencvReady: false,
+                isCameraActive: false,
                 videoStream: null,
                 answerKey: [],
                 studentAnswers: [],
-                isCameraActive: false,
-                opencvReady: false
             };
 
             let scanningInterval; // To hold the interval for continuous scanning
 
-            const ANSWER_SHEET_CONFIG = {
-                sheetWidth: 595,
-                sheetHeight: 842,
-                nameY: 40,
-                classY: 65,
-                studentIdY: 90,
-                instructionsY: 120,
-                studentIdLabelY: 160,
-                studentIdStartX: 30,
-                studentIdBoxSize: 10,
-                studentIdBoxSpacing: 2,
-                questionsStartX: 170,
-                answerStartY: 30,
-                verticalSpacingBetweenQuestions: 20,
-                horizontalSpacingBetweenOptions: 22,
-                boxSize: 12,
-                optionOffsetX: 8,
-                questionsPerColumn: 22, // Modified to 22
-                columnSpacing: 15,
-                markerSize: 8,
-                markerMargin: 12
-            };
-
-            const OPTION_THRESHOLD = 0.55; // For bubble detection
-
-            // Debug logging helper
-            function debugLog(msg) {
-                if (debugMode) {
-                    console.log("[DEBUG]", msg);
-                    showFloatingMessage(msg);
-                }
+            function debugLog(message) {
+                console.log("[Scanner]", message);
             }
 
-            // Floating message helper for temporary notifications
-            function showFloatingMessage(message) {
-                const container = document.getElementById('floatingMessageContainer');
-                const msgDiv = document.createElement('div');
-                msgDiv.textContent = message;
-                msgDiv.style.backgroundColor = 'rgba(0,0,0,0.7)';
-                msgDiv.style.color = 'white';
-                msgDiv.style.padding = '10px 15px';
-                msgDiv.style.borderRadius = '5px';
-                msgDiv.style.marginBottom = '10px';
-                msgDiv.style.opacity = '1';
-                msgDiv.style.transition = 'opacity 0.5s ease-in-out';
-                container.appendChild(msgDiv);
-                setTimeout(() => {
-                    msgDiv.style.opacity = '0';
-                    setTimeout(() => container.removeChild(msgDiv), 500);
-                }, 3000);
+            function onOpenCvReady() {
+                debugLog("OpenCV.js is ready.");
+                AppState.opencvReady = true;
+                document.getElementById('loading').style.display = 'none';
             }
 
-            // OpenCV readiness using a promise-based approach
             function waitForOpenCvReady() {
                 return new Promise(resolve => {
-                    (function check() {
-                        if (typeof cv !== 'undefined' && cv.Mat) {
-                            AppState.opencvReady = true;
-                            resolve();
-                        } else {
-                            setTimeout(check, 100);
-                        }
-                    })();
+                    if (AppState.opencvReady) {
+                        resolve();
+                    } else {
+                        const checkInterval = setInterval(() => {
+                            if (AppState.opencvReady) {
+                                clearInterval(checkInterval);
+                                resolve();
+                            }
+                        }, 100);
+                    }
                 });
             }
 
-            window.onOpenCvReady = function() {
-                debugLog("OpenCV.js is ready");
-                AppState.opencvReady = true;
-                document.getElementById('loading').style.display = 'none';
-            };
-
-            document.addEventListener('DOMContentLoaded', () => {
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    alert('Your browser does not support camera features.');
-                    return;
-                }
-                // Bind UI events
-                document.getElementById('generateBtn').addEventListener('click', generateAnswerSheet);
-                document.getElementById('setAnswerKeyBtn').addEventListener('click', () => document.getElementById('answerKeyDialog').showModal());
-                document.getElementById('submitAnswerKeyBtn').addEventListener('click', setAnswerKey);
-                document.getElementById('exportImgBtn').addEventListener('click', exportAnswerSheetAsImage);
-                document.getElementById('startCameraBtn').addEventListener('click', startCamera);
-                document.getElementById('stopCameraBtn').addEventListener('click', stopCamera);
-                document.getElementById('capturePhotoBtn').addEventListener('click', capturePhoto);
-                document.getElementById('saveResultBtn').addEventListener('click', saveCurrentResult);
-                document.getElementById('showCameraBtn').addEventListener('click', showCamera);
-                document.getElementById('showAggregateBtn').addEventListener('click', displayAggregateStats);
-                document.getElementById('hideAggregateBtn').addEventListener('click', hideAggregateStats);
-                document.getElementById('toggleFullscreenBtn').addEventListener('click', toggleFullscreen);
-
-                generateAnswerSheet();
-                document.getElementById('loading').style.display = 'flex';
-            });
-
-            // Generate the answer sheet using canvas drawing
             function generateAnswerSheet() {
-                const questionCount = parseInt(document.getElementById('questionCount').value);
-                const optionCount = parseInt(document.getElementById('optionCount').value);
-                const studentIdDigits = parseInt(document.getElementById('studentIdDigits').value);
                 const canvas = document.getElementById('answerSheetCanvas');
+                canvas.width = ANSWER_SHEET_CONFIG.sheetWidth;
+                canvas.height = ANSWER_SHEET_CONFIG.sheetHeight;
                 const ctx = canvas.getContext('2d');
-                const config = ANSWER_SHEET_CONFIG;
-                const scaleX = canvas.width / config.sheetWidth;
-                const scaleY = canvas.height / config.sheetHeight;
-                ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
-                ctx.clearRect(0, 0, config.sheetWidth, config.sheetHeight);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = "black";
+                ctx.lineWidth = 1;
 
-                function drawSheetPart(offsetY = 0) {
-                    ctx.font = "16px Arial";
-                    ctx.fillText("Answer Sheet Template", 20, 25 + offsetY);
+                function drawSheetPart(offsetY) {
                     ctx.font = "12px Arial";
-                    ctx.fillText("Name:", 20, config.nameY + offsetY);
-                    ctx.strokeRect(60, config.nameY - 10 + offsetY, 100, 15);
-                    ctx.fillText("Class:", 20, config.classY + offsetY);
-                    ctx.strokeRect(60, config.classY - 10 + offsetY, 100, 15);
-                    ctx.fillText("Student ID:", 20, config.studentIdY + offsetY);
-                    ctx.strokeRect(60, config.studentIdY - 10 + offsetY, 100, 15);
-                    ctx.font = "10px Arial";
-                    ctx.fillText("Instructions:", 20, config.instructionsY + offsetY);
-                    ctx.font = "9px Arial";
-                    ctx.fillText("1. Use a dark pen to fill bubbles", 30, config.instructionsY + 12 + offsetY);
-                    ctx.fillText("2. Keep the sheet flat and clean", 30, config.instructionsY + 22 + offsetY);
-                    ctx.fillText("3. Do not fill at the edges", 30, config.instructionsY + 32 + offsetY);
-                    ctx.font = "12px Arial";
-                    ctx.fillText("Student ID:", 20, config.studentIdLabelY + offsetY);
+                    ctx.fillText("Student ID:", ANSWER_SHEET_CONFIG.markerMargin, ANSWER_SHEET_CONFIG.studentIdLabelY + offsetY);
+                    const studentIdDigits = ANSWER_SHEET_CONFIG.studentIdDigits;
                     const digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-                    for (let i = 0;i < studentIdDigits; i++) {
-                        const startX = config.studentIdStartX + i * (config.studentIdBoxSize + config.studentIdBoxSpacing);
+                    for (let i = 0; i < studentIdDigits; i++) {
+                        const startX = ANSWER_SHEET_CONFIG.studentIdStartX + i * (ANSWER_SHEET_CONFIG.studentIdBoxSize + ANSWER_SHEET_CONFIG.studentIdBoxSpacing);
                         for (let j = 0; j < digits.length; j++) {
-                            const startY = config.studentIdLabelY + 8 + j * (config.studentIdBoxSize + config.studentIdBoxSpacing) + offsetY;
-                            ctx.strokeRect(startX, startY, config.studentIdBoxSize, config.studentIdBoxSize);
+                            const startY = ANSWER_SHEET_CONFIG.studentIdLabelY + 8 + j * (ANSWER_SHEET_CONFIG.studentIdBoxSize + ANSWER_SHEET_CONFIG.studentIdBoxSpacing) + offsetY;
+                            ctx.strokeRect(startX, startY, ANSWER_SHEET_CONFIG.studentIdBoxSize, ANSWER_SHEET_CONFIG.studentIdBoxSize);
                             ctx.font = "7px Arial";
-                            ctx.fillText(digits[j], startX + 1, startY + config.studentIdBoxSize - 1);
+                            ctx.fillText(digits[j], startX + 1, startY + ANSWER_SHEET_CONFIG.studentIdBoxSize - 1);
                         }
                     }
                     ctx.font = "10px Arial";
+                    const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
+                    const optionCount = parseInt(document.getElementById('optionCount').value) || 4;
                     for (let i = 0; i < questionCount; i++) {
-                        const row = i % config.questionsPerColumn;
-                        const col = Math.floor(i / config.questionsPerColumn);
-                        const questionX = config.questionsStartX + col * (config.columnSpacing + (optionCount * config.horizontalSpacingBetweenOptions + config.boxSize + config.optionOffsetX + 3));
-                        const questionY = config.answerStartY + row * config.verticalSpacingBetweenQuestions + offsetY;
-                        ctx.fillText(`${i + 1}.`, questionX, questionY + config.boxSize / 2 + 2);
-                        const optionsStartX = questionX + config.boxSize + config.optionOffsetX;
+                        const row = i % ANSWER_SHEET_CONFIG.questionsPerColumn;
+                        const col = Math.floor(i / ANSWER_SHEET_CONFIG.questionsPerColumn);
+                        const questionX = ANSWER_SHEET_CONFIG.questionsStartX + col * (ANSWER_SHEET_CONFIG.columnSpacing + (optionCount * ANSWER_SHEET_CONFIG.horizontalSpacingBetweenOptions + ANSWER_SHEET_CONFIG.boxSize + ANSWER_SHEET_CONFIG.optionOffsetX + 3));
+                        const questionY = ANSWER_SHEET_CONFIG.answerStartY + row * ANSWER_SHEET_CONFIG.verticalSpacingBetweenQuestions + offsetY;
+                        ctx.fillText(`${i + 1}.`, questionX, questionY + ANSWER_SHEET_CONFIG.boxSize / 2 + 2);
+                        const optionsStartX = questionX + ANSWER_SHEET_CONFIG.boxSize + ANSWER_SHEET_CONFIG.optionOffsetX;
                         const options = ['A', 'B', 'C', 'D', 'E', 'F'].slice(0, optionCount);
                         for (let j = 0; j < optionCount; j++) {
-                            const optionX = optionsStartX + j * config.horizontalSpacingBetweenOptions;
-                            ctx.strokeRect(optionX, questionY, config.boxSize, config.boxSize);
-                            ctx.fillText(options[j], optionX + 1, questionY + config.boxSize / 2 + 2);
+                            const optionX = optionsStartX + j * ANSWER_SHEET_CONFIG.horizontalSpacingBetweenOptions;
+                            ctx.strokeRect(optionX, questionY, ANSWER_SHEET_CONFIG.boxSize, ANSWER_SHEET_CONFIG.boxSize);
+                            ctx.fillText(options[j], optionX + 1, questionY + ANSWER_SHEET_CONFIG.boxSize / 2 + 2);
                         }
                     }
                     // Draw corner markers for perspective correction
                     ctx.fillStyle = "black";
-                    ctx.fillRect(config.markerMargin, config.markerMargin + offsetY, config.markerSize, config.markerSize);
-                    ctx.fillRect(config.sheetWidth - config.markerMargin - config.markerSize, config.markerMargin + offsetY, config.markerSize, config.markerSize);
-                    ctx.fillRect(config.markerMargin, config.sheetHeight / 2 - config.markerMargin - config.markerSize + 10 + offsetY, config.markerSize, config.markerSize);
-                    ctx.fillRect(config.sheetWidth - config.markerMargin - config.markerSize, config.sheetHeight / 2 - config.markerMargin - config.markerSize + 10 + offsetY, config.markerSize, config.markerSize);
+                    ctx.fillRect(ANSWER_SHEET_CONFIG.markerMargin, ANSWER_SHEET_CONFIG.markerMargin + offsetY, ANSWER_SHEET_CONFIG.markerSize, ANSWER_SHEET_CONFIG.markerSize);
+                    ctx.fillRect(ANSWER_SHEET_CONFIG.sheetWidth - ANSWER_SHEET_CONFIG.markerMargin - ANSWER_SHEET_CONFIG.markerSize, ANSWER_SHEET_CONFIG.markerMargin + offsetY, ANSWER_SHEET_CONFIG.markerSize, ANSWER_SHEET_CONFIG.markerSize);
+                    ctx.fillRect(ANSWER_SHEET_CONFIG.markerMargin, ANSWER_SHEET_CONFIG.sheetHeight / 2 - ANSWER_SHEET_CONFIG.markerMargin - ANSWER_SHEET_CONFIG.markerSize + 10 + offsetY, ANSWER_SHEET_CONFIG.markerSize, ANSWER_SHEET_CONFIG.markerSize);
+                    ctx.fillRect(ANSWER_SHEET_CONFIG.sheetWidth - ANSWER_SHEET_CONFIG.markerMargin - ANSWER_SHEET_CONFIG.markerSize, ANSWER_SHEET_CONFIG.sheetHeight / 2 - ANSWER_SHEET_CONFIG.markerMargin - ANSWER_SHEET_CONFIG.markerSize + 10 + offsetY, ANSWER_SHEET_CONFIG.markerSize, ANSWER_SHEET_CONFIG.markerSize);
                 }
                 drawSheetPart(0);
-                drawSheetPart(config.sheetHeight / 2);
+                drawSheetPart(ANSWER_SHEET_CONFIG.sheetHeight / 2);
                 ctx.strokeStyle = "#ccc";
                 ctx.setLineDash([5, 5]);
                 ctx.beginPath();
-                ctx.moveTo(0, config.sheetHeight / 2);
-                ctx.lineTo(config.sheetWidth, config.sheetHeight / 2);
+                ctx.moveTo(0, ANSWER_SHEET_CONFIG.sheetHeight / 2);
+                ctx.lineTo(ANSWER_SHEET_CONFIG.sheetWidth, ANSWER_SHEET_CONFIG.sheetHeight / 2);
                 ctx.stroke();
                 ctx.setLineDash([]);
                 document.getElementById('answerSheetContainer').style.display = 'block';
@@ -488,13 +381,26 @@
                 link.download = 'answer_sheet.png';
                 link.href = imgData;
                 link.click();
+                // Restore original resolution
                 canvas.width = originalWidth;
                 canvas.height = originalHeight;
                 generateAnswerSheet();
             }
 
-            function showCamera() {
-                document.getElementById('cameraContainer').classList.remove('hide');
+            function orderPoints(points) {
+                // Sort points by y-coordinate
+                points.sort((a, b) => a.y - b.y);
+                const topLeft = points.slice(0, 2).sort((a, b) => a.x - b.x)[0];
+                const topRight = points.slice(0, 2).sort((a, b) => a.x - b.x)[1];
+                const bottomLeft = points.slice(2, 4).sort((a, b) => a.x - b.x)[0];
+                const bottomRight = points.slice(2, 4).sort((a, b) => a.x - b.x)[1];
+                return [topLeft, topRight, bottomRight, bottomLeft];
+            }
+
+            function safeDelete(...mats) {
+                mats.forEach(mat => {
+                    if (mat && mat.delete) mat.delete();
+                });
             }
 
             async function startCamera() {
@@ -507,31 +413,64 @@
                     video.classList.remove('hide');
                     document.getElementById('cameraContainer').classList.remove('hide');
                     document.getElementById('cameraOverlayResults').style.display = 'block';
-                    document.getElementById('cameraOverlayGuide').style.display = 'block'; // Show the guide
+                    document.getElementById('cameraOverlayText').style.display = 'block'; // 显示提示文字
+                    document.getElementById('cameraOverlayGuide').style.display = 'block'; // 显示引导框
                     await waitForOpenCvReady();
                     debugLog("Camera started.");
-                    
 
                     // Start continuous scanning
                     scanningInterval = setInterval(processCameraFrame, 200); // Adjust interval as needed
-                    drawFocusGuide(); // Draw the focus guide initially
+                    drawFocusGuide(); // 绘制引导框
                 } catch (err) {
                     alert(`Camera start failed: ${err.message}`);
                     debugLog(`Camera error: ${err.stack}`);
                 }
             }
-            
-            function capturePhoto() {
-                // Keep the capture button functionality as is, if needed
-                if (!AppState.isCameraActive || !AppState.opencvReady) {
-                    debugLog("Camera not active or OpenCV not ready.");
-                    return;
+
+            function stopCamera() {
+                if (AppState.isCameraActive) {
+                    AppState.videoStream.getTracks().forEach(track => track.stop());
+                    AppState.videoStream = null;
+                    AppState.isCameraActive = false;
+                    document.getElementById('cameraPreview').classList.add('hide');
+                    document.getElementById('cameraOverlayResults').style.display = 'none';
+                    document.getElementById('cameraOverlayText').style.display = 'none'; // 隐藏提示文字
+                    document.getElementById('cameraOverlayGuide').style.display = 'none'; // 隐藏引导框
+                    debugLog("Camera stopped.");
+
+                    // Stop continuous scanning
+                    clearInterval(scanningInterval);
                 }
+            }
+
+            function drawFocusGuide() {
+                const guideCanvas = document.getElementById('cameraOverlayGuide');
                 const video = document.getElementById('cameraPreview');
-                const captureCanvas = document.getElementById('captureCanvas');
-                const ctx = captureCanvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-                processImageForScanning(captureCanvas);
+                const guideCtx = guideCanvas.getContext('2d');
+
+                // 动态匹配视频尺寸
+                guideCanvas.width = video.videoWidth;
+                guideCanvas.height = video.videoHeight;
+
+                const width = guideCanvas.width;
+                const height = guideCanvas.height;
+                const guideWidth = width * 0.7; // 引导框宽度为视频70%
+                const guideHeight = height * 0.5; // 引导框高度为视频50%
+                const guideX = (width - guideWidth) / 2;
+                const guideY = (height - guideHeight) / 2;
+
+                guideCtx.clearRect(0, 0, width, height);
+
+                // 绘制半透明背景（排除中心区域）
+                guideCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                guideCtx.fillRect(0, 0, width, height); // 全屏背景
+                guideCtx.clearRect(guideX, guideY, guideWidth, guideHeight); // 清空中心区域
+
+                // 绘制高亮边框
+                guideCtx.strokeStyle = '#00ff00';
+                guideCtx.lineWidth = 3;
+                guideCtx.setLineDash([10, 5]); // 虚线样式
+                guideCtx.strokeRect(guideX, guideY, guideWidth, guideHeight);
             }
 
             async function processCameraFrame() {
@@ -545,40 +484,10 @@
                 const ctx = captureCanvas.getContext('2d');
                 ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
                 processImageForScanning(captureCanvas, true); // Pass a flag for continuous mode
-                drawFocusGuide(); // Redraw the focus guide in each frame
-            
+                drawFocusGuide(); // 绘制引导框
             }
 
-            // Helper for safe deletion of cv.Mat objects
-            function safeDelete(...mats) {
-                mats.forEach(mat => {
-                    if (mat && !mat.isDeleted) {
-                        try { mat.delete(); } catch (e) { console.error("Error deleting mat", e); }
-                    }
-                });
-            }
-
-
-            // New ordering function: sorts points to return [top-left, top-right, bottom-right, bottom-left]
-            function orderPoints(pts) {
-                // Ensure there are exactly 4 points
-                if (pts.length !== 4) return pts;
-
-                // Sort by x-coordinate (ascending)
-                pts.sort((a, b) => a.x - b.x);
-
-                // The two left-most points are candidates for top-left and bottom-left
-                let leftMost = pts.slice(0, 2).sort((a, b) => a.y - b.y);
-                // The two right-most points are candidates for top-right and bottom-right
-                let rightMost = pts.slice(2).sort((a, b) => a.y - b.y);
-
-                // Return ordered points: [top-left, top-right, bottom-right, bottom-left]
-                return [leftMost[0], rightMost[0], rightMost[1], leftMost[1]];
-            }
-
-
-
-                        async function processImageForScanning(canvas, continuousMode = false) {
+            async function processImageForScanning(canvas, continuousMode = false) {
                 if (!AppState.opencvReady) {
                     debugLog("OpenCV not ready for scanning.");
                     return;
@@ -727,7 +636,7 @@
                     for (let i = 0; i < questionCount; i++) {
                         const row = i % config.questionsPerColumn;
                         const col = Math.floor(i / config.questionsPerColumn);
-                        const questionX = config.questionsStartX + col * (config.horizontalSpacingBetweenOptions * optionCount + config.boxSize + config.optionOffsetX + 12);
+                        const questionX = config.questionsStartX + col * (config.columnSpacing + (optionCount * config.horizontalSpacingBetweenOptions + config.boxSize + config.optionOffsetX + 3));
                         const questionY = config.answerStartY + row * config.verticalSpacingBetweenQuestions;
                         let bestMatch = { option: null, fillRatio: 0 };
 
@@ -738,19 +647,17 @@
                             let filledPixels = cv.countNonZero(optionRoi);
                             optionRoi.delete();
                             const fillRatio = filledPixels / (config.boxSize * config.boxSize);
-                            const color = fillRatio > OPTION_THRESHOLD ? 'rgba(0, 255, 0, 0.8)' : 'rgba(255, 0, 0, 0.5)';
-                            captureCtx.strokeStyle = color;
+
+                            // 填充检测到的选项框（半透明绿色）
+                            if (fillRatio > OPTION_THRESHOLD) {
+                                captureCtx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+                                captureCtx.fillRect(optionX, questionY, config.boxSize, config.boxSize);
+                            }
+
+                            // 绘制边框
+                            captureCtx.strokeStyle = fillRatio > OPTION_THRESHOLD ? '#00ff00' : '#ff0000';
                             captureCtx.lineWidth = 2;
                             captureCtx.strokeRect(optionX, questionY, config.boxSize, config.boxSize);
-                            captureCtx.lineWidth = 1;
-                            captureCtx.font = "10px Arial";
-                            captureCtx.fillStyle = 'black';
-                            captureCtx.fillText(options[j], optionX + 1, questionY + config.boxSize / 2 + 3);
-
-                            if (fillRatio > OPTION_THRESHOLD && fillRatio > bestMatch.fillRatio) {
-                                bestMatch.option = options[j];
-                                bestMatch.fillRatio = fillRatio;
-                            }
                         }
                         AppState.studentAnswers[i].answer = bestMatch.option;
                     }
@@ -766,8 +673,6 @@
                     safeDelete(gray, binary);
                 }
             }
-
- 
 
 
             function calculateScore(originalImage, continuousMode = false) {
@@ -798,16 +703,18 @@
                         captureCtx.fillStyle = 'red';
                     }
                     const overlayResultDiv = document.createElement('div');
-                    overlayResultDiv.innerHTML = `${index + 1}: ${ans.answer || '-'} (${isCorrect ? 'OK' : 'X'})`;
+                    overlayResultDiv.innerHTML = `${index + 1}: <span class="math-inline">\{ans\.answer \|\| '\-'\} \(</span>{isCorrect ? 'OK' : 'X'})`;
                     overlayQuestionStatsDiv.appendChild(overlayResultDiv);
 
-                    // Visualize score on the camera screen
+                    // 在选项旁显示正确性图标
                     const row = index % ANSWER_SHEET_CONFIG.questionsPerColumn;
                     const col = Math.floor(index / ANSWER_SHEET_CONFIG.questionsPerColumn);
-                    const questionX = ANSWER_SHEET_CONFIG.questionsStartX + col * (ANSWER_SHEET_CONFIG.horizontalSpacingBetweenOptions * ANSWER_SHEET_CONFIG.optionCount + ANSWER_SHEET_CONFIG.boxSize + ANSWER_SHEET_CONFIG.optionOffsetX + 12);
-                    const questionY = ANSWER_SHEET_CONFIG.answerStartY + row * ANSWER_SHEET_CONFIG.verticalSpacingBetweenQuestions;
-                    captureCtx.font = "14px Arial";
-                    captureCtx.fillText(isCorrect ? '✓' : '✗', questionX - 25, questionY + ANSWER_SHEET_CONFIG.boxSize / 2 + 5);
+                    const questionX = config.questionsStartX + col * (config.columnSpacing + (config.horizontalSpacingBetweenOptions * (parseInt(document.getElementById('optionCount').value) || 4) + 30));
+                    const questionY = config.answerStartY + row * config.verticalSpacingBetweenQuestions;
+
+                    captureCtx.font = "bold 16px Arial";
+                    captureCtx.fillStyle = isCorrect ? '#00ff00' : '#ff0000';
+                    captureCtx.fillText(isCorrect ? '✓' : '✗', questionX - 25, questionY + 15);
                 });
                 document.getElementById('overlayTotalScore').textContent = score;
                 if (!continuousMode) {
@@ -816,111 +723,71 @@
                     document.getElementById('aggregate').classList.add('hide');
                 }
             }
-        function saveCurrentResult() {
-            if (AppState.studentAnswers.length === 0) {
-                alert('No result to save.');
-                return;
+            function saveResult() {
+                const resultsDiv = document.getElementById('questionStats');
+                const score = document.getElementById('totalScore').textContent;
+                const resultText = `Score: ${score}\nQuestion Results:\n${resultsDiv.innerText}`;
+                const blob = new Blob([resultText], { type: 'text/plain;charset=utf-8' });
+                const link = document.createElement('a');
+                link.download = 'scan_result.txt';
+                link.href = URL.createObjectURL(blob);
+                link.click();
             }
-            if (!window.allStudentResults) {
-                window.allStudentResults = [];
+
+            function displayAggregateStats() {
+                document.getElementById('aggregate').classList.remove('hide');
+                document.getElementById('results').classList.add('hide');
+                const statsDiv = document.getElementById('aggregateStats');
+                statsDiv.innerHTML = 'Feature not implemented yet.';
             }
-            window.allStudentResults.push({ answers: [...AppState.studentAnswers], score: parseInt(document.getElementById('totalScore').textContent) });
-            debugLog("Result saved. Total saved: " + window.allStudentResults.length);
-            alert('Result saved!');
-        }
-          function displayAggregateStats() {
-            if (!window.allStudentResults || window.allStudentResults.length === 0) {
-                alert('No results available.');
-                return;
+
+            function hideAggregateStats() {
+                document.getElementById('aggregate').classList.add('hide');
+                document.getElementById('results').classList.remove('hide');
             }
-            const aggregateStatsDiv = document.getElementById('aggregateStats');
-            aggregateStatsDiv.innerHTML = '';
-            const averageScore = window.allStudentResults.reduce((sum, res) => sum + res.score, 0) / window.allStudentResults.length;
-            const avgScoreItem = document.createElement('div');
-            avgScoreItem.classList.add('aggregate-item');
-            avgScoreItem.textContent = `Average Score: ${averageScore.toFixed(2)}`;
-            aggregateStatsDiv.appendChild(avgScoreItem);
-            document.getElementById('aggregate').classList.remove('hide');
-            document.getElementById('results').classList.add('hide');
-        }
 
-        function hideAggregateStats() {
-            document.getElementById('aggregate').classList.add('hide');
-        }
-
-        function stopCamera() {
-                if (AppState.isCameraActive) {
-                    AppState.videoStream.getTracks().forEach(track => track.stop());
-                    AppState.videoStream = null;
-                    AppState.isCameraActive = false;
-                    document.getElementById('cameraPreview').classList.add('hide');
-                    document.getElementById('cameraOverlayResults').style.display = 'none';
-                   document.getElementById('cameraOverlayGuide').style.display = 'none'; // Hide the guide
-                    debugLog("Camera stopped.");
- 
-                   
-
-                    // Stop continuous scanning
-                    clearInterval(scanningInterval);
+            function toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        alert(`Error attempting to enable full-screen mode: ${err.message}`);
+                    });
+                } else {
+                    document.exitFullscreen();
                 }
             }
 
-            function drawFocusGuide() {
-                const guideCanvas = document.getElementById('cameraOverlayGuide');
-                const video = document.getElementById('cameraPreview');
-                const guideCtx = guideCanvas.getContext('2d');
+            document.addEventListener('DOMContentLoaded', () => {
+                document.getElementById('generateSheetBtn').addEventListener('click', generateAnswerSheet);
+                document.getElementById('setAnswerKeyBtn').addEventListener('click', () => document.getElementById('answerKeyDialog').showModal());
+                document.getElementById('setKeyConfirmBtn').addEventListener('click', setAnswerKey);
+                document.getElementById('setKeyCancelBtn').addEventListener('click', () => document.getElementById('answerKeyDialog').close());
+                document.getElementById('exportSheetBtn').addEventListener('click', exportAnswerSheetAsImage);
+                document.getElementById('showCameraBtn').addEventListener('click', startCamera);
+                document.getElementById('stopCameraBtn').addEventListener('click', stopCamera);
+                document.getElementById('captureBtn').addEventListener('click', capturePhoto);
+                document.getElementById('saveResultBtn').addEventListener('click', saveResult);
+                document.getElementById('showAggregateBtn').addEventListener('click', displayAggregateStats);
+                document.getElementById('hideAggregateBtn').addEventListener('click', hideAggregateStats);
+                document.getElementById('toggleFullscreenBtn').addEventListener('click', toggleFullscreen);
 
-                // Set canvas dimensions to match video
-                guideCanvas.width = video.videoWidth;
-                guideCanvas.height = video.videoHeight;
+                // Append the text overlay to the camera container
+                const cameraContainer = document.getElementById('cameraContainer');
+                const overlayText = document.createElement('div');
+                overlayText.id = 'cameraOverlayText';
+                overlayText.textContent = '请将答题卡对准绿色框区域，保持光线充足';
+                cameraContainer.appendChild(overlayText);
+                overlayText.style.display = 'none'; // Initially hide
 
-                const width = guideCanvas.width;
-                const height = guideCanvas.height;
-                const guideWidth = width * 0.8; // Adjust as needed
-                const guideHeight = height * 0.6; // Adjust as needed
-                const guideX = (width - guideWidth) / 2;
-                const guideY = (height - guideHeight) / 2;
+                // Append the guide canvas to the camera container
+                const overlayGuide = document.createElement('canvas');
+                overlayGuide.id = 'cameraOverlayGuide';
+                cameraContainer.appendChild(overlayGuide);
+                overlayGuide.style.display = 'none'; // Initially hide
+            });
 
-                guideCtx.clearRect(0, 0, width, height);
-
-                // Draw the rectangle guide
-                guideCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-                guideCtx.lineWidth = 2;
-                guideCtx.strokeRect(guideX, guideY, guideWidth, guideHeight);
-
-                // Optionally, add corner indicators
-                const cornerSize = 20;
-                guideCtx.beginPath();
-                guideCtx.moveTo(guideX, guideY + cornerSize);
-                guideCtx.lineTo(guideX, guideY);
-                guideCtx.lineTo(guideX + cornerSize, guideY);
-
-                guideCtx.moveTo(guideX + guideWidth - cornerSize, guideY);
-                guideCtx.lineTo(guideX + guideWidth, guideY);
-                guideCtx.lineTo(guideX + guideWidth, guideY + cornerSize);
-
-                guideCtx.moveTo(guideX + guideWidth, guideY + guideHeight - cornerSize);
-                guideCtx.lineTo(guideX + guideWidth, guideY + guideHeight);
-                guideCtx.lineTo(guideX + guideWidth - cornerSize, guideY + guideHeight);
-
-                guideCtx.moveTo(guideX + cornerSize, guideY + guideHeight);
-                guideCtx.lineTo(guideX, guideY + guideHeight);
-                guideCtx.lineTo(guideX, guideY + guideHeight - cornerSize);
-                guideCtx.stroke();
-            }
-
-        function toggleFullscreen() {
-            const cameraContainer = document.getElementById('cameraContainer');
-            if (!document.fullscreenElement) {
-                cameraContainer.requestFullscreen().catch(err => {
-                    alert(`Error attempting to enable full-screen mode: ${err.message}`);
-                });
-            } else {
-                document.exitFullscreen();
-            }
-        }
-
-    })();
-</script>
+            generateAnswerSheet();
+            document.getElementById('loading').style.display = 'flex';
+        })();
+    </script>
 </body>
 </html>
