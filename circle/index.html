@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes"/>
-  <title>句子结构划分与翻译 · 修复版</title>
+  <title>句子结构划分与翻译 · 最终修复版</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -104,7 +104,6 @@
 
 <script>
   (function() {
-    // ---------- 全局数据 ----------
     let sentenceGroups = [];
     let sentenceStates = [];
     let currentSentenceIdx = -1;
@@ -138,15 +137,12 @@
       return tokens;
     }
 
-    // 优先使用预定义索引，没有则自动匹配
     function getCorrectIndices(sentenceIdx, taskIdx) {
       const group = sentenceGroups[sentenceIdx];
       const task = group.tasks[taskIdx];
-      // 如果题目自带了 indices 字段，直接使用
       if (task.indices && Array.isArray(task.indices)) {
         return task.indices;
       }
-      // 否则回退到自动匹配（可能出错，建议使用 indices）
       const tokens = tokenize(group.sentence);
       const indices = [];
       let wIdx = 0;
@@ -201,7 +197,6 @@
       return tasks.every((_, idx) => getTaskStatus(sIdx, idx) !== null);
     }
 
-    // ---------- 视图 ----------
     function showSentenceList() {
       finalResult.classList.add('hidden');
       viewContainer.style.display = 'block';
@@ -249,8 +244,7 @@
         partsUserInput = new Array(group.translation.parts.length).fill('');
       } else if (!state.transFullDone && group.translation) {
         currentPhase = 'transFull';
-        // 将成分翻译结果拼接为初始值
-        fullUserInput = partsUserInput.filter(s => s.trim()).join('');
+        fullUserInput = ''; // 清空，用户点击片段重新组合
       } else {
         showSentenceList();
         checkAllComplete();
@@ -265,7 +259,7 @@
       else if (currentPhase === 'transFull') renderTransFullPhase();
     }
 
-    // --- 划词 ---
+    // ---------- 划词阶段 ----------
     function renderDividePhase() {
       const group = sentenceGroups[currentSentenceIdx];
       const task = group.tasks[currentTaskIdx];
@@ -355,7 +349,9 @@
         if (left <= 0) {
           setTaskStatus(currentSentenceIdx, currentTaskIdx, false);
           revealMode = true;
-          if (fb) fb.textContent = '❌ 机会用完，正确答案已显示，自动进入下一题';
+          // 立刻重新渲染以显示正确高亮
+          renderDividePhase();
+          if (fb) fb.textContent = '❌ 机会用完，正确答案已高亮，自动进入下一题';
           setTimeout(() => {
             revealMode = false;
             if (isDivideComplete(currentSentenceIdx)) advanceAfterDivide();
@@ -390,7 +386,7 @@
       renderTransPartsPhase();
     }
 
-    // --- 成分翻译 ---
+    // ---------- 成分翻译阶段 ----------
     function renderTransPartsPhase() {
       const group = sentenceGroups[currentSentenceIdx];
       let html = `
@@ -433,24 +429,27 @@
       sentenceStates[currentSentenceIdx].transScore = correctCount;
       sentenceStates[currentSentenceIdx].transPartsDone = true;
       currentPhase = 'transFull';
-      // 将成分翻译结果拼接，填入整句翻译初始值
-      fullUserInput = partsUserInput.filter(s => s.trim()).join('');
+      fullUserInput = ''; // 清空，等待用户点击片段重新组合
       renderTransFullPhase();
     }
 
-    // --- 整句翻译 ---
+    // ---------- 整句翻译（使用用户自己的译文作为可点击片段）----------
     function renderTransFullPhase() {
       const group = sentenceGroups[currentSentenceIdx];
       const trans = group.translation;
+      // 使用用户输入的部分译文作为片段，如果某部分为空则用标准答案占位
+      const snippets = partsUserInput.map((val, i) => val.trim() || trans.parts[i]);
       let html = `
         <div class="practice-area">
           <button class="btn back-btn" id="backToListBtn">← 返回列表</button>
           <div style="font-weight:600;">📝 请按照公式将句子翻译出来</div>
-          <p style="color:#5f6b7a;">下方已填入你的成分翻译，可直接编辑或点击碎片补充</p>
-          <div class="snippet-list">`;
-      trans.parts.forEach(p => { html += `<span class="snippet" data-text="${escapeHtml(p)}">${escapeHtml(p)}</span>`; });
+          <p style="color:#5f6b7a;">点击下方你的译文片段，可将它们填入下方输入框（可修改）</p>
+          <div class="snippet-list" id="snippetContainer">`;
+      snippets.forEach((text, i) => {
+        html += `<span class="snippet" data-text="${escapeHtml(text)}">${escapeHtml(text)}</span>`;
+      });
       html += `</div>
-        <textarea class="translation-input" id="fullTransInput" rows="3">${escapeHtml(fullUserInput)}</textarea>
+        <textarea class="translation-input" id="fullTransInput" rows="3" placeholder="点击上方碎片或自由输入整句翻译">${escapeHtml(fullUserInput)}</textarea>
         <button class="btn btn-primary" id="submitFullBtn">提交</button>
         <div class="feedback" id="feedbackArea"></div>
       </div>`;
@@ -458,10 +457,12 @@
       document.getElementById('backToListBtn').addEventListener('click', showSentenceList);
       const ta = document.getElementById('fullTransInput');
       ta.addEventListener('input', () => { fullUserInput = ta.value; });
-      document.querySelectorAll('.snippet').forEach(sp => {
+      document.querySelectorAll('#snippetContainer .snippet').forEach(sp => {
         sp.addEventListener('click', () => {
-          ta.value = ta.value ? ta.value + sp.dataset.text : sp.dataset.text;
+          const current = ta.value;
+          ta.value = current ? current + sp.dataset.text : sp.dataset.text;
           fullUserInput = ta.value;
+          ta.focus();
         });
       });
       document.getElementById('submitFullBtn').addEventListener('click', submitFull);
@@ -483,9 +484,7 @@
     function checkAllComplete() {
       const done = sentenceGroups.every((g, idx) => {
         const s = sentenceStates[idx];
-        const divOk = s.divideDone;
-        const transOk = !g.translation || (s.transPartsDone && s.transFullDone);
-        return divOk && transOk;
+        return s.divideDone && (!g.translation || (s.transPartsDone && s.transFullDone));
       });
       if (done) {
         finalResult.classList.remove('hidden');
@@ -493,7 +492,7 @@
         let score = 0, total = 0;
         sentenceGroups.forEach((g, idx) => {
           const s = sentenceStates[idx];
-          const divCor = s.taskResults ? s.taskResults.filter(r=>r===true).length : 0;
+          const divCor = s.taskResults ? s.taskResults.filter(r => r === true).length : 0;
           score += divCor;
           total += g.tasks.length;
           if (g.translation) {
@@ -501,7 +500,7 @@
             total += g.translation.parts.length + 3;
           }
         });
-        const pct = Math.round((score/total)*100);
+        const pct = Math.round((score / total) * 100);
         finalScoreText.textContent = `总得分：${score} / ${total} (${pct}%)`;
         finalMsg.textContent = pct === 100 ? '🏆 全部正确！' : '继续加油！';
       }
