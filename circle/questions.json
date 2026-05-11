@@ -1,4 +1,7 @@
 [
+
+
+  
   {
     "id": 1,
     "sentence": "The United Nations, in its first Digital Economy Report, states the US and China are leading the digital economy.",
@@ -28,5 +31,91 @@
       "parts": ["成千上万的人","可能冲进","51区","在周五"],
       "full": "成千上万的人可能在周五冲进51区。"
     }
-  }
+  },
+
+  {
+    "id": 3,
+    "sentence": "The World Stroke Organization (WSO) has warned that climate change is becoming a growing threat to brain health, with extreme temperatures increasing the risk of people having a stroke — or dying from one.",
+  "tasks": [
+    {
+      "title": "请划出句子中的主语",
+      "indices": [
+        0,
+        2,
+        4,
+        6,
+        8
+      ]
+    },
+    {
+      "title": "请划出句子中的谓语",
+      "indices": [
+        10,
+        12
+      ]
+    },
+    {
+      "title": "请划出句子中的宾从主语",
+      "indices": [
+        16,
+        18
+      ]
+    },
+    {
+      "title": "请划出句子中的宾从谓语",
+      "indices": [
+        20,
+        22
+      ]
+    },
+    {
+      "title": "请划出句子中的宾从宾语",
+      "indices": [
+        24,
+        26,
+        28
+      ]
+    },
+    {
+      "title": "请划出句子中的宾从宾语定语",
+      "indices": [
+        30,
+        32,
+        34
+      ]
+    },
+    {
+      "title": "请划出句子中的伴随状语",
+      "indices": [
+        37,
+        39,
+        41,
+        43,
+        45,
+        47,
+        49,
+        51,
+        53,
+        55,
+        57,
+        60,
+        62,
+        64,
+        66
+      ]
+    }
+  ],
+"translation": {
+      "parts": ["成千上万的人","可能冲进","51区","在周五"],
+      "full": "成千上万的人可能在周五冲进51区。"
+    }
+    
+}
+
+
+
+
+  
+  
 ]
+
