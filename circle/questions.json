@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "sentence": "The United Nations, in its first Digital Economy Report, states the US and China are leading the digital economy.",
+    "tasks": [
+      { "title": "主语",   "answer": ["The","United","Nations"] },
+      { "title": "谓语",   "answer": ["states"] },
+      { "title": "宾从主", "answer": ["the","US","and","China"] },
+      { "title": "宾从谓", "answer": ["are","leading"] },
+      { "title": "宾从宾", "answer": ["the","digital","economy"] },
+      { "title": "插入语", "answer": ["in","its","first","Digital","Economy","Report"] }
+    ],
+    "translation": {
+      "parts": ["联合国","指出","美国和中国","正在引领","数字经济","在其首份《数字经济报告》中"],
+      "full": "联合国在其首份《数字经济报告》中指出，美国和中国正在引领数字经济。"
+    }
+  },
+  {
+    "id": 2,
+    "sentence": "Thousands of people could storm Area 51 on Friday.",
+    "tasks": [
+      { "title": "主语", "answer": ["Thousands","of","people"] },
+      { "title": "谓语", "answer": ["could","storm"] },
+      { "title": "宾语", "answer": ["Area","51"] },
+      { "title": "状语2", "answer": ["on","Friday"] }
+    ],
+    "translation": {
+      "parts": ["成千上万的人","可能冲进","51区","在周五"],
+      "full": "成千上万的人可能在周五冲进51区。"
+    }
+  }
+]

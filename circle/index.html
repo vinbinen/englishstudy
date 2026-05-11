@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes"/>
+  <title>句子结构划分与翻译 · 完整题库版</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f2f5f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    .app {
+      width: 100%;
+      max-width: 640px;
+      background: #fff;
+      border-radius: 2rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+    h1 { font-size: 1.5rem; font-weight: 650; color: #13294b; display: flex; align-items: center; gap: 0.4rem; }
+    
+    /* 句子列表 */
+    .sentence-list { display: flex; flex-direction: column; gap: 0.6rem; max-height: 60vh; overflow-y: auto; }
+    .sentence-item {
+      border: 1.5px solid #e2e8f0; border-radius: 1rem; padding: 0.9rem 1rem;
+      display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; transition: 0.2s; background: #fff;
+    }
+    .sentence-item:hover { border-color: #2563eb; background: #f8faff; }
+    .sentence-item .text { flex: 1; font-size: 0.95rem; color: #1e293b; font-weight: 500; margin-right: 0.8rem; }
+    .sentence-item .progress-tag {
+      background: #e7edf8; color: #1d3b6c; padding: 0.25rem 0.8rem;
+      border-radius: 2rem; font-weight: 600; font-size: 0.8rem; white-space: nowrap;
+    }
+    .sentence-item.completed .progress-tag { background: #d1fae5; color: #065f46; }
+    
+    /* 练习区 */
+    .practice-area { display: flex; flex-direction: column; gap: 0.8rem; }
+    .sentence-display {
+      background: #f8faff; border-left: 5px solid #2563eb; padding: 1rem;
+      border-radius: 1rem; font-size: 1.05rem; line-height: 1.7; color: #0f2744;
+    }
+    .task-nav { display: flex; gap: 0.3rem; margin-bottom: 0.5rem; }
+    .task-dot {
+      width: 28px; height: 28px; border-radius: 50%; background: #e2e8f0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 650; color: #475569;
+    }
+    .task-dot.done { background: #10b981; color: white; }
+    .task-dot.current { background: #2563eb; color: white; transform: scale(1.1); }
+    .task-dot.locked { opacity: 0.5; }
+    .token-box { display: flex; flex-wrap: wrap; gap: 0.2rem; margin: 0.5rem 0; }
+    .token {
+      border-radius: 6px; padding: 0.15rem 0.3rem; transition: 0.15s;
+      cursor: pointer; user-select: none;
+    }
+    .token.word { cursor: pointer; font-weight: 500; }
+    .token.word:hover { background: #e9efff; }
+    .token.word.selected { background: #ffd966; border-bottom: 2.5px solid #d97706; font-weight: 600; }
+    .token.word.correct-reveal { background: #a7f3d0; border-bottom: 2.5px solid #059669; font-weight: 600; }
+    .token.punctuation, .token.space { cursor: default; pointer-events: none; }
+    .info-row { display: flex; justify-content: space-between; font-size: 0.9rem; color: #475569; }
+    .action-row { display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; }
+    .btn {
+      border: 1.5px solid #cdd9f0; background: #f5f8ff; padding: 0.5rem 1.2rem;
+      border-radius: 2rem; font-weight: 600; cursor: pointer; color: #1e3b6b; transition: 0.2s;
+    }
+    .btn:disabled { opacity: 0.45; pointer-events: none; }
+    .btn-primary { background: #1e3a6b; border-color: #1e3a6b; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #102a4c; }
+    .feedback { font-size: 0.9rem; font-weight: 500; min-height: 1.6rem; }
+    
+    /* 翻译步骤 */
+    .translation-list { list-style: none; margin: 0.5rem 0; }
+    .translation-item { margin-bottom: 0.8rem; }
+    .translation-label { font-weight: 600; color: #1e3b6b; margin-bottom: 0.2rem; }
+    .translation-prompt { background: #f5f7fa; padding: 0.4rem; border-radius: 0.5rem; margin-bottom: 0.3rem; font-size: 0.9rem; color: #5f6b7a; }
+    .translation-input { width: 100%; padding: 0.5rem; border-radius: 0.8rem; border: 1px solid #cfddee; font-size: 0.95rem; resize: vertical; font-family: inherit; }
+    .translation-input:focus { border-color: #2563eb; outline: none; }
+    .snippet-list { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.5rem; }
+    .snippet { background: #e8f0fe; padding: 0.2rem 0.5rem; border-radius: 999px; cursor: pointer; font-size: 0.85rem; }
+    
+    .result-card { background: #f3f7ff; border-radius: 1.5rem; padding: 1.8rem; text-align: center; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+  <h1>📘 句子结构划分与翻译</h1>
+  <div id="viewContainer"></div>
+  <div id="finalResult" class="result-card hidden">
+    <h2>🎯 全部完成</h2>
+    <p style="font-size:1.5rem;font-weight:700;" id="finalScoreText"></p>
+    <p id="finalMsg"></p>
+    <button class="btn btn-primary" id="restartBtn">⟳ 重新开始</button>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // ---------- 全局数据 ----------
+    let sentenceGroups = [];
+    let sentenceStates = [];       // 每句的完成状态: { divideDone: bool, transPartsDone: bool, transFullDone: bool, divideScore: number, transScore: number }
+    let currentSentenceIdx = -1;
+    let currentPhase = 'divide';  // 'divide' | 'transParts' | 'transFull'
+    let currentTaskIdx = 0;
+    let selectedTokens = [];
+    let revealMode = false;
+    let currentTokens = [];
+    // 翻译过程中临时存储
+    let partsUserInput = [];
+    let fullUserInput = '';
+
+    const viewContainer = document.getElementById('viewContainer');
+    const finalResult = document.getElementById('finalResult');
+    const finalScoreText = document.getElementById('finalScoreText');
+    const finalMsg = document.getElementById('finalMsg');
+    const restartBtn = document.getElementById('restartBtn');
+
+    // ---------- 分词与索引 ----------
+    function tokenize(s) {
+      const tokens = [];
+      const regex = /([a-zA-Z0-9]+|[.,!?;:])|(\s+)/g;
+      let match;
+      while ((match = regex.exec(s)) !== null) {
+        if (match[1]) {
+          const text = match[1];
+          const isWord = /^[a-zA-Z0-9]+$/.test(text);
+          tokens.push({ text, isWord, index: tokens.length });
+        } else if (match[2]) {
+          tokens.push({ text: match[2], isWord: false, index: tokens.length });
+        }
+      }
+      return tokens;
+    }
+
+    function findIndicesByWords(tokens, answerWords) {
+      const indices = [];
+      let wIdx = 0;
+      for (let i = 0; i < tokens.length; i++) {
+        if (tokens[i].isWord && wIdx < answerWords.length && tokens[i].text.toLowerCase() === answerWords[wIdx].toLowerCase()) {
+          indices.push(i);
+          wIdx++;
+        }
+      }
+      return wIdx === answerWords.length ? indices : [];
+    }
+
+    const correctIndicesCache = new Map();
+    function getCorrectIndices(sentenceIdx, taskIdx) {
+      const key = `${sentenceIdx}-${taskIdx}`;
+      if (correctIndicesCache.has(key)) return correctIndicesCache.get(key);
+      const group = sentenceGroups[sentenceIdx];
+      const task = group.tasks[taskIdx];
+      const tokens = tokenize(group.sentence);
+      const indices = findIndicesByWords(tokens, task.answer);
+      correctIndicesCache.set(key, indices);
+      return indices;
+    }
+
+    // ---------- 数据加载 ----------
+    async function loadData() {
+      try {
+        const resp = await fetch('./questions.json');
+        if (!resp.ok) throw new Error('加载失败');
+        sentenceGroups = await resp.json();
+        initSentenceStates();
+        renderSentenceList();
+      } catch (e) {
+        viewContainer.innerHTML = `<p style="color:red;text-align:center;">题库加载失败：${e.message}</p>`;
+      }
+    }
+
+    function initSentenceStates() {
+      sentenceStates = sentenceGroups.map(() => ({
+        divideDone: false,
+        transPartsDone: false,
+        transFullDone: false,
+        divideScore: 0,
+        transScore: 0
+      }));
+    }
+
+    // ---------- 视图切换 ----------
+    function showSentenceList() {
+      finalResult.classList.add('hidden');
+      viewContainer.style.display = 'block';
+      renderSentenceList();
+    }
+
+    function enterSentence(sentenceIdx) {
+      currentSentenceIdx = sentenceIdx;
+      const state = sentenceStates[sentenceIdx];
+      const group = sentenceGroups[sentenceIdx];
+      currentTokens = tokenize(group.sentence);
+      if (!state.divideDone) {
+        // 开始划分阶段
+        currentPhase = 'divide';
+        // 找到第一个未完成的划词任务
+        currentTaskIdx = 0;
+        for (let i = 0; i < group.tasks.length; i++) {
+          if (getTaskStatus(sentenceIdx, i) === null) {
+            currentTaskIdx = i;
+            break;
+          }
+        }
+        selectedTokens = [];
+        revealMode = false;
+      } else if (!state.transPartsDone && group.translation) {
+        currentPhase = 'transParts';
+        partsUserInput = new Array(group.translation.parts.length).fill('');
+      } else if (!state.transFullDone && group.translation) {
+        currentPhase = 'transFull';
+        fullUserInput = '';
+      } else {
+        // 该句子已完全完成，返回列表
+        showSentenceList();
+        checkAllComplete();
+        return;
+      }
+      renderPractice();
+    }
+
+    // 获取某个划词任务的状态（null/true/false）
+    function getTaskStatus(sentenceIdx, taskIdx) {
+      const state = sentenceStates[sentenceIdx];
+      // 我们使用 divideScore 来追踪每个任务的正确与否？
+      // 这里简化：存储一个数组 taskStatusMap，在 sentenceStates 内部维护
+      // 需要修改数据结构：每个句子有一个 taskResults 数组
+      // 方便起见，给 sentenceStates 增加 taskResults
+      if (!state.taskResults) state.taskResults = new Array(sentenceGroups[sentenceIdx].tasks.length).fill(null);
+      return state.taskResults[taskIdx];
+    }
+
+    function setTaskStatus(sentenceIdx, taskIdx, value) {
+      const state = sentenceStates[sentenceIdx];
+      if (!state.taskResults) state.taskResults = new Array(sentenceGroups[sentenceIdx].tasks.length).fill(null);
+      state.taskResults[taskIdx] = value;
+    }
+
+    // 检查句子划分是否全部完成
+    function isDivideComplete(sentenceIdx) {
+      const group = sentenceGroups[sentenceIdx];
+      return group.tasks.every((_, idx) => getTaskStatus(sentenceIdx, idx) !== null);
+    }
+
+    // ---------- 句子列表渲染 ----------
+    function renderSentenceList() {
+      let html = '<div class="sentence-list">';
+      sentenceGroups.forEach((group, idx) => {
+        const state = sentenceStates[idx];
+        const totalTasks = group.tasks.length;
+        let divideCompleted = 0;
+        if (state.taskResults) {
+          divideCompleted = state.taskResults.filter(r => r !== null).length;
+        }
+        const transDone = (!group.translation || (state.transPartsDone && state.transFullDone));
+        const allDone = divideCompleted === totalTasks && transDone;
+        html += `
+          <div class="sentence-item ${allDone ? 'completed' : ''}" data-idx="${idx}">
+            <span class="text">${group.sentence}</span>
+            <span class="progress-tag">${divideCompleted}/${totalTasks} ${transDone ? '✓' : '⋯'}</span>
+          </div>`;
+      });
+      html += '</div>';
+      viewContainer.innerHTML = html;
+      document.querySelectorAll('.sentence-item').forEach(item => {
+        item.addEventListener('click', () => {
+          enterSentence(parseInt(item.dataset.idx));
+        });
+      });
+    }
+
+    // ---------- 练习界面渲染 ----------
+    function renderPractice() {
+      const group = sentenceGroups[currentSentenceIdx];
+      const state = sentenceStates[currentSentenceIdx];
+      const tasks = group.tasks;
+      
+      if (currentPhase === 'divide') {
+        renderDividePhase();
+      } else if (currentPhase === 'transParts') {
+        renderTransPartsPhase();
+      } else if (currentPhase === 'transFull') {
+        renderTransFullPhase();
+      }
+    }
+
+    // --- 划分阶段 ---
+    function renderDividePhase() {
+      const group = sentenceGroups[currentSentenceIdx];
+      const task = group.tasks[currentTaskIdx];
+      const status = getTaskStatus(currentSentenceIdx, currentTaskIdx);
+      const totalTasks = group.tasks.length;
+      // 错误次数：用临时变量存储
+      if (!window._divideWrongCount) window._divideWrongCount = new Array(totalTasks).fill(0);
+      const wrongCount = window._divideWrongCount[currentTaskIdx] || 0;
+      const remaining = Math.max(0, 3 - wrongCount);
+      const correctIndices = getCorrectIndices(currentSentenceIdx, currentTaskIdx);
+
+      let html = `
+        <div class="practice-area">
+          <button class="btn back-btn" id="backToListBtn">← 返回列表</button>
+          <div class="sentence-display">${group.sentence}</div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:600;">${currentTaskIdx+1}. ${task.title}</span>
+            <div class="task-nav">`;
+      for (let i = 0; i < totalTasks; i++) {
+        let cls = 'task-dot';
+        if (i === currentTaskIdx) cls += ' current';
+        else if (getTaskStatus(currentSentenceIdx, i) !== null) cls += ' done';
+        else cls += ' locked';
+        html += `<div class="${cls}">${i+1}</div>`;
+      }
+      html += `</div></div>
+        <div class="info-row"><span>剩余机会：<strong>${remaining}</strong> / 3</span></div>
+        <div class="token-box" id="tokenContainer">`;
+      
+      currentTokens.forEach((tok, idx) => {
+        let cls = 'token';
+        if (tok.isWord) cls += ' word';
+        else cls += (tok.text.trim() ? ' punctuation' : ' space');
+        if (revealMode && correctIndices.includes(idx)) cls += ' correct-reveal';
+        else if (!revealMode && status === null && selectedTokens.includes(idx)) cls += ' selected';
+        else if (status === true && correctIndices.includes(idx)) cls += ' correct-reveal';
+        html += `<span class="${cls}" data-idx="${idx}">${tok.text}</span>`;
+      });
+
+      html += `</div>
+        <div class="feedback" id="feedbackArea"></div>
+        <div class="action-row">
+          <button class="btn" id="prevTaskBtn" ${currentTaskIdx===0?'disabled':''}>◀ 上一成分</button>
+          <button class="btn btn-primary" id="submitBtn" ${status !== null || revealMode ? 'disabled' : ''}>提交</button>
+        </div>
+      </div>`;
+
+      viewContainer.innerHTML = html;
+
+      // 事件绑定
+      document.getElementById('backToListBtn')?.addEventListener('click', showSentenceList);
+      document.getElementById('prevTaskBtn')?.addEventListener('click', () => {
+        if (currentTaskIdx > 0) {
+          currentTaskIdx--;
+          selectedTokens = [];
+          revealMode = false;
+          renderDividePhase();
+        }
+      });
+      document.getElementById('submitBtn')?.addEventListener('click', handleDivideSubmit);
+
+      // token点击
+      if (status === null && !revealMode) {
+        document.querySelectorAll('#tokenContainer .token.word').forEach(span => {
+          span.addEventListener('click', () => {
+            const idx = parseInt(span.dataset.idx);
+            toggleToken(idx);
+          });
+        });
+      }
+    }
+
+    function toggleToken(idx) {
+      const pos = selectedTokens.indexOf(idx);
+      if (pos > -1) selectedTokens.splice(pos,1);
+      else selectedTokens.push(idx);
+      document.querySelectorAll('#tokenContainer .token.word').forEach(span => {
+        const i = parseInt(span.dataset.idx);
+        span.classList.toggle('selected', selectedTokens.includes(i));
+      });
+      const btn = document.getElementById('submitBtn');
+      if (btn) btn.disabled = selectedTokens.length === 0;
+    }
+
+    function handleDivideSubmit() {
+      const status = getTaskStatus(currentSentenceIdx, currentTaskIdx);
+      if (status !== null || revealMode) return;
+      const correctIndices = getCorrectIndices(currentSentenceIdx, currentTaskIdx);
+      const sortedSelected = [...selectedTokens].sort((a,b)=>a-b);
+      const sortedCorrect = [...correctIndices].sort((a,b)=>a-b);
+      const isCorrect = arraysEqual(sortedSelected, sortedCorrect);
+      const fb = document.getElementById('feedbackArea');
+      if (!window._divideWrongCount) window._divideWrongCount = new Array(sentenceGroups[currentSentenceIdx].tasks.length).fill(0);
+      
+      if (isCorrect) {
+        setTaskStatus(currentSentenceIdx, currentTaskIdx, true);
+        selectedTokens = [];
+        revealMode = false;
+        if (fb) fb.textContent = '✅ 正确！';
+        // 检查是否全部划分完成
+        if (isDivideComplete(currentSentenceIdx)) {
+          advancePhaseOrFinish();
+        } else {
+          // 跳到下一个未完成任务
+          const next = findNextUnfinishedTask();
+          if (next !== -1) {
+            currentTaskIdx = next;
+            renderDividePhase();
+          }
+        }
+      } else {
+        window._divideWrongCount[currentTaskIdx]++;
+        const remaining = 3 - window._divideWrongCount[currentTaskIdx];
+        if (remaining <= 0) {
+          setTaskStatus(currentSentenceIdx, currentTaskIdx, false);
+          revealMode = true;
+          if (fb) fb.textContent = '❌ 机会用完，正确答案已显示，自动进入下一题';
+          setTimeout(() => {
+            revealMode = false;
+            if (isDivideComplete(currentSentenceIdx)) advancePhaseOrFinish();
+            else {
+              currentTaskIdx = findNextUnfinishedTask();
+              renderDividePhase();
+            }
+          }, 1500);
+        } else {
+          if (fb) fb.textContent = `❌ 错误，剩余 ${remaining} 次机会`;
+          selectedTokens = [];
+          document.querySelectorAll('#tokenContainer .token.word').forEach(s => s.classList.remove('selected'));
+          document.getElementById('submitBtn').disabled = true;
+        }
+      }
+    }
+
+    function findNextUnfinishedTask() {
+      const tasks = sentenceGroups[currentSentenceIdx].tasks;
+      for (let i = 0; i < tasks.length; i++) {
+        if (getTaskStatus(currentSentenceIdx, i) === null) return i;
+      }
+      return -1;
+    }
+
+    function advancePhaseOrFinish() {
+      const group = sentenceGroups[currentSentenceIdx];
+      // 划分全部完成，检查是否有翻译配置
+      if (!group.translation) {
+        // 没有翻译，直接标记句子完成，返回列表
+        sentenceStates[currentSentenceIdx].divideDone = true;
+        showSentenceList();
+        checkAllComplete();
+        return;
+      }
+      // 进入翻译阶段
+      sentenceStates[currentSentenceIdx].divideDone = true;
+      currentPhase = 'transParts';
+      partsUserInput = new Array(group.translation.parts.length).fill('');
+      renderTransPartsPhase();
+    }
+
+    // --- 成分翻译阶段 ---
+    function renderTransPartsPhase() {
+      const group = sentenceGroups[currentSentenceIdx];
+      const trans = group.translation;
+      
+      let html = `
+        <div class="practice-area">
+          <button class="btn back-btn" id="backToListBtn">← 返回列表</button>
+          <div class="sentence-display">${group.sentence}</div>
+          <div style="font-weight:600; font-size:1.1rem;">🔤 请翻译出句子的各个成分</div>
+          <ul class="translation-list">`;
+
+      group.tasks.forEach((task, idx) => {
+        const english = task.answer.join(' ');
+        html += `
+          <li class="translation-item">
+            <div class="translation-label">${task.title}</div>
+            <div class="translation-prompt">${english}</div>
+            <textarea class="translation-input" id="partInput-${idx}" placeholder="请输入中文翻译">${escapeHtml(partsUserInput[idx] || '')}</textarea>
+          </li>`;
+      });
+      
+      html += `</ul>
+        <button class="btn btn-primary" id="submitPartsBtn">提交翻译</button>
+        <div class="feedback" id="feedbackArea"></div>
+      </div>`;
+      
+      viewContainer.innerHTML = html;
+      document.getElementById('backToListBtn')?.addEventListener('click', showSentenceList);
+      document.getElementById('submitPartsBtn')?.addEventListener('click', submitPartsTranslation);
+
+      // 监听输入更新
+      group.tasks.forEach((_, idx) => {
+        const el = document.getElementById(`partInput-${idx}`);
+        if (el) {
+          el.addEventListener('input', () => { partsUserInput[idx] = el.value; });
+        }
+      });
+    }
+
+    function submitPartsTranslation() {
+      const group = sentenceGroups[currentSentenceIdx];
+      const trans = group.translation;
+      let correctCount = 0;
+      trans.parts.forEach((ans, idx) => {
+        const user = (partsUserInput[idx] || '').trim().replace(/\s+/g, '');
+        const standard = ans.trim().replace(/\s+/g, '');
+        if (user === standard) correctCount++;
+      });
+      const fb = document.getElementById('feedbackArea');
+      if (fb) fb.textContent = `成分翻译：${correctCount}/${trans.parts.length} 正确`;
+      // 存储得分
+      sentenceStates[currentSentenceIdx].transScore = correctCount;
+      sentenceStates[currentSentenceIdx].transPartsDone = true;
+      
+      // 进入整句翻译
+      currentPhase = 'transFull';
+      fullUserInput = '';
+      renderTransFullPhase();
+    }
+
+    // --- 整句翻译阶段 ---
+    function renderTransFullPhase() {
+      const group = sentenceGroups[currentSentenceIdx];
+      const trans = group.translation;
+      let html = `
+        <div class="practice-area">
+          <button class="btn back-btn" id="backToListBtn">← 返回列表</button>
+          <div style="font-weight:600;">📝 请按照公式将句子翻译出来</div>
+          <p style="color:#5f6b7a; font-size:0.85rem;">点击下方提示片段快速填充</p>
+          <div class="snippet-list">`;
+      trans.parts.forEach(part => {
+        html += `<span class="snippet" data-text="${escapeHtml(part)}">${escapeHtml(part)}</span>`;
+      });
+      html += `</div>
+        <textarea class="translation-input" id="fullTransInput" placeholder="请输入整句翻译" rows="3">${escapeHtml(fullUserInput)}</textarea>
+        <button class="btn btn-primary" id="submitFullBtn">提交</button>
+        <div class="feedback" id="feedbackArea"></div>
+      </div>`;
+      viewContainer.innerHTML = html;
+      
+      document.getElementById('backToListBtn')?.addEventListener('click', showSentenceList);
+      const textarea = document.getElementById('fullTransInput');
+      textarea.addEventListener('input', () => { fullUserInput = textarea.value; });
+      document.querySelectorAll('.snippet').forEach(sp => {
+        sp.addEventListener('click', () => {
+          textarea.value = textarea.value ? textarea.value + sp.dataset.text : sp.dataset.text;
+          fullUserInput = textarea.value;
+        });
+      });
+      document.getElementById('submitFullBtn').addEventListener('click', submitFullTranslation);
+    }
+
+    function submitFullTranslation() {
+      const trans = sentenceGroups[currentSentenceIdx].translation;
+      const userClean = fullUserInput.trim().replace(/\s+/g, '');
+      const standardClean = trans.full.trim().replace(/\s+/g, '');
+      const isCorrect = userClean === standardClean;
+      const fb = document.getElementById('feedbackArea');
+      if (fb) fb.textContent = isCorrect ? '✅ 整句翻译正确！' : '❌ 整句翻译不正确';
+      
+      sentenceStates[currentSentenceIdx].transFullDone = true;
+      if (isCorrect) sentenceStates[currentSentenceIdx].transScore += 3; // 整句翻译权重
+      
+      // 全部完成，返回列表
+      showSentenceList();
+      checkAllComplete();
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+    }
+
+    function arraysEqual(a,b) { return a.length === b.length && a.every((v,i)=> v===b[i]); }
+
+    // ---------- 全局完成检查 ----------
+    function checkAllComplete() {
+      const allDone = sentenceGroups.every((group, idx) => {
+        const state = sentenceStates[idx];
+        const divideDone = state.divideDone;
+        const transDone = !group.translation || (state.transPartsDone && state.transFullDone);
+        return divideDone && transDone;
+      });
+      if (allDone) {
+        finalResult.classList.remove('hidden');
+        viewContainer.style.display = 'none';
+        // 计算总得分
+        let totalScore = 0;
+        let totalPossible = 0;
+        sentenceGroups.forEach((group, idx) => {
+          const state = sentenceStates[idx];
+          // 划分分数：正确数
+          const divideCorrect = state.taskResults ? state.taskResults.filter(r => r === true).length : 0;
+          totalScore += divideCorrect;
+          totalPossible += group.tasks.length;
+          if (group.translation) {
+            totalScore += state.transScore || 0;
+            totalPossible += group.translation.parts.length + 3; // 成分翻译 + 整句翻译3分
+          }
+        });
+        const percent = Math.round((totalScore / totalPossible) * 100);
+        finalScoreText.textContent = `总得分：${totalScore} / ${totalPossible} (${percent}%)`;
+        finalMsg.textContent = percent === 100 ? '🏆 全部正确，太厉害了！' : '继续加油，可以重新练习！';
+      }
+    }
+
+    restartBtn.addEventListener('click', () => {
+      initSentenceStates();
+      correctIndicesCache.clear();
+      window._divideWrongCount = [];
+      showSentenceList();
+    });
+
+    loadData();
+  })();
+</script>
+</body>
+</html>
