@@ -1,17 +1,14 @@
 [
-
-
-  
   {
     "id": 1,
     "sentence": "The United Nations, in its first Digital Economy Report, states the US and China are leading the digital economy.",
     "tasks": [
-      { "title": "主语",   "answer": ["The","United","Nations"],       "indices": [0,2,4] },
-      { "title": "谓语",   "answer": ["states"],                      "indices": [20] },
-      { "title": "宾从主", "answer": ["the","US","and","China"],       "indices": [22,24,26,28] },
-      { "title": "宾从谓", "answer": ["are","leading"],                "indices": [30,32] },
-      { "title": "宾从宾", "answer": ["the","digital","economy"],      "indices": [34,36,38] },
-      { "title": "插入语", "answer": ["in","its","first","Digital","Economy","Report"], "indices": [7,9,11,13,15,17] }
+      { "title": "主语",   "indices": [0,2,4] },
+      { "title": "谓语",   "indices": [20] },
+      { "title": "宾从主", "indices": [22,24,26,28] },
+      { "title": "宾从谓", "indices": [30,32] },
+      { "title": "宾从宾", "indices": [34,36,38] },
+      { "title": "插入语", "indices": [7,9,11,13,15,17] }
     ],
     "translation": {
       "parts": ["联合国","指出","美国和中国","正在引领","数字经济","在其首份《数字经济报告》中"],
@@ -22,100 +19,31 @@
     "id": 2,
     "sentence": "Thousands of people could storm Area 51 on Friday.",
     "tasks": [
-      { "title": "主语", "answer": ["Thousands","of","people"], "indices": [0,2,4] },
-      { "title": "谓语", "answer": ["could","storm"], "indices": [6,8] },
-      { "title": "宾语", "answer": ["Area","51"], "indices": [10,12] },
-      { "title": "状语2", "answer": ["on","Friday"], "indices": [14,16] }
+      { "title": "主语", "indices": [0,2,4] },
+      { "title": "谓语", "indices": [6,8] },
+      { "title": "宾语", "indices": [10,12] },
+      { "title": "状语2", "indices": [14,16] }
     ],
     "translation": {
       "parts": ["成千上万的人","可能冲进","51区","在周五"],
       "full": "成千上万的人可能在周五冲进51区。"
     }
   },
-
   {
     "id": 3,
     "sentence": "The World Stroke Organization (WSO) has warned that climate change is becoming a growing threat to brain health, with extreme temperatures increasing the risk of people having a stroke — or dying from one.",
-  "tasks": [
-    {
-      "title": "请划出句子中的主语",
-      "indices": [
-        0,
-        2,
-        4,
-        6,
-        8
-      ]
-    },
-    {
-      "title": "请划出句子中的谓语",
-      "indices": [
-        10,
-        12
-      ]
-    },
-    {
-      "title": "请划出句子中的宾从主语",
-      "indices": [
-        16,
-        18
-      ]
-    },
-    {
-      "title": "请划出句子中的宾从谓语",
-      "indices": [
-        20,
-        22
-      ]
-    },
-    {
-      "title": "请划出句子中的宾从宾语",
-      "indices": [
-        24,
-        26,
-        28
-      ]
-    },
-    {
-      "title": "请划出句子中的宾从宾语定语",
-      "indices": [
-        30,
-        32,
-        34
-      ]
-    },
-    {
-      "title": "请划出句子中的伴随状语",
-      "indices": [
-        37,
-        39,
-        41,
-        43,
-        45,
-        47,
-        49,
-        51,
-        53,
-        55,
-        57,
-        60,
-        62,
-        64,
-        66
-      ]
-    }
-  ],
-"translation": {
+    "tasks": [
+      { "title": "请划出句子中的主语", "indices": [0,2,4,6,8] },
+      { "title": "请划出句子中的谓语", "indices": [10,12] },
+      { "title": "请划出句子中的宾从主语", "indices": [16,18] },
+      { "title": "请划出句子中的宾从谓语", "indices": [20,22] },
+      { "title": "请划出句子中的宾从宾语", "indices": [24,26,28] },
+      { "title": "请划出句子中的宾从宾语定语", "indices": [30,32,34] },
+      { "title": "请划出句子中的伴随状语", "indices": [37,39,41,43,45,47,49,51,53,55,57,60,62,64,66] }
+    ],
+    "translation": {
       "parts": ["世界中风组织","警告称","气候变化","正日益成为","威胁","脑部健康的","极端气温会增加人们患中风或因中风死亡的风险"],
       "full": "世界中风组织警告称，气候变化正日益成为脑部健康的威胁，极端气温会增加人们患中风或因中风死亡的风险。"
     }
-    
-}
-
-
-
-
-  
-  
+  }
 ]
-
