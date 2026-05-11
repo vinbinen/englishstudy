@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes"/>
-  <title>句子结构划分与翻译 · 详细结果版</title>
+  <title>句子结构划分与翻译 · 可复盘版</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -25,6 +25,8 @@
       display: flex;
       flex-direction: column;
       gap: 1.2rem;
+      max-height: 90vh;
+      overflow-y: auto;
     }
     h1 { font-size: 1.5rem; font-weight: 650; color: #13294b; display: flex; align-items: center; gap: 0.4rem; }
     
@@ -124,8 +126,8 @@
     let partScores = 0;
     let orderScore = 0;
     let finalSimilarity = 0;
-    let partsDetail = [];      // 成分翻译每项对错
-    let orderDetails = [];     // 顺序检测每项对错
+    let partsDetail = [];
+    let orderDetails = [];
 
     const viewContainer = document.getElementById('viewContainer');
     const finalResult = document.getElementById('finalResult');
@@ -227,8 +229,10 @@
         orderScore: 0,
         fullSimilarity: 0,
         transScore: 0,
-        partsDetail: [],     // 成分翻译逐一判定
-        orderDetails: []    // 顺序检测逐一判定
+        partsDetail: [],
+        orderDetails: [],
+        userParts: [],      // 用户填写的成分译文
+        userFull: ''        // 用户填写的整句译文
       }));
     }
 
@@ -280,9 +284,15 @@
 
     function enterSentence(sIdx) {
       currentSentenceIdx = sIdx;
+      const state = sentenceStates[sIdx];
+      // 如果句子已完成，显示复盘结果
+      if (state.divideDone && (!sentenceGroups[sIdx].translation || (state.transPartsDone && state.transFullDone))) {
+        renderSentenceResult(sIdx);
+        return;
+      }
+      // 否则进入练习流程
       const group = sentenceGroups[sIdx];
       currentTokens = tokenize(group.sentence);
-      const state = sentenceStates[sIdx];
       if (!state.divideDone) {
         currentPhase = 'divide';
         currentTaskIdx = 0;
@@ -303,10 +313,6 @@
         orderScore = 0;
         orderDetails = [];
         finalSimilarity = 0;
-      } else {
-        showSentenceList();
-        checkAllComplete();
-        return;
       }
       renderPractice();
     }
@@ -317,7 +323,7 @@
       else if (currentPhase === 'transFull') renderTransFullPhase();
     }
 
-    // ---------- 划词阶段（不变）----------
+    // ---------- 划词阶段 ----------
     function renderDividePhase() {
       const group = sentenceGroups[currentSentenceIdx];
       const task = group.tasks[currentTaskIdx];
@@ -443,7 +449,7 @@
       renderTransPartsPhase();
     }
 
-    // ---------- 成分翻译（存储详细对错）----------
+    // ---------- 成分翻译（保存用户输入）----------
     function renderTransPartsPhase() {
       const group = sentenceGroups[currentSentenceIdx];
       let html = `
@@ -485,6 +491,8 @@
         if (ok) partScores++;
         partsDetail.push(ok);
       });
+      // 保存用户输入
+      sentenceStates[currentSentenceIdx].userParts = [...partsUserInput];
       sentenceStates[currentSentenceIdx].partScore = partScores;
       sentenceStates[currentSentenceIdx].partsDetail = partsDetail;
       document.getElementById('feedbackArea').textContent = `成分翻译得分：${partScores}/${trans.parts.length}（核心词匹配）`;
@@ -497,7 +505,7 @@
       renderTransFullPhase();
     }
 
-    // ---------- 整句翻译（存储顺序详情）----------
+    // ---------- 整句翻译（不自动跳转，保留返回按钮）----------
     function renderTransFullPhase() {
       const group = sentenceGroups[currentSentenceIdx];
       const trans = group.translation;
@@ -515,6 +523,7 @@
         <textarea class="translation-input" id="fullTransInput" rows="3" placeholder="点击上方碎片或自由输入整句翻译">${escapeHtml(fullUserInput)}</textarea>
         <button class="btn btn-primary" id="submitFullBtn">提交整句翻译</button>
         <div class="feedback" id="feedbackArea"></div>
+        <div id="afterSubmitActions"></div>
       </div>`;
       viewContainer.innerHTML = html;
       document.getElementById('backToListBtn').addEventListener('click', showSentenceList);
@@ -543,6 +552,8 @@
       const percent = Math.round((totalTransScore / maxTransScore) * 100);
       const passed = percent >= 60;
 
+      // 保存用户整句输入
+      sentenceStates[currentSentenceIdx].userFull = fullUserInput;
       sentenceStates[currentSentenceIdx].orderScore = orderScore;
       sentenceStates[currentSentenceIdx].orderDetails = orderDetails;
       sentenceStates[currentSentenceIdx].fullSimilarity = finalSimilarity;
@@ -555,13 +566,70 @@
         📊 整句相似度：${Math.round(finalSimilarity*100)}%${similarityBonus ? '（+2分）' : ''}<br>
         🎯 翻译总分：${totalTransScore}/${maxTransScore} (${percent}%) → ${passed ? '✔️ 通过' : '❌ 未通过'}
       `;
-      setTimeout(() => {
-        showSentenceList();
-        checkAllComplete();
-      }, 3000);
+
+      // 添加返回按钮，不自动跳转
+      const afterActions = document.getElementById('afterSubmitActions');
+      if (afterActions) {
+        afterActions.innerHTML = '<button class="btn btn-primary" id="manualBackBtn" style="margin-top:1rem;">📋 返回句子列表</button>';
+        document.getElementById('manualBackBtn').addEventListener('click', showSentenceList);
+      }
     }
 
-    // ---------- 详细结果展示 ----------
+    // ---------- 单个句子复盘 ----------
+    function renderSentenceResult(sIdx) {
+      const g = sentenceGroups[sIdx];
+      const s = sentenceStates[sIdx];
+      const divCor = s.taskResults ? s.taskResults.filter(r => r === true).length : 0;
+      let html = `
+        <div class="practice-area">
+          <button class="btn back-btn" id="backToListBtn">← 返回列表</button>
+          <div class="sentence-display">${g.sentence}</div>
+          <div class="sentence-block">
+            <h3>📌 句子${sIdx+1} 详细结果</h3>
+            <p><strong>划分题得分：${divCor}/${g.tasks.length}</strong></p>`;
+
+      if (s.taskResults) {
+        html += '<table class="detail-table"><tr><th>成分</th><th>结果</th></tr>';
+        g.tasks.forEach((task, tIdx) => {
+          const correct = s.taskResults[tIdx];
+          const icon = correct === true ? '✅' : (correct === false ? '❌' : '⚪');
+          html += `<tr><td>${task.title}</td><td class="${correct === true ? 'pass' : 'fail'}">${icon}</td></tr>`;
+        });
+        html += '</table>';
+      }
+
+      if (g.translation) {
+        const maxTrans = g.translation.parts.length * 2 + 2;
+        const transTotal = (s.partScore || 0) + (s.orderScore || 0) + (s.fullSimilarity >= 0.8 ? 2 : 0);
+        html += `<p><strong>翻译得分：${transTotal}/${maxTrans}</strong></p>`;
+        html += '<p>🔤 成分翻译：</p><table class="detail-table"><tr><th>成分</th><th>标准答案</th><th>你的输入</th><th>核心词匹配</th></tr>';
+        g.tasks.forEach((task, tIdx) => {
+          const std = g.translation.parts[tIdx];
+          const user = s.userParts?.[tIdx] || '';
+          const ok = (s.partsDetail && s.partsDetail[tIdx]) || false;
+          html += `<tr><td>${task.title}</td><td>${std}</td><td>${escapeHtml(user)}</td><td class="${ok ? 'pass' : 'fail'}">${ok ? '✅' : '❌'}</td></tr>`;
+        });
+        html += '</table>';
+
+        if (s.orderDetails) {
+          html += '<p>🔀 成分顺序检测：</p><table class="detail-table"><tr><th>成分</th><th>顺序正确</th></tr>';
+          g.tasks.forEach((task, tIdx) => {
+            const ok = s.orderDetails[tIdx] || false;
+            html += `<tr><td>${task.title}</td><td class="${ok ? 'pass' : 'fail'}">${ok ? '✅' : '❌'}</td></tr>`;
+          });
+          html += '</table>';
+        }
+
+        html += `<p>📝 你的整句翻译：${escapeHtml(s.userFull || '（未填写）')}</p>`;
+        html += `<p>📊 整句相似度：${Math.round(s.fullSimilarity*100)}% ${s.fullSimilarity >= 0.8 ? '(+2分)' : ''}</p>`;
+      }
+
+      html += `</div></div>`;
+      viewContainer.innerHTML = html;
+      document.getElementById('backToListBtn').addEventListener('click', showSentenceList);
+    }
+
+    // ---------- 全局完成（与之前一致）----------
     function checkAllComplete() {
       const done = sentenceGroups.every((g, idx) => {
         const s = sentenceStates[idx];
@@ -578,12 +646,9 @@
           const divCor = s.taskResults ? s.taskResults.filter(r => r === true).length : 0;
           totalScore += divCor;
           grandTotal += g.tasks.length;
-          
           detailHtml += `<div class="sentence-block">
             <h3>📌 句子${idx+1}</h3>
             <p><strong>划分题得分：${divCor}/${g.tasks.length}</strong></p>`;
-          
-          // 划分题详情
           if (s.taskResults) {
             detailHtml += '<table class="detail-table"><tr><th>成分</th><th>结果</th></tr>';
             g.tasks.forEach((task, tIdx) => {
@@ -593,26 +658,20 @@
             });
             detailHtml += '</table>';
           }
-
-          // 翻译详情
           if (g.translation) {
             const maxTrans = g.translation.parts.length * 2 + 2;
             const transTotal = (s.partScore || 0) + (s.orderScore || 0) + (s.fullSimilarity >= 0.8 ? 2 : 0);
             totalScore += transTotal;
             grandTotal += maxTrans;
             detailHtml += `<p><strong>翻译得分：${transTotal}/${maxTrans}</strong></p>`;
-            
-            // 成分翻译详情
             detailHtml += '<p>🔤 成分翻译：</p><table class="detail-table"><tr><th>成分</th><th>标准答案</th><th>你的输入</th><th>核心词匹配</th></tr>';
             g.tasks.forEach((task, tIdx) => {
               const std = g.translation.parts[tIdx];
-              const user = partsUserInput?.[tIdx] || '';
+              const user = s.userParts?.[tIdx] || '';
               const ok = (s.partsDetail && s.partsDetail[tIdx]) || false;
               detailHtml += `<tr><td>${task.title}</td><td>${std}</td><td>${escapeHtml(user)}</td><td class="${ok ? 'pass' : 'fail'}">${ok ? '✅' : '❌'}</td></tr>`;
             });
             detailHtml += '</table>';
-
-            // 顺序检测详情
             if (s.orderDetails) {
               detailHtml += '<p>🔀 成分顺序检测：</p><table class="detail-table"><tr><th>成分</th><th>顺序正确</th></tr>';
               g.tasks.forEach((task, tIdx) => {
@@ -621,7 +680,7 @@
               });
               detailHtml += '</table>';
             }
-
+            detailHtml += `<p>📝 你的整句翻译：${escapeHtml(s.userFull || '（未填写）')}</p>`;
             detailHtml += `<p>📊 整句相似度：${Math.round(s.fullSimilarity*100)}% ${s.fullSimilarity >= 0.8 ? '(+2分)' : ''}</p>`;
           }
           detailHtml += `</div>`;
