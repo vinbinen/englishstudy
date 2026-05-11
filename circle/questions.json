@@ -33,16 +33,16 @@
     "id": 3,
     "sentence": "The World Stroke Organization (WSO) has warned that climate change is becoming a growing threat to brain health, with extreme temperatures increasing the risk of people having a stroke — or dying from one.",
     "tasks": [
-      { "title": "请划出句子中的主语", "indices": [0,2,4,6,8] },
-      { "title": "请划出句子中的谓语", "indices": [10,12] },
-      { "title": "请划出句子中的宾从主语", "indices": [16,18] },
-      { "title": "请划出句子中的宾从谓语", "indices": [20,22] },
-      { "title": "请划出句子中的宾从宾语", "indices": [24,26,28] },
-      { "title": "请划出句子中的宾从宾语定语", "indices": [30,32,34] },
-      { "title": "请划出句子中的伴随状语", "indices": [37,39,41,43,45,47,49,51,53,55,57,60,62,64,66] }
+      { "title": "主语", "indices": [0,2,4,6,8] },
+      { "title": "谓语", "indices": [10,12] },
+      { "title": "宾从主语", "indices": [16,18] },
+      { "title": "宾从谓语", "indices": [20,22] },
+      { "title": "宾从宾语", "indices": [24,26,28] },
+      { "title": "宾从宾语定语", "indices": [30,32,34] },
+      { "title": "伴随状语", "indices": [37,39,41,43,45,47,49,51,53,55,57,60,62,64,66] }
     ],
     "translation": {
-      "parts": ["世界中风组织","警告称","气候变化","正日益成为","威胁","脑部健康的","极端气温会增加人们患中风或因中风死亡的风险"],
+      "parts": ["世界中风组织","警告称","气候变化","正日益成为","脑部健康的","威胁","极端气温会增加人们患中风或因中风死亡的风险"],
       "full": "世界中风组织警告称，气候变化正日益成为脑部健康的威胁，极端气温会增加人们患中风或因中风死亡的风险。"
     }
   }
