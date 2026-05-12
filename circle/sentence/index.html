@@ -261,7 +261,7 @@
         modelLoadFailed = true;
         modelStatus.textContent = '⚠️ 智能评分引擎加载超时，使用基础评分模式';
       }
-    }, 8000);
+    }, 30000);
 
     // 顺序检测（自动定位成分位置，支持模糊匹配）
     function findComponentPos(cleanUser, partText) {
@@ -524,7 +524,7 @@
             revealMode = false;
             if (isDivideComplete(currentSentenceIdx)) advanceAfterDivide();
             else { currentTaskIdx = nextUnfinished(); renderDividePhase(); }
-          }, 1500);
+          }, 30000);
         } else {
           if (fb) fb.textContent = `❌ 错误，剩余 ${left} 次机会`;
           selectedTokens = [];
