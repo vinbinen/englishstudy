@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes"/>
-  <title>句子结构划分与翻译 · 混合智能评分（完全版）</title>
+  <title>句子结构划分与翻译 · 零维护智能评分</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -93,8 +93,9 @@
     .hidden { display: none; }
     .sentence-block { margin-bottom: 1.5rem; background: #fff; border-radius: 1rem; padding: 1rem; text-align: left; }
     .sentence-block h3 { margin-bottom: 0.5rem; color: #0f2744; }
+    .spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid #ccc; border-top-color: #2563eb; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
-  <!-- TensorFlow.js 和 Universal Sentence Encoder -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder"></script>
 </head>
@@ -133,7 +134,6 @@
     let encoderModel = null;
     let modelLoading = false;
     let modelLoadFailed = false;
-    let modelLoadTimer = null;
 
     const viewContainer = document.getElementById('viewContainer');
     const finalResult = document.getElementById('finalResult');
@@ -143,23 +143,7 @@
     const restartBtn = document.getElementById('restartBtn');
     const modelStatus = document.getElementById('modelStatus');
 
-    // ---------- 同义词库 ----------
-    const SYNONYM_MAP = {
-      "日益": ["逐渐", "越来越", "渐趋", "日趋", "正在"],
-      "死亡": ["致死", "去世", "过世", "丧命"],
-      "增加": ["提高", "提升", "加剧", "加大"],
-      "风险": ["危险", "危机"],
-      "脑部": ["大脑", "脑", "头部"],
-      "威胁": ["危害", "损害"],
-      "警告": ["提醒", "警示", "告诫"],
-      "组织": ["机构", "协会"],
-      "引领": ["引导", "带领", "主导"],
-      "指出": ["表明", "显示", "提出"],
-      "正在": ["逐渐", "日渐", "日趋"],
-      "变成": ["成为", "变为"],
-    };
-
-    // ---------- 工具函数 ----------
+    // ---------- 基础工具函数 ----------
     function tokenize(s) {
       const tokens = [];
       const regex = /([a-zA-Z0-9]+|[.,!?;:])|(\s+)/g;
@@ -177,16 +161,38 @@
     }
 
     function getCorrectIndices(sentenceIdx, taskIdx) {
-      const task = sentenceGroups[sentenceIdx].tasks[taskIdx];
-      return task.indices || [];
+      return sentenceGroups[sentenceIdx]?.tasks[taskIdx]?.indices || [];
     }
 
     function getTaskEnglish(sentenceIdx, taskIdx) {
       const group = sentenceGroups[sentenceIdx];
       const task = group.tasks[taskIdx];
-      if (!task.indices) return '';
+      if (!task?.indices) return '';
       const tokens = tokenize(group.sentence);
       return task.indices.map(i => tokens[i].text).join(' ');
+    }
+
+    // Dice 系数（基于字符 bigram）
+    function diceSimilarity(a, b) {
+      const bigramsA = getBigrams(a.replace(/\s+/g, ''));
+      const bigramsB = getBigrams(b.replace(/\s+/g, ''));
+      const keysA = Object.keys(bigramsA);
+      const keysB = Object.keys(bigramsB);
+      let intersection = 0;
+      for (const k of keysA) {
+        if (bigramsB[k]) intersection++;
+      }
+      const total = keysA.length + keysB.length;
+      return total === 0 ? 0 : (2 * intersection) / total;
+    }
+
+    function getBigrams(str) {
+      const bigrams = {};
+      for (let i = 0; i < str.length - 1; i++) {
+        const bigram = str.substring(i, i + 2);
+        bigrams[bigram] = (bigrams[bigram] || 0) + 1;
+      }
+      return bigrams;
     }
 
     function levenshteinSimilarity(a, b) {
@@ -204,23 +210,87 @@
       return 1 - matrix[len1][len2] / Math.max(len1, len2);
     }
 
-    function containsCoreWords(userStr, standardStr) {
-      if (!userStr || !standardStr) return false;
-      const keywords = standardStr.match(/[\u4e00-\u9fa5]{2,}/g) || [];
-      if (keywords.length === 0) {
-        return userStr.trim().replace(/\s+/g, '') === standardStr.trim().replace(/\s+/g, '');
+    // 智能成分匹配（Dice → 编辑距离 → USE 语义）
+    async function isPartMatched(userText, standardText) {
+      if (!userText || !standardText) return false;
+      if (diceSimilarity(userText, standardText) > 0.5) return true;
+      if (levenshteinSimilarity(userText, standardText) > 0.6) return true;
+      if (encoderModel) {
+        try {
+          const sim = await getSemanticSimilarity(userText, standardText);
+          return sim > 0.7;
+        } catch (e) { /* 忽略错误，回退到不匹配 */ }
       }
-      const cleanUser = userStr.replace(/\s+/g, '');
-      return keywords.every(kw => {
-        if (cleanUser.includes(kw)) return true;
-        const syns = SYNONYM_MAP[kw] || [];
-        return syns.some(syn => cleanUser.includes(syn));
-      });
+      return false;
+    }
+
+    // USE 模型管理
+    async function loadEncoderModel() {
+      if (encoderModel) return true;
+      if (modelLoading) return false;
+      modelLoading = true;
+      modelStatus.innerHTML = '<span class="spinner"></span> 智能评分引擎加载中...';
+      try {
+        encoderModel = await use.load();
+        modelStatus.textContent = '✅ 智能评分引擎已就绪';
+        modelLoading = false;
+        return true;
+      } catch (e) {
+        console.warn('USE 加载失败', e);
+        modelLoadFailed = true;
+        modelStatus.textContent = '⚠️ 智能评分引擎未加载，使用基础评分模式';
+        modelLoading = false;
+        return false;
+      }
+    }
+
+    async function getSemanticSimilarity(text1, text2) {
+      if (!encoderModel) return -1;
+      const embeddings = await encoderModel.embed([text1, text2]);
+      const a = embeddings.slice([0,0], [1]);
+      const b = embeddings.slice([1,0], [1]);
+      const dot = tf.matMul(a, b, false, true).dataSync()[0];
+      const normA = tf.norm(a).dataSync()[0];
+      const normB = tf.norm(b).dataSync()[0];
+      return dot / (normA * normB);
+    }
+
+    loadEncoderModel();
+    setTimeout(() => {
+      if (!encoderModel && !modelLoadFailed) {
+        modelLoadFailed = true;
+        modelStatus.textContent = '⚠️ 智能评分引擎加载超时，使用基础评分模式';
+      }
+    }, 8000);
+
+    // 顺序检测（自动定位成分位置，支持模糊匹配）
+    function findComponentPos(cleanUser, partText) {
+      // 1. 直接查找完整部分
+      const direct = cleanUser.indexOf(partText.replace(/\s+/g, ''));
+      if (direct !== -1) return direct;
+      // 2. 使用第一个核心词（≥2字中文）
+      const keywords = partText.match(/[\u4e00-\u9fa5]{2,}/g) || [];
+      for (const kw of keywords) {
+        const pos = cleanUser.indexOf(kw);
+        if (pos !== -1) return pos;
+      }
+      // 3. 滑动窗口 Dice 匹配，寻找最佳位置
+      const partClean = partText.replace(/\s+/g, '');
+      let bestPos = -1, bestScore = 0;
+      const maxStart = cleanUser.length - Math.min(partClean.length, 6); // 至少匹配短词
+      for (let i = 0; i <= Math.max(0, maxStart); i++) {
+        const sub = cleanUser.substring(i, i + partClean.length);
+        const score = diceSimilarity(sub, partClean);
+        if (score > bestScore && score > 0.35) {
+          bestScore = score;
+          bestPos = i;
+        }
+      }
+      return bestPos;
     }
 
     function getMergedGroups(group) {
-      if (group.translation?.mergedGroups) return group.translation.mergedGroups;
-      return [];
+      return group.translation?.mergedGroups || [];
     }
 
     function checkComponentOrder(userFullText, standardParts, mergedGroups) {
@@ -230,7 +300,7 @@
       let covered = new Array(partCount).fill(false);
       let orderCount = 0;
       let lastPos = -1;
-      // 处理合并块：将同一块内的索引视为整体
+
       for (let i = 0; i < partCount; i++) {
         if (covered[i]) continue;
         let block = null;
@@ -241,11 +311,7 @@
           let blockMaxPos = -1;
           let allFound = true;
           for (const idx of block) {
-            const part = standardParts[idx];
-            const keywords = part.match(/[\u4e00-\u9fa5]{2,}/g) || [];
-            let pos = -1;
-            if (keywords.length > 0) pos = cleanUser.indexOf(keywords[0]);
-            else pos = cleanUser.indexOf(part.replace(/\s+/g, ''));
+            const pos = findComponentPos(cleanUser, standardParts[idx]);
             if (pos === -1) { allFound = false; break; }
             blockMaxPos = Math.max(blockMaxPos, pos);
           }
@@ -255,11 +321,7 @@
             block.forEach(idx => { details[idx] = true; covered[idx] = true; });
           }
         } else {
-          const part = standardParts[i];
-          const keywords = part.match(/[\u4e00-\u9fa5]{2,}/g) || [];
-          let pos = -1;
-          if (keywords.length > 0) pos = cleanUser.indexOf(keywords[0]);
-          else pos = cleanUser.indexOf(part.replace(/\s+/g, ''));
+          const pos = findComponentPos(cleanUser, standardParts[i]);
           if (pos > lastPos) {
             orderCount++;
             lastPos = pos;
@@ -270,50 +332,6 @@
       }
       return { score: orderCount, details };
     }
-
-    // ---------- USE 模型 ----------
-    async function loadEncoderModel() {
-      if (encoderModel) return true;
-      if (modelLoading) return false;
-      modelLoading = true;
-      modelStatus.textContent = '🧠 智能评分引擎加载中...';
-      try {
-        encoderModel = await use.load();
-        modelStatus.textContent = '✅ 智能评分引擎已就绪';
-        modelLoading = false;
-        return true;
-      } catch (e) {
-        console.warn('USE 模型加载失败', e);
-        modelLoadFailed = true;
-        modelStatus.textContent = '⚠️ 智能评分引擎未加载，使用基础评分模式';
-        modelLoading = false;
-        return false;
-      }
-    }
-
-    async function getSemanticSimilarity(text1, text2) {
-      if (!encoderModel) return -1;
-      try {
-        const embeddings = await encoderModel.embed([text1, text2]);
-        const a = embeddings.slice([0,0], [1]);
-        const b = embeddings.slice([1,0], [1]);
-        const dot = tf.matMul(a, b, false, true).dataSync()[0];
-        const normA = tf.norm(a).dataSync()[0];
-        const normB = tf.norm(b).dataSync()[0];
-        return dot / (normA * normB);
-      } catch (e) {
-        console.error('语义计算失败', e);
-        return -1;
-      }
-    }
-
-    loadEncoderModel();
-    setTimeout(() => {
-      if (!encoderModel && !modelLoadFailed) {
-        modelLoadFailed = true;
-        modelStatus.textContent = '⚠️ 智能评分引擎加载超时，使用基础评分模式';
-      }
-    }, 30000);
 
     // ---------- 数据加载 ----------
     async function loadData() {
@@ -361,8 +379,7 @@
     }
 
     function isDivideComplete(sIdx) {
-      const tasks = sentenceGroups[sIdx].tasks;
-      return tasks.every((_, idx) => getTaskStatus(sIdx, idx) !== null);
+      return sentenceGroups[sIdx].tasks.every((_, idx) => getTaskStatus(sIdx, idx) !== null);
     }
 
     // ---------- 视图切换 ----------
@@ -537,7 +554,7 @@
       renderTransPartsPhase();
     }
 
-    // ---------- 成分翻译 ----------
+    // ---------- 成分翻译（使用智能匹配）----------
     function renderTransPartsPhase() {
       const group = sentenceGroups[currentSentenceIdx];
       let html = `<div class="practice-area"><button class="btn back-btn" id="backToListBtn">← 返回列表</button><div class="sentence-display">${group.sentence}</div><div style="font-weight:600;">🔤 请翻译出句子的各个成分</div><ul class="translation-list">`;
@@ -555,16 +572,21 @@
       document.getElementById('submitPartsBtn').addEventListener('click', submitParts);
     }
 
-    function submitParts() {
+    async function submitParts() {
       const group = sentenceGroups[currentSentenceIdx];
       const trans = group.translation;
-      partScores = 0; partsDetail = new Array(trans.parts.length).fill(false);
-      trans.parts.forEach((ans, i) => {
+      document.getElementById('submitPartsBtn').disabled = true;
+      document.getElementById('feedbackArea').innerHTML = '<span class="spinner"></span> 正在评估成分翻译...';
+
+      partScores = 0;
+      partsDetail = new Array(trans.parts.length).fill(false);
+      for (let i = 0; i < trans.parts.length; i++) {
         const user = partsUserInput[i] || '';
-        const ok = containsCoreWords(user, ans) || levenshteinSimilarity(user, ans) > 0.6;
+        const ok = await isPartMatched(user, trans.parts[i]);
         if (ok) partScores++;
         partsDetail[i] = ok;
-      });
+      }
+
       sentenceStates[currentSentenceIdx].userParts = [...partsUserInput];
       sentenceStates[currentSentenceIdx].partScore = partScores;
       sentenceStates[currentSentenceIdx].partsDetail = partsDetail;
@@ -576,17 +598,34 @@
     }
 
     // ---------- 整句翻译（混合评分）----------
+    function renderTransFullPhase() {
+      const group = sentenceGroups[currentSentenceIdx];
+      const trans = group.translation;
+      const snippets = partsUserInput.map((val, i) => val.trim() || trans.parts[i]);
+      let html = `<div class="practice-area"><button class="btn back-btn" id="backToListBtn">← 返回列表</button><div style="font-weight:600;">📝 请按照公式将句子翻译出来</div><p style="color:#5f6b7a;">点击下方你的译文片段，可填入输入框（可修改）</p><div class="snippet-list" id="snippetContainer">`;
+      snippets.forEach(text => { html += `<span class="snippet" data-text="${escapeHtml(text)}">${escapeHtml(text)}</span>`; });
+      html += `</div><textarea class="translation-input" id="fullTransInput" rows="3" placeholder="点击上方碎片或自由输入整句翻译">${escapeHtml(fullUserInput)}</textarea><button class="btn btn-primary" id="submitFullBtn">提交整句翻译</button><div class="feedback" id="feedbackArea"></div><div id="afterSubmitActions"></div></div>`;
+      viewContainer.innerHTML = html;
+      document.getElementById('backToListBtn').addEventListener('click', showSentenceList);
+      const ta = document.getElementById('fullTransInput');
+      ta.addEventListener('input', () => { fullUserInput = ta.value; });
+      document.querySelectorAll('#snippetContainer .snippet').forEach(sp => {
+        sp.addEventListener('click', () => {
+          ta.value = ta.value ? ta.value + sp.dataset.text : sp.dataset.text;
+          fullUserInput = ta.value;
+          ta.focus();
+        });
+      });
+      document.getElementById('submitFullBtn').addEventListener('click', submitFull);
+    }
+
     async function submitFull() {
       const group = sentenceGroups[currentSentenceIdx];
       const trans = group.translation;
-      // 1. 成分准确度（同义词+编辑距离）
-      partScores = 0; partsDetail = [];
-      trans.parts.forEach((ans, i) => {
-        const user = partsUserInput[i] || '';
-        const ok = containsCoreWords(user, ans) || levenshteinSimilarity(user, ans) > 0.6;
-        if (ok) partScores++;
-        partsDetail.push(ok);
-      });
+      document.getElementById('submitFullBtn').disabled = true;
+      document.getElementById('feedbackArea').innerHTML = '<span class="spinner"></span> 正在综合评分...';
+
+      // 1. 成分准确度（已在 submitParts 中保存，但此处可再次确认）
       // 2. 顺序检测
       const merged = getMergedGroups(group);
       const orderRes = checkComponentOrder(fullUserInput, trans.parts, merged);
@@ -612,7 +651,6 @@
 
       const state = sentenceStates[currentSentenceIdx];
       state.userFull = fullUserInput;
-      state.userParts = [...partsUserInput];
       state.partScore = partScores;
       state.partsDetail = partsDetail;
       state.orderScore = orderScore;
@@ -633,27 +671,6 @@
       document.getElementById('manualBackBtn').addEventListener('click', showSentenceList);
     }
 
-    function renderTransFullPhase() {
-      const group = sentenceGroups[currentSentenceIdx];
-      const trans = group.translation;
-      const snippets = partsUserInput.map((val, i) => val.trim() || trans.parts[i]);
-      let html = `<div class="practice-area"><button class="btn back-btn" id="backToListBtn">← 返回列表</button><div style="font-weight:600;">📝 请按照公式将句子翻译出来</div><p style="color:#5f6b7a;">点击下方你的译文片段，可填入输入框（可修改）</p><div class="snippet-list" id="snippetContainer">`;
-      snippets.forEach(text => { html += `<span class="snippet" data-text="${escapeHtml(text)}">${escapeHtml(text)}</span>`; });
-      html += `</div><textarea class="translation-input" id="fullTransInput" rows="3" placeholder="点击上方碎片或自由输入整句翻译">${escapeHtml(fullUserInput)}</textarea><button class="btn btn-primary" id="submitFullBtn">提交整句翻译</button><div class="feedback" id="feedbackArea"></div><div id="afterSubmitActions"></div></div>`;
-      viewContainer.innerHTML = html;
-      document.getElementById('backToListBtn').addEventListener('click', showSentenceList);
-      const ta = document.getElementById('fullTransInput');
-      ta.addEventListener('input', () => { fullUserInput = ta.value; });
-      document.querySelectorAll('#snippetContainer .snippet').forEach(sp => {
-        sp.addEventListener('click', () => {
-          ta.value = ta.value ? ta.value + sp.dataset.text : sp.dataset.text;
-          fullUserInput = ta.value;
-          ta.focus();
-        });
-      });
-      document.getElementById('submitFullBtn').addEventListener('click', submitFull);
-    }
-
     // ---------- 单个句子复盘 ----------
     function renderSentenceResult(sIdx) {
       const g = sentenceGroups[sIdx];
@@ -672,10 +689,8 @@
       }
 
       if (g.translation) {
-        const maxTrans = g.translation.parts.length * 2 + 2;
-        const transTotal = (s.partScore || 0) + (s.orderScore || 0) + (s.fullSimilarity >= 0.8 ? 2 : 0);
         html += `<p><strong>翻译得分：${s.transScore || '?'}%</strong></p>`;
-        html += '<p>🔤 成分翻译：</p><table class="detail-table"><tr><th>成分</th><th>标准答案</th><th>你的输入</th><th>核心词/编辑距离匹配</th></tr>';
+        html += '<p>🔤 成分翻译：</p><table class="detail-table"><tr><th>成分</th><th>标准答案</th><th>你的输入</th><th>匹配</th></tr>';
         g.tasks.forEach((task, tIdx) => {
           const std = g.translation.parts[tIdx];
           const user = s.userParts?.[tIdx] || '';
@@ -683,7 +698,6 @@
           html += `<tr><td>${task.title}</td><td>${std}</td><td>${escapeHtml(user)}</td><td class="${ok ? 'pass' : 'fail'}">${ok ? '✅' : '❌'}</td></tr>`;
         });
         html += '</table>';
-
         if (s.orderDetails) {
           html += '<p>🔀 成分顺序检测：</p><table class="detail-table"><tr><th>成分</th><th>顺序正确</th></tr>';
           g.tasks.forEach((task, tIdx) => {
@@ -692,10 +706,8 @@
           });
           html += '</table>';
         }
-
         html += `<p>📝 你的整句翻译：${escapeHtml(s.userFull || '（未填写）')}</p>`;
         if (s.semanticScore >= 0) html += `<p>🧠 语义匹配度：${Math.round(s.semanticScore*100)}%</p>`;
-        html += `<p>📊 相似度：${Math.round(s.fullSimilarity*100)}% ${s.fullSimilarity >= 0.8 ? '(+2分)' : ''}</p>`;
       }
       html += `</div></div>`;
       viewContainer.innerHTML = html;
@@ -711,14 +723,12 @@
       if (done) {
         finalResult.classList.remove('hidden');
         viewContainer.style.display = 'none';
-        let totalScore = 0;
-        let grandTotal = 0;
+        let totalPercentSum = 0;
+        let count = 0;
         let detailHtml = '';
         sentenceGroups.forEach((g, idx) => {
           const s = sentenceStates[idx];
           const divCor = s.taskResults ? s.taskResults.filter(r => r === true).length : 0;
-          totalScore += divCor;
-          grandTotal += g.tasks.length;
           detailHtml += `<div class="sentence-block"><h3>📌 句子${idx+1}</h3><p><strong>划分题得分：${divCor}/${g.tasks.length}</strong></p>`;
           if (s.taskResults) {
             detailHtml += '<table class="detail-table"><tr><th>成分</th><th>结果</th></tr>';
@@ -730,10 +740,10 @@
             detailHtml += '</table>';
           }
           if (g.translation) {
-            const transTotal = s.transScore || 0;
-            totalScore += transTotal;
-            grandTotal += 100;
-            detailHtml += `<p><strong>翻译得分：${transTotal}%</strong></p>`;
+            const transPercent = s.transScore || 0;
+            totalPercentSum += transPercent;
+            count++;
+            detailHtml += `<p><strong>翻译得分：${transPercent}%</strong></p>`;
             detailHtml += '<p>🔤 成分翻译：</p><table class="detail-table"><tr><th>成分</th><th>标准答案</th><th>你的输入</th><th>匹配</th></tr>';
             g.tasks.forEach((task, tIdx) => {
               const std = g.translation.parts[tIdx];
@@ -755,9 +765,9 @@
           }
           detailHtml += `</div>`;
         });
-        const finalPercent = Math.round((totalScore / grandTotal) * 100);
-        finalScoreText.textContent = `综合总评：${finalPercent}%`;
-        finalMsg.textContent = finalPercent >= 60 ? '🏆 整体通过！' : '💪 继续努力！';
+        const finalAvg = count > 0 ? Math.round(totalPercentSum / count) : 0;
+        finalScoreText.textContent = `综合翻译均分：${finalAvg}%`;
+        finalMsg.textContent = finalAvg >= 60 ? '🏆 整体通过！' : '💪 继续努力！';
         finalDetail.innerHTML = detailHtml;
       }
     }
