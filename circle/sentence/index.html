@@ -524,7 +524,7 @@
             revealMode = false;
             if (isDivideComplete(currentSentenceIdx)) advanceAfterDivide();
             else { currentTaskIdx = nextUnfinished(); renderDividePhase(); }
-          }, 30000);
+          }, 1500);
         } else {
           if (fb) fb.textContent = `❌ 错误，剩余 ${left} 次机会`;
           selectedTokens = [];
