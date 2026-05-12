@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes"/>
+  <title>句子成分索引生成器 · 适配版</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      background: #f2f5f9;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 700px;
+      background: #fff;
+      border-radius: 1.5rem;
+      padding: 1.8rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+    h1 {
+      font-size: 1.5rem;
+      color: #13294b;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    label {
+      font-weight: 600;
+      color: #1e3b6b;
+      display: block;
+      margin: 0.8rem 0 0.3rem;
+    }
+    textarea, input {
+      width: 100%;
+      padding: 0.7rem;
+      border: 1.5px solid #cfddee;
+      border-radius: 0.8rem;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+    .token-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.2rem;
+      margin: 0.8rem 0;
+      line-height: 1.8;
+      font-size: 1.05rem;
+      background: #f8faff;
+      border-radius: 1rem;
+      padding: 0.8rem;
+      position: relative;
+    }
+    .token {
+      border-radius: 6px;
+      padding: 0.15rem 0.3rem;
+      transition: 0.15s;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+    }
+    .token.word {
+      cursor: pointer;
+      font-weight: 500;
+      border: 1.5px solid transparent;
+    }
+    .token.word:hover { background: #e9efff; border-color: #2563eb; }
+    .token.word.selected {
+      background: #ffd966;
+      border-bottom: 2.5px solid #d97706;
+      font-weight: 600;
+    }
+    .token.punctuation, .token.space {
+      cursor: default;
+      pointer-events: none;
+    }
+    .token-index {
+      position: absolute;
+      top: -0.8rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.6rem;
+      color: #5f6b7a;
+      background: #fff;
+      padding: 0 2px;
+      border-radius: 4px;
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    .btn {
+      border: 1.5px solid #cdd9f0;
+      background: #f5f8ff;
+      padding: 0.5rem 1.2rem;
+      border-radius: 2rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #1e3b6b;
+      margin: 0.3rem;
+      transition: 0.2s;
+    }
+    .btn-primary { background: #1e3a6b; border-color: #1e3a6b; color: #fff; }
+    .btn-primary:hover { background: #102a4c; }
+    .btn-danger { background: #fff0f0; border-color: #dc2626; color: #dc2626; }
+    .result-box {
+      background: #f3f7ff;
+      border-radius: 1rem;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-family: monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .flex-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    hr { margin: 1.2rem 0; border: 0.5px solid #e9eff6; }
+    .hint { font-size: 0.8rem; color: #5f6b7a; margin-top: 0.3rem; }
+    .copy-tip { background: #e8f0fe; padding: 0.6rem; border-radius: 0.8rem; font-size: 0.85rem; color: #1e3b6b; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>📝 句子成分索引生成器（无 answer 版）</h1>
+  <p style="color:#475569; margin-bottom:1rem;">输入句子 → 点击单词选中 → 生成 <code>{"title":"...", "indices":[...]}</code>，用于 questions.json</p>
+
+  <label>📄 句子文本</label>
+  <textarea id="sentenceInput" rows="2" placeholder="例如：The United Nations, in its first Digital Economy Report, states the US and China are leading the digital economy.">The United Nations, in its first Digital Economy Report, states the US and China are leading the digital economy.</textarea>
+
+  <label>🏷️ 成分名称（如“主语”）</label>
+  <div class="flex-row">
+    <input type="text" id="componentName" placeholder="请输入成分名称" value="主语" style="flex:1;" />
+    <button class="btn btn-primary" id="parseBtn">🔍 解析句子</button>
+  </div>
+
+  <div class="token-container" id="tokenContainer">
+    <span style="color:#5f6b7a;">请先点击“解析句子”</span>
+  </div>
+  <p class="hint">💡 每个单词上方显示了它的索引号。点击单词即可选中/取消，标点符号不可选。</p>
+
+  <div class="flex-row">
+    <button class="btn btn-danger" id="clearSelectionBtn">🗑️ 清除当前选中</button>
+    <button class="btn btn-primary" id="generateBtn">📋 生成当前成分（title + indices）</button>
+  </div>
+
+  <div class="result-box" id="outputBox">
+    <em>选择单词后点击上方按钮生成 JSON 片段…</em>
+  </div>
+
+  <hr />
+
+  <div>
+    <label>📦 累积所有成分（一键生成句子任务组）</label>
+    <div class="flex-row">
+      <button class="btn btn-primary" id="accumulateBtn">➕ 添加到累积列表</button>
+      <button class="btn btn-danger" id="clearAccumulatedBtn">🗑️ 清空累积</button>
+    </div>
+    <div class="result-box" id="accumulatedBox">
+      暂无累积成分。
+    </div>
+    <div class="flex-row">
+      <button class="btn btn-primary" id="copySentenceBtn">📋 复制句子对象（不含翻译）</button>
+      <button class="btn btn-primary" id="copyArrayElementBtn">📋 复制为数组元素（含逗号）</button>
+    </div>
+    <div class="copy-tip" id="copyInstruction">
+      ⚠️ 复制后，打开 questions.json，在最后一个句子的右花括号 <code>}</code> 后面添加逗号，然后粘贴新对象。如果是数组元素模式，直接粘贴即可（已包含前导逗号）。
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // 分词函数（与主程序完全一致）
+    function tokenize(s) {
+      const tokens = [];
+      const regex = /([a-zA-Z0-9]+|[.,!?;:])|(\s+)/g;
+      let match;
+      while ((match = regex.exec(s)) !== null) {
+        if (match[1]) {
+          const text = match[1];
+          const isWord = /^[a-zA-Z0-9]+$/.test(text);
+          tokens.push({ text, isWord, index: tokens.length });
+        } else if (match[2]) {
+          tokens.push({ text: match[2], isWord: false, index: tokens.length });
+        }
+      }
+      return tokens;
+    }
+
+    let currentTokens = [];
+    let selectedIndices = [];
+
+    const sentenceInput = document.getElementById('sentenceInput');
+    const componentName = document.getElementById('componentName');
+    const tokenContainer = document.getElementById('tokenContainer');
+    const parseBtn = document.getElementById('parseBtn');
+    const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+    const generateBtn = document.getElementById('generateBtn');
+    const outputBox = document.getElementById('outputBox');
+    const accumulateBtn = document.getElementById('accumulateBtn');
+    const clearAccumulatedBtn = document.getElementById('clearAccumulatedBtn');
+    const accumulatedBox = document.getElementById('accumulatedBox');
+    const copySentenceBtn = document.getElementById('copySentenceBtn');
+    const copyArrayElementBtn = document.getElementById('copyArrayElementBtn');
+    const copyInstruction = document.getElementById('copyInstruction');
+
+    let accumulatedTasks = [];
+
+    // 渲染 tokens，并显示索引悬浮标志
+    function renderTokens() {
+      tokenContainer.innerHTML = '';
+      selectedIndices = [];
+      currentTokens.forEach((tok, idx) => {
+        const span = document.createElement('span');
+        span.className = 'token';
+        if (tok.isWord) {
+          span.className += ' word';
+          span.dataset.index = idx;
+          span.addEventListener('click', () => toggleToken(idx));
+          // 添加索引悬浮提示
+          span.title = `索引: ${idx}`;
+          // 可选在单词上方显示小数字
+          const indexBadge = document.createElement('span');
+          indexBadge.className = 'token-index';
+          indexBadge.textContent = idx;
+          span.appendChild(indexBadge);
+        } else {
+          span.className += (tok.text.trim() === '' ? ' space' : ' punctuation');
+        }
+        span.appendChild(document.createTextNode(tok.text));
+        tokenContainer.appendChild(span);
+      });
+      outputBox.textContent = '选择单词后点击上方按钮生成 JSON 片段…';
+    }
+
+    function toggleToken(idx) {
+      if (!currentTokens[idx].isWord) return;
+      const pos = selectedIndices.indexOf(idx);
+      if (pos > -1) selectedIndices.splice(pos, 1);
+      else selectedIndices.push(idx);
+      updateHighlights();
+    }
+
+    function updateHighlights() {
+      document.querySelectorAll('#tokenContainer .token.word').forEach(span => {
+        const idx = parseInt(span.dataset.index);
+        span.classList.toggle('selected', selectedIndices.includes(idx));
+      });
+    }
+
+    // 生成当前成分的 JSON
+    function generateCurrent() {
+      if (selectedIndices.length === 0) {
+        outputBox.textContent = '⚠️ 请先点击选择单词！';
+        return;
+      }
+      const sorted = [...selectedIndices].sort((a,b) => a-b);
+      const name = componentName.value.trim() || '未命名成分';
+      const task = {
+        title: `请划出句子中的${name}`,
+        indices: sorted
+      };
+      outputBox.textContent = JSON.stringify(task, null, 2);
+    }
+
+    // 累积当前成分到任务列表
+    function accumulateCurrent() {
+      if (selectedIndices.length === 0) {
+        alert('请先选择单词并生成答案！');
+        return;
+      }
+      const name = componentName.value.trim() || '未命名成分';
+      const sorted = [...selectedIndices].sort((a,b) => a-b);
+      accumulatedTasks.push({
+        title: `请划出句子中的${name}`,
+        indices: sorted
+      });
+      updateAccumulatedDisplay();
+      // 清空当前选择
+      selectedIndices = [];
+      updateHighlights();
+      outputBox.textContent = '✅ 已添加，可继续选择下一个成分。';
+      componentName.value = ''; // 清空名称输入
+    }
+
+    function updateAccumulatedDisplay() {
+      if (accumulatedTasks.length === 0) {
+        accumulatedBox.textContent = '暂无累积成分。';
+        return;
+      }
+      accumulatedBox.textContent = JSON.stringify(accumulatedTasks, null, 2);
+    }
+
+    // 复制完整句子对象（不含 translation 字段）
+    function copySentenceObject() {
+      if (accumulatedTasks.length === 0) {
+        alert('请先累积至少一个成分！');
+        return;
+      }
+      const sentenceText = sentenceInput.value.trim();
+      const fullData = {
+        sentence: sentenceText,
+        tasks: accumulatedTasks
+      };
+      const jsonStr = JSON.stringify(fullData, null, 2);
+      navigator.clipboard.writeText(jsonStr).then(() => {
+        alert('✅ 句子对象已复制！粘贴到 questions.json 时，请确保在数组内且前一个对象后有逗号。');
+      }).catch(() => {
+        alert('复制失败，请手动复制下方文本：\n' + jsonStr);
+      });
+    }
+
+    // 复制为数组元素（前导逗号）
+    function copyAsArrayElement() {
+      if (accumulatedTasks.length === 0) {
+        alert('请先累积至少一个成分！');
+        return;
+      }
+      const sentenceText = sentenceInput.value.trim();
+      const fullData = {
+        sentence: sentenceText,
+        tasks: accumulatedTasks
+      };
+      const jsonStr = JSON.stringify(fullData, null, 2);
+      // 添加前导逗号和换行，方便直接粘贴到数组末尾
+      const arrayElementStr = ',\n' + jsonStr;
+      navigator.clipboard.writeText(arrayElementStr).then(() => {
+        alert('✅ 数组元素已复制（含前导逗号）！直接粘贴到 questions.json 数组的最后一个对象后面即可。');
+      }).catch(() => {
+        alert('复制失败，请手动复制：\n' + arrayElementStr);
+      });
+    }
+
+    // 事件绑定
+    parseBtn.addEventListener('click', () => {
+      const sentence = sentenceInput.value.trim();
+      if (!sentence) return;
+      currentTokens = tokenize(sentence);
+      selectedIndices = [];
+      accumulatedTasks = []; // 换句子时清空累积
+      accumulatedBox.textContent = '暂无累积成分。';
+      renderTokens();
+    });
+
+    clearSelectionBtn.addEventListener('click', () => {
+      selectedIndices = [];
+      updateHighlights();
+      outputBox.textContent = '已清除选中单词。';
+    });
+
+    generateBtn.addEventListener('click', generateCurrent);
+    accumulateBtn.addEventListener('click', accumulateCurrent);
+    clearAccumulatedBtn.addEventListener('click', () => {
+      accumulatedTasks = [];
+      updateAccumulatedDisplay();
+    });
+
+    copySentenceBtn.addEventListener('click', copySentenceObject);
+    copyArrayElementBtn.addEventListener('click', copyAsArrayElement);
+
+    // 初始解析示例句子
+    window.addEventListener('load', () => {
+      parseBtn.click();
+    });
+  })();
+</script>
+</body>
+</html>
