@@ -731,6 +731,104 @@ function submitDivide(){
 
 }
 
+
+////////////////////////////////////////////////////////
+// 成份翻译页面
+////////////////////////////////////////////////////////
+  function renderPartTranslation(){
+
+  const q = questions[currentIndex];
+
+  const task = q.tasks[currentTaskIndex];
+
+  const html = `
+
+    <div class="card">
+
+      <div class="task-title">
+        请翻译该成分
+      </div>
+
+      <div class="sentence-box">
+        ${task.title}
+      </div>
+
+      <textarea
+        id="partTranslationInput"
+        placeholder="请输入该成分翻译">
+      </textarea>
+
+      <div class="controls">
+
+        <button onclick="submitPartTranslation()">
+          提交翻译
+        </button>
+
+      </div>
+
+      <div id="partTranslationFeedback"
+           class="feedback"></div>
+
+    </div>
+  `;
+
+  document.getElementById('mainView').innerHTML = html;
+}
+
+  ////////////////////////////////////////////////////////
+// 成份翻译评分
+////////////////////////////////////////////////////////
+
+  async function submitPartTranslation(){
+
+  const q = questions[currentIndex];
+
+  const task = q.tasks[currentTaskIndex];
+
+  const input =
+    document.getElementById('partTranslationInput')
+      .value
+      .trim();
+
+  const standard = task.translation;
+
+  let score = 0;
+
+  const semantic =
+    await semanticSimilarity(input, standard);
+
+  if(semantic >= 0){
+
+    score = Math.round(semantic * 100);
+
+  }else{
+
+    score = Math.round(
+      diceSimilarity(input, standard) * 100
+    );
+
+  }
+
+  appState.translationResults.push({
+    title: task.title,
+    user: input,
+    correct: standard,
+    score
+  });
+
+  currentTaskIndex++;
+
+  if(currentTaskIndex >= q.tasks.length){
+
+    renderFullTranslation();
+
+  }else{
+
+    renderTask();
+
+  }
+}
+
 ////////////////////////////////////////////////////////
 // 翻译页面
 ////////////////////////////////////////////////////////
