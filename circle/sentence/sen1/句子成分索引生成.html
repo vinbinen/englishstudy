@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>句子成分 JSON 索引生成器</title>
+
+<style>
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:#f3f6fb;
+  padding:20px;
+  color:#16345f;
+}
+
+.container{
+  max-width:1200px;
+  margin:auto;
+}
+
+h1{
+  font-size:32px;
+  margin-bottom:24px;
+}
+
+.card{
+  background:white;
+  border-radius:20px;
+  padding:24px;
+  margin-bottom:24px;
+  box-shadow:0 10px 30px rgba(0,0,0,.06);
+}
+
+label{
+  display:block;
+  font-weight:700;
+  margin-bottom:10px;
+}
+
+textarea,input{
+  width:100%;
+  border:1px solid #d8e2f0;
+  border-radius:14px;
+  padding:14px;
+  font-size:16px;
+  margin-bottom:18px;
+}
+
+textarea{
+  min-height:100px;
+  resize:vertical;
+}
+
+button{
+  border:none;
+  background:#1f3f72;
+  color:white;
+  padding:12px 22px;
+  border-radius:999px;
+  cursor:pointer;
+  font-size:15px;
+  font-weight:700;
+  transition:.2s;
+}
+
+button:hover{
+  background:#17315a;
+}
+
+button.secondary{
+  background:white;
+  color:#1f3f72;
+  border:2px solid #1f3f72;
+}
+
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-top:16px;
+}
+
+.token-box{
+  background:#f8fbff;
+  border-radius:16px;
+  padding:20px;
+  line-height:2.2;
+  font-size:20px;
+  border-left:5px solid #2563eb;
+}
+
+.token{
+  display:inline-block;
+  padding:4px 8px;
+  border-radius:8px;
+  transition:.15s;
+}
+
+.word{
+  cursor:pointer;
+}
+
+.word:hover{
+  background:#e0ebff;
+}
+
+.selected{
+  background:#ffd966;
+  border-bottom:3px solid #d97706;
+}
+
+.task-card{
+  border:1px solid #dbe5f4;
+  border-radius:16px;
+  padding:18px;
+  margin-top:16px;
+  background:#fafcff;
+}
+
+.task-title{
+  font-weight:800;
+  font-size:18px;
+  margin-bottom:12px;
+}
+
+.preview{
+  background:#eef5ff;
+  border-radius:10px;
+  padding:10px 14px;
+  margin-top:10px;
+  color:#334155;
+  line-height:1.8;
+}
+
+.output{
+  background:#0f172a;
+  color:#d1fae5;
+  padding:20px;
+  border-radius:16px;
+  overflow:auto;
+  font-family:Consolas,monospace;
+  white-space:pre-wrap;
+  line-height:1.7;
+}
+
+.small{
+  font-size:14px;
+  color:#64748b;
+}
+
+.part-list{
+  margin-top:18px;
+}
+
+.part-item{
+  background:white;
+  border:1px solid #d9e3f2;
+  border-radius:12px;
+  padding:12px;
+  margin-bottom:12px;
+}
+
+.part-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.part-head input{
+  margin:0;
+}
+
+.part-actions{
+  display:flex;
+  gap:8px;
+}
+
+.copy-success{
+  color:#10b981;
+  font-weight:bold;
+  margin-top:12px;
+}
+
+@media(max-width:700px){
+
+  .token-box{
+    font-size:17px;
+  }
+
+  h1{
+    font-size:24px;
+  }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>📘 句子成分在线索引生成器</h1>
+
+  <div class="card">
+
+    <label>英文句子</label>
+
+    <textarea
+      id="sentenceInput"
+      placeholder="请输入英文句子..."
+    ></textarea>
+
+    <label>整句中文翻译</label>
+
+    <textarea
+      id="fullTranslationInput"
+      placeholder="请输入整句翻译..."
+    ></textarea>
+
+    <div class="controls">
+
+      <button onclick="generateTokens()">
+        生成词块
+      </button>
+
+      <button class="secondary" onclick="addPart()">
+        添加句子成分
+      </button>
+
+      <button class="secondary" onclick="clearAllData()">
+        清空
+      </button>
+
+    </div>
+
+  </div>
+
+  <div class="card">
+
+    <label>点击单词选择成分</label>
+
+    <div id="tokenBox" class="token-box">
+      请先输入句子并点击“生成词块”
+    </div>
+
+  </div>
+
+  <div class="card">
+
+    <label>句子成分列表</label>
+
+    <div id="partsContainer" class="part-list"></div>
+
+  </div>
+
+  <div class="card">
+
+    <div class="controls">
+
+      <button onclick="generateJSON()">
+        生成 JSON
+      </button>
+
+      <button class="secondary" onclick="copyJSON()">
+        复制 JSON
+      </button>
+
+    </div>
+
+    <div id="copyInfo" class="copy-success"></div>
+
+    <div
+      id="jsonOutput"
+      class="output"
+      style="margin-top:18px;"
+    >
+等待生成...
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+let tokens = [];
+
+let selectedIndices = [];
+
+let parts = [];
+
+function escapeHtml(str){
+
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+}
+
+function tokenize(sentence){
+
+  const regex =
+    /([A-Za-z]+(?:[-'][A-Za-z]+)*|\d+|[.,!?;:()—-])|(\s+)/g;
+
+  const arr = [];
+
+  let match;
+
+  while((match = regex.exec(sentence)) !== null){
+
+    if(match[1]){
+
+      arr.push({
+        text:match[1],
+        isWord:true,
+        index:arr.length
+      });
+
+    }
+    else if(match[2]){
+
+      arr.push({
+        text:match[2],
+        isWord:false,
+        index:arr.length
+      });
+
+    }
+
+  }
+
+  return arr;
+}
+
+function generateTokens(){
+
+  const sentence =
+    document
+      .getElementById('sentenceInput')
+      .value
+      .trim();
+
+  if(!sentence){
+
+    alert('请输入英文句子');
+
+    return;
+  }
+
+  tokens = tokenize(sentence);
+
+  selectedIndices = [];
+
+  renderTokens();
+}
+
+function renderTokens(){
+
+  let html = '';
+
+  tokens.forEach((tok,idx)=>{
+
+    if(tok.isWord){
+
+      let cls = 'token word';
+
+      if(selectedIndices.includes(idx)){
+        cls += ' selected';
+      }
+
+      html += `
+        <span
+          class="${cls}"
+          onclick="toggleToken(${idx})"
+          title="索引: ${idx}"
+        >
+          ${escapeHtml(tok.text)}
+        </span>
+      `;
+    }
+    else{
+
+      html += tok.text;
+
+    }
+
+  });
+
+  document.getElementById('tokenBox').innerHTML = html;
+}
+
+window.toggleToken = function(idx){
+
+  const pos = selectedIndices.indexOf(idx);
+
+  if(pos >= 0){
+
+    selectedIndices.splice(pos,1);
+
+  }else{
+
+    selectedIndices.push(idx);
+
+  }
+
+  renderTokens();
+};
+
+window.addPart = function(){
+
+  if(selectedIndices.length === 0){
+
+    alert('请先选择单词');
+
+    return;
+  }
+
+  const title =
+    prompt('请输入成分名称（例如：主语 / 谓语 / 宾从主语）');
+
+  if(!title) return;
+
+  const translation =
+    prompt('请输入该成分的中文翻译');
+
+  const sorted =
+    [...selectedIndices].sort((a,b)=>a-b);
+
+  const englishText =
+    sorted
+      .map(i=>tokens[i]?.text || '')
+      .join(' ');
+
+  parts.push({
+
+    title,
+
+    indices:sorted,
+
+    translation:translation || '',
+
+    text:englishText
+
+  });
+
+  selectedIndices = [];
+
+  renderTokens();
+
+  renderParts();
+};
+
+function renderParts(){
+
+  const container =
+    document.getElementById('partsContainer');
+
+  if(parts.length === 0){
+
+    container.innerHTML =
+      '<div class="small">暂无成分</div>';
+
+    return;
+  }
+
+  let html = '';
+
+  parts.forEach((part,index)=>{
+
+    html += `
+      <div class="part-item">
+
+        <div class="part-head">
+
+          <div style="flex:1;">
+
+            <div style="font-weight:700;">
+              ${escapeHtml(part.title)}
+            </div>
+
+            <div class="small">
+              indices:
+              [${part.indices.join(',')}]
+            </div>
+
+          </div>
+
+          <div class="part-actions">
+
+            <button
+              onclick="editPart(${index})"
+              style="padding:8px 14px;"
+            >
+              编辑
+            </button>
+
+            <button
+              onclick="deletePart(${index})"
+              style="
+                padding:8px 14px;
+                background:#dc2626;
+              "
+            >
+              删除
+            </button>
+
+          </div>
+
+        </div>
+
+        <div class="preview">
+          <strong>英文：</strong>
+          ${escapeHtml(part.text)}
+          <br><br>
+
+          <strong>中文：</strong>
+          ${escapeHtml(part.translation)}
+        </div>
+
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+window.deletePart = function(index){
+
+  parts.splice(index,1);
+
+  renderParts();
+};
+
+window.editPart = function(index){
+
+  const part = parts[index];
+
+  const newTitle =
+    prompt('修改成分名称',part.title);
+
+  if(!newTitle) return;
+
+  const newTranslation =
+    prompt('修改中文翻译',part.translation);
+
+  part.title = newTitle;
+
+  part.translation = newTranslation || '';
+
+  renderParts();
+};
+
+window.generateJSON = function(){
+
+  const sentence =
+    document
+      .getElementById('sentenceInput')
+      .value
+      .trim();
+
+  const fullTranslation =
+    document
+      .getElementById('fullTranslationInput')
+      .value
+      .trim();
+
+  if(!sentence){
+
+    alert('请输入句子');
+
+    return;
+  }
+
+  const output = [
+
+    {
+      id:1,
+      sentence,
+      tasks:parts.map(p=>({
+
+        title:p.title,
+
+        indices:p.indices,
+
+        translation:p.translation
+
+      })),
+
+      fullTranslation
+
+    }
+
+  ];
+
+  document.getElementById('jsonOutput').textContent =
+    JSON.stringify(output,null,2);
+};
+
+window.copyJSON = async function(){
+
+  const text =
+    document
+      .getElementById('jsonOutput')
+      .textContent;
+
+  if(!text || text === '等待生成...'){
+
+    alert('请先生成 JSON');
+
+    return;
+  }
+
+  try{
+
+    await navigator.clipboard.writeText(text);
+
+    document.getElementById('copyInfo').innerHTML =
+      '✅ JSON 已复制';
+
+    setTimeout(()=>{
+
+      document.getElementById('copyInfo').innerHTML = '';
+
+    },2000);
+
+  }catch(err){
+
+    alert('复制失败');
+
+  }
+
+};
+
+window.clearAllData = function(){
+
+  if(!confirm('确定清空所有内容？')) return;
+
+  tokens = [];
+
+  selectedIndices = [];
+
+  parts = [];
+
+  document.getElementById('sentenceInput').value = '';
+
+  document.getElementById('fullTranslationInput').value = '';
+
+  document.getElementById('tokenBox').innerHTML =
+    '请先输入句子并点击“生成词块”';
+
+  document.getElementById('partsContainer').innerHTML = '';
+
+  document.getElementById('jsonOutput').textContent =
+    '等待生成...';
+};
+
+</script>
+
+</body>
+</html>
