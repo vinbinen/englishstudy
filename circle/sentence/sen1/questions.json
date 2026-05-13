@@ -35,5 +35,45 @@
       }
     ],
     "fullTranslation": "联合国在其首份《数字经济报告》中指出，美国和中国正在引领数字经济。"
+  },
+    {
+    "id": 2,
+    "sentence": "Thousands of people could storm Area 51 on Friday.",
+    "tasks": [
+      {
+        "title": "主语",
+        "indices": [
+          0,
+          2,
+          4
+        ],
+        "translation": "成千上万人"
+      },
+      {
+        "title": "谓语",
+        "indices": [
+          6,
+          8
+        ],
+        "translation": "可能会冲进"
+      },
+      {
+        "title": "宾语",
+        "indices": [
+          10,
+          12
+        ],
+        "translation": "五十一区"
+      },
+      {
+        "title": "时间状语",
+        "indices": [
+          14,
+          16
+        ],
+        "translation": "在周五"
+      }
+    ],
+    "fullTranslation": "成千上万人可能会在周五冲进51区。"
   }
 ]
