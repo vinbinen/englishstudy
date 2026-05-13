@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1,
+
+    "sentence": "The United Nations states the US and China are leading the digital economy.",
+
+    "tasks": [
+      {
+        "title": "主语",
+        "indices": [0,2,4],
+        "translation": "联合国"
+      },
+
+      {
+        "title": "谓语",
+        "indices": [6],
+        "translation": "指出"
+      },
+
+      {
+        "title": "宾从主语",
+        "indices": [8,10,12],
+        "translation": "美国和中国"
+      },
+
+      {
+        "title": "宾从谓语",
+        "indices": [14,16,18],
+        "translation": "正在引领数字经济"
+      }
+    ],
+
+    "fullTranslation": "联合国指出美国和中国正在引领数字经济。"
+  }
+]
