@@ -535,67 +535,70 @@
 
   // ==================== 最终评分 ====================
   window.submitFull = async function() {
-    const q = questions[currentIndex];
-    const input = fullUserInput.trim();
-    const fb = document.getElementById('fullFeedback');
-    if (!input) { fb.innerHTML = '请输入整句翻译'; return; }
+  const q = questions[currentIndex];
+  const input = fullUserInput.trim();
+  const fb = document.getElementById('fullFeedback');
+  if (!input) { fb.innerHTML = '请输入整句翻译'; return; }
 
-    fb.innerHTML = '<span style="color:#1f3f72;">正在评分...</span>';
+  fb.innerHTML = '<span style="color:#1f3f72;">正在评分...</span>';
 
-    const standard = q.fullTranslation || '';
-    let finalScore;
-    let aiUsed = false;
+  const standard = q.fullTranslation || '';
+  let finalScore;
+  let aiUsed = false;
+  let aiScore = -1;
+  let baseScore = standard ? diceSimilarity(input, standard) : 1;
 
-    if (modelReady && useAI && standard) {
-      const sem = await semanticSimilarity(input, standard);
-      const dice = diceSimilarity(input, standard);
-      finalScore = Math.round(sem * 75 + dice * 25);
-      aiUsed = true;
-    } else {
-      finalScore = standard ? Math.round(diceSimilarity(input, standard) * 100) : 100;
-    }
+  if (modelReady && useAI && standard) {
+    aiScore = await semanticSimilarity(input, standard);
+    // ★ 重点优化：AI 可用时，语义分权重提高到 90%
+    finalScore = Math.round(aiScore * 90 + baseScore * 10);
+    aiUsed = true;
+  } else {
+    finalScore = Math.round(baseScore * 100);
+  }
 
-    const divideCorrect = divideResults.filter(r => r === true).length;
-    const translateCorrect = partsDetail.filter(Boolean).length;
+  const divideCorrect = divideResults.filter(r => r === true).length;
+  const translateCorrect = partsDetail.filter(Boolean).length;
 
-    let level = '';
-    if (finalScore >= 90) level = '🌟 非常优秀';
-    else if (finalScore >= 75) level = '✅ 良好';
-    else if (finalScore >= 60) level = '⚠️ 基本正确';
-    else level = '❌ 需改进';
+  let level = '';
+  if (finalScore >= 90) level = '🌟 非常优秀';
+  else if (finalScore >= 80) level = '✅ 良好';
+  else if (finalScore >= 60) level = '⚠️ 基本正确';
+  else level = '❌ 需改进';
 
-    let tableHtml = `<table class="detail-table">
-      <tr><th>成分</th><th>划分</th><th>你的翻译</th><th>参考答案</th><th>匹配</th></tr>`;
-    q.tasks.forEach((task, idx) => {
-      const divOk = divideResults[idx] === true ? '✅' : (divideResults[idx] === false ? '❌' : '—');
-      const userTrans = partsUserInput[idx] || '（空）';
-      const refTrans = task.translation || '';
-      const transOk = partsDetail[idx] ? '✅' : '❌';
-      tableHtml += `<tr>
-        <td>${task.title}</td>
-        <td class="${divideResults[idx] ? 'pass' : 'fail'}">${divOk}</td>
-        <td>${escapeHtml(userTrans)}</td>
-        <td>${escapeHtml(refTrans)}</td>
-        <td class="${partsDetail[idx] ? 'pass' : 'fail'}">${transOk}</td>
-      </tr>`;
-    });
-    tableHtml += '</table>';
+  let tableHtml = `<table class="detail-table">
+    <tr><th>成分</th><th>划分</th><th>你的翻译</th><th>参考答案</th><th>匹配</th></tr>`;
+  q.tasks.forEach((task, idx) => {
+    const divOk = divideResults[idx] === true ? '✅' : (divideResults[idx] === false ? '❌' : '—');
+    const userTrans = partsUserInput[idx] || '（空）';
+    const refTrans = task.translation || '';
+    const transOk = partsDetail[idx] ? '✅' : '❌';
+    tableHtml += `<tr>
+      <td>${task.title}</td>
+      <td class="${divideResults[idx] ? 'pass' : 'fail'}">${divOk}</td>
+      <td>${escapeHtml(userTrans)}</td>
+      <td>${escapeHtml(refTrans)}</td>
+      <td class="${partsDetail[idx] ? 'pass' : 'fail'}">${transOk}</td>
+    </tr>`;
+  });
+  tableHtml += '</table>';
 
-    fb.innerHTML = `
-      <div class="result">
-        <div class="score">整句翻译综合得分：${finalScore}% (${level})</div>
-        ${aiUsed ? '<div style="color:#2563eb; margin-bottom:8px;">🤖 使用了 AI 语义评分</div>' : '<div style="color:#64748b; margin-bottom:8px;">⚡ 基础评分模式</div>'}
-        <div><strong>标准整句译文：</strong>${escapeHtml(standard)}</div>
-        <div><strong>你的整句译文：</strong>${escapeHtml(input)}</div>
-        <div style="margin-top:16px; font-weight:bold;">📘 结构划分正确：${divideCorrect} / ${q.tasks.length}</div>
-        <div style="font-weight:bold;">🔤 成分翻译匹配：${translateCorrect} / ${q.tasks.length}</div>
-        <div style="overflow-x:auto; margin-top:12px;">${tableHtml}</div>
-        <div class="controls">
-          <button onclick="renderQuestionList()">返回题库</button>
-          <button onclick="startQuestion(${currentIndex})">重新练习</button>
-        </div>
-      </div>`;
-  };
+  fb.innerHTML = `
+    <div class="result">
+      <div class="score">整句翻译综合得分：${finalScore}% (${level})</div>
+      ${aiUsed ? `<div style="color:#2563eb; margin-bottom:8px;">🤖 使用了 AI 语义评分</div>` : '<div style="color:#64748b; margin-bottom:8px;">⚡ 基础评分模式</div>'}
+      ${aiUsed && aiScore >= 0 ? `<div style="margin-bottom:8px;">🧠 AI 语义分：${Math.round(aiScore*100)}% &nbsp; | &nbsp; 📄 字符匹配分：${Math.round(baseScore*100)}%</div>` : ''}
+      <div><strong>标准整句译文：</strong>${escapeHtml(standard)}</div>
+      <div><strong>你的整句译文：</strong>${escapeHtml(input)}</div>
+      <div style="margin-top:16px; font-weight:bold;">📘 结构划分正确：${divideCorrect} / ${q.tasks.length}</div>
+      <div style="font-weight:bold;">🔤 成分翻译匹配：${translateCorrect} / ${q.tasks.length}</div>
+      <div style="overflow-x:auto; margin-top:12px;">${tableHtml}</div>
+      <div class="controls">
+        <button onclick="renderQuestionList()">返回题库</button>
+        <button onclick="startQuestion(${currentIndex})">重新练习</button>
+      </div>
+    </div>`;
+};
 
   // ==================== 启动 ====================
   async function init() {
