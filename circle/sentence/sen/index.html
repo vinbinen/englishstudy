@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>英语句子结构划分与翻译 · 全功能智能评分</title>
+  <title>句子结构划分与翻译 · 智能评分</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -21,21 +21,15 @@
       border-radius: 28px;
       box-shadow: 0 10px 35px rgba(0,0,0,.08);
       padding: 24px;
+      transition: all 0.3s;
     }
     h1 { font-size: 30px; color: #15345c; margin-bottom: 20px; }
-    .status {
-      background: #eef5ff;
-      color: #1d3f70;
-      border-radius: 14px;
-      padding: 12px 16px;
-      margin-bottom: 20px;
-      font-weight: 600;
-    }
+    h2 { font-size: 22px; color: #1e3b6b; margin-bottom: 16px; }
     .card {
       background: #f8fbff;
       border-radius: 20px;
-      padding: 20px;
-      margin-bottom: 18px;
+      padding: 24px;
+      margin-bottom: 20px;
     }
     .list-item {
       background: white;
@@ -44,7 +38,7 @@
       padding: 18px;
       margin-bottom: 14px;
       cursor: pointer;
-      transition: .18s;
+      transition: 0.18s;
     }
     .list-item:hover { border-color: #2563eb; background: #f8fbff; }
     .list-title { font-size: 17px; line-height: 1.8; color: #183250; }
@@ -57,28 +51,35 @@
       line-height: 2;
       font-size: 19px;
       color: #0f2744;
+      margin: 16px 0;
     }
-    .token { display: inline-block; padding: 3px 7px; border-radius: 7px; transition: .15s; user-select: none; }
-    .word { cursor: pointer; }
+    .token { display: inline-block; padding: 3px 7px; border-radius: 7px; transition: 0.15s; user-select: none; }
+    .word { cursor: pointer; font-weight: 500; }
     .word:hover { background: #e8f0ff; }
     .selected { background: #ffd966; border-bottom: 3px solid #d97706; }
-    .correct { background: #b7f7d4; border-bottom: 3px solid #059669; }
-    .wrong { background: #ffd9d9; }
+    .correct-highlight { background: #b7f7d4; border-bottom: 3px solid #059669; }
     .task-title { margin-bottom: 16px; font-size: 19px; font-weight: 700; color: #173860; }
-    .feedback { min-height: 28px; margin-top: 14px; font-weight: 700; }
+    .feedback { min-height: 28px; margin-top: 14px; font-weight: 700; color: #1e3b6b; }
     .controls { margin-top: 18px; display: flex; gap: 12px; flex-wrap: wrap; }
     button {
       border: none;
       border-radius: 999px;
-      padding: 11px 20px;
+      padding: 11px 24px;
       background: #1f3f72;
       color: white;
       font-weight: 700;
       cursor: pointer;
-      transition: .18s;
+      transition: 0.18s;
+      font-size: 16px;
     }
     button:hover { background: #15315a; }
-    button:disabled { opacity: .45; cursor: not-allowed; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.secondary {
+      background: white;
+      color: #1f3f72;
+      border: 2px solid #1f3f72;
+    }
+    button.secondary:hover { background: #f0f4ff; }
     textarea {
       width: 100%;
       min-height: 80px;
@@ -95,97 +96,66 @@
       background: #f6fffb;
       border: 1px solid #d1fae5;
       border-radius: 16px;
-      padding: 16px;
-      margin-top: 18px;
+      padding: 20px;
+      margin-top: 20px;
     }
     .score { font-size: 24px; font-weight: 800; margin-bottom: 12px; }
-    .loading {
-      width: 16px;
-      height: 16px;
-      display: inline-block;
-      border: 2px solid #ccc;
-      border-top-color: #2563eb;
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
-    .hidden { display: none; }
+    .detail-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 15px; }
+    .detail-table td, .detail-table th { padding: 10px 14px; border: 1px solid #d1d5db; text-align: left; }
+    .detail-table th { background: #eef2ff; color: #1e3b6b; }
+    .pass { color: #10b981; font-weight: bold; }
+    .fail { color: #ef4444; font-weight: bold; }
+    .progress-container { margin: 24px 0; }
     .progress-bar {
       width: 100%;
-      height: 12px;
+      height: 16px;
       background: #e5edf8;
       border-radius: 999px;
       overflow: hidden;
-      margin-top: 10px;
+      margin: 12px 0;
     }
-    .progress-fill { height: 100%; background: #2563eb; }
-    .info-row { display: flex; justify-content: space-between; margin-top: 10px; color: #64748b; }
-    .trans-item { margin-bottom: 20px; }
-    .trans-item label { font-weight: 600; display: block; margin-bottom: 4px; }
-    .snippet { background: #e8f0fe; padding: 4px 16px; border-radius: 999px; cursor: pointer; font-size: 15px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #2563eb, #10b981);
+      border-radius: 999px;
+      transition: width 0.3s;
+    }
+    .loading-text { font-size: 15px; color: #5f6b7a; }
+    .mode-buttons { display: flex; gap: 16px; flex-wrap: wrap; margin: 24px 0; }
+    .mode-buttons button { flex: 1; min-width: 200px; padding: 16px 24px; }
     @media(max-width:640px) {
       body { padding: 10px; }
-      .app { border-radius: 20px; padding: 18px; }
+      .app { padding: 18px; }
       h1 { font-size: 24px; }
       .sentence-box { font-size: 17px; }
     }
   </style>
-  <script src="https://unpkg.com/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
-  <script src="https://unpkg.com/@tensorflow-models/universal-sentence-encoder@1.3.3/dist/universal-sentence-encoder.min.js"></script>
+  <!-- TensorFlow 和 USE 模型（按需加载） -->
 </head>
 <body>
-<div class="app">
-  <h1>📘 英语句子结构划分与翻译 · 智能评分</h1>
-  <div class="status" id="modelStatus">正在初始化...</div>
+<div class="app" id="app">
+  <h1>📘 句子结构划分与翻译</h1>
   <div id="mainView"></div>
 </div>
 
 <script>
-  // ==================== 全局变量 ====================
+  // ==================== 全局状态 ====================
   let questions = [];
   let encoderModel = null;
   let modelReady = false;
+  let useAI = false;               // 用户选择的评分模式
   let currentIndex = -1;
   let currentTaskIndex = 0;
   let selectedTokens = [];
-  let divideResults = [];          // 每个成分是否划分正确
-  let divideWrongCounts = [];      // 每个成分的错误次数
-  let partsUserInput = [];         // 成分翻译的用户输入
-  let fullUserInput = '';          // 整句翻译的用户输入
-  let currentPhase = 'divide';     // 'divide' | 'parts' | 'full'
+  let divideResults = [];
+  let divideWrongCounts = [];
+  let partsUserInput = [];
+  let fullUserInput = '';
+  let currentPhase = 'divide';
+  let partsDetail = [];
 
-  // ==================== AI 模型加载 ====================
-  async function loadAIModel() {
-    const status = document.getElementById('modelStatus');
-    status.innerHTML = '<span class="loading"></span> 正在加载AI智能评分模型...';
-    try {
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => { reject(new Error('模型加载超时')); }, 15000);
-      });
-      encoderModel = await Promise.race([use.load(), timeoutPromise]);
-      await encoderModel.embed(['测试']);
-      modelReady = true;
-      status.innerHTML = '✅ AI智能评分模型已就绪';
-    } catch (err) {
-      console.error(err);
-      modelReady = false;
-      status.innerHTML = '⚠️ AI评分不可用，已自动切换基础评分模式';
-    }
-  }
-
-  // ==================== 数据加载 ====================
-  async function loadQuestions() {
-    try {
-      const response = await fetch('./questions.json');
-      if (!response.ok) throw new Error('题库加载失败');
-      questions = await response.json();
-      renderQuestionList();
-    } catch (err) {
-      document.getElementById('mainView').innerHTML = `<div class="card"><div style="color:red;font-weight:700;">❌ questions.json 加载失败</div></div>`;
-    }
-  }
-
-  // ==================== tokenizer ====================
+  // ==================== 工具函数 ====================
   function tokenize(sentence) {
     const regex = /([A-Za-z]+(?:[-'][A-Za-z]+)*|\d+|[.,!?;:()—-])|(\s+)/g;
     const tokens = [];
@@ -200,7 +170,6 @@
     return tokens;
   }
 
-  // ==================== 工具函数 ====================
   function escapeHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
@@ -225,6 +194,53 @@
     return (2 * hit) / (pa.length + pb.length);
   }
 
+  // ==================== AI 模型加载（带进度模拟） ====================
+  async function downloadModelWithProgress() {
+    // 动态加载 TensorFlow.js 库和 USE 模型
+    await loadScript('https://unpkg.com/@tensorflow/tfjs@4.10.0/dist/tf.min.js');
+    await loadScript('https://unpkg.com/@tensorflow-models/universal-sentence-encoder@1.3.3/dist/universal-sentence-encoder.min.js');
+
+    return new Promise(async (resolve, reject) => {
+      const progressBar = document.getElementById('progressFill');
+      const statusText = document.getElementById('statusText');
+
+      // 模拟进度更新（因为 use.load() 不提供精确进度）
+      let simulatedProgress = 0;
+      const progressInterval = setInterval(() => {
+        simulatedProgress += Math.random() * 15;
+        if (simulatedProgress > 90) simulatedProgress = 90;
+        if (progressBar) progressBar.style.width = simulatedProgress + '%';
+      }, 1000);
+
+      try {
+        statusText.textContent = '正在下载 AI 模型（约 30MB），请稍候...';
+        encoderModel = await use.load();
+        clearInterval(progressInterval);
+        if (progressBar) progressBar.style.width = '100%';
+        statusText.textContent = '模型加载成功！即将进入练习...';
+        modelReady = true;
+        resolve();
+      } catch (err) {
+        clearInterval(progressInterval);
+        modelReady = false;
+        useAI = false; // 自动降级
+        reject(err);
+      }
+    });
+  }
+
+  function loadScript(url) {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${url}"]`)) return resolve();
+      const script = document.createElement('script');
+      script.src = url;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  // AI 语义相似度计算（仅在模型就绪时使用）
   async function semanticSimilarity(a, b) {
     if (!modelReady || !encoderModel) return -1;
     try {
@@ -238,12 +254,72 @@
         ny += y[i] * y[i];
       }
       return dot / (Math.sqrt(nx) * Math.sqrt(ny));
-    } catch (err) {
+    } catch (e) {
       return -1;
     }
   }
 
-  // ==================== 题库列表 ====================
+  // ==================== 数据加载 ====================
+  async function loadQuestions() {
+    try {
+      const resp = await fetch('./questions.json');
+      if (!resp.ok) throw new Error('加载失败');
+      questions = await resp.json();
+    } catch (e) {
+      document.getElementById('mainView').innerHTML = `<div class="card"><div style="color:red;">❌ 题库加载失败：${e.message}</div></div>`;
+    }
+  }
+
+  // ==================== UI 渲染 ====================
+  function renderModeSelection() {
+    document.getElementById('mainView').innerHTML = `
+      <div class="card">
+        <h2>选择翻译评分模式</h2>
+        <p style="color:#475569; margin-bottom: 24px;">智能模式利用 AI 理解语义，评分更宽容；基础模式基于字面匹配，快速且完全离线。</p>
+        <div class="mode-buttons">
+          <button onclick="startWithAI()" style="background:#1f3f72;">🤖 智能评分<br><small style="opacity:0.8;">需下载约 30MB 模型</small></button>
+          <button class="secondary" onclick="startBasic()">⚡ 基础评分<br><small style="opacity:0.7;">即时评分，无需下载</small></button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderLoadingScreen() {
+    document.getElementById('mainView').innerHTML = `
+      <div class="card" style="text-align:center;">
+        <h2>正在准备智能评分引擎</h2>
+        <div class="progress-container">
+          <div class="progress-bar">
+            <div id="progressFill" class="progress-fill" style="width:0%;"></div>
+          </div>
+          <div class="loading-text" id="statusText">准备下载...</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // 开始练习（基础模式直接进入，智能模式先加载模型）
+  window.startBasic = function() {
+    useAI = false;
+    modelReady = false;
+    renderQuestionList();
+  };
+
+  window.startWithAI = async function() {
+    useAI = true;
+    renderLoadingScreen();
+    try {
+      await downloadModelWithProgress();
+    } catch (e) {
+      // 加载失败，降级为基础模式
+      useAI = false;
+      modelReady = false;
+      alert('模型下载失败，已自动切换为基础评分模式。');
+    }
+    renderQuestionList();
+  };
+
+  // ==================== 句子列表 ====================
   function renderQuestionList() {
     let html = '';
     questions.forEach((q, i) => {
@@ -255,26 +331,27 @@
     document.getElementById('mainView').innerHTML = html;
   }
 
-  // ==================== 开始练习 ====================
-  function startQuestion(index) {
+  window.startQuestion = function(index) {
     currentIndex = index;
     currentTaskIndex = 0;
     selectedTokens = [];
-    divideResults = new Array(questions[index].tasks.length).fill(false);
+    divideResults = new Array(questions[index].tasks.length).fill(null);
     divideWrongCounts = new Array(questions[index].tasks.length).fill(0);
     partsUserInput = new Array(questions[index].tasks.length).fill('');
     fullUserInput = '';
+    partsDetail = [];
     currentPhase = 'divide';
     renderDivide();
-  }
+  };
 
-  // ==================== 渲染划分题 ====================
+  // ==================== 划分题 ====================
   function renderDivide() {
     const q = questions[currentIndex];
     const task = q.tasks[currentTaskIndex];
     const tokens = tokenize(q.sentence);
-    const wrongCount = divideWrongCounts[currentTaskIndex];
+    const wrongCount = divideWrongCounts[currentTaskIndex] || 0;
     const remaining = Math.max(0, 3 - wrongCount);
+    const showCorrect = divideResults[currentTaskIndex] === false && remaining === 0;
 
     let html = `<div class="card">
       <div class="task-title">第 ${currentTaskIndex+1} 题：请选择【${task.title}】</div>
@@ -283,7 +360,10 @@
 
     tokens.forEach((tok, idx) => {
       if (tok.isWord) {
-        html += `<span class="token word ${selectedTokens.includes(idx) ? 'selected' : ''}" onclick="toggleToken(${idx})">${escapeHtml(tok.text)}</span>`;
+        let cls = 'token word';
+        if (showCorrect && task.indices.includes(idx)) cls += ' correct-highlight';
+        else if (selectedTokens.includes(idx)) cls += ' selected';
+        html += `<span class="${cls}" onclick="toggleToken(${idx})">${escapeHtml(tok.text)}</span>`;
       } else {
         html += `<span>${escapeHtml(tok.text)}</span>`;
       }
@@ -291,64 +371,55 @@
 
     html += `</div>
       <div class="info-row"><span>进度：${currentTaskIndex+1}/${q.tasks.length}</span></div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${((currentTaskIndex+1)/q.tasks.length)*100}%"></div></div>
       <div class="controls">
-        <button onclick="submitDivide()">提交答案</button>
-        <button onclick="renderQuestionList()">返回题库</button>
+        <button onclick="submitDivide()" ${divideResults[currentTaskIndex]!==null ? 'disabled' : ''}>提交答案</button>
+        <button class="secondary" onclick="renderQuestionList()">返回列表</button>
       </div>
-      <div class="feedback" id="feedback"></div>
+      <div class="feedback">${showCorrect ? '❌ 机会用完，正确答案已标绿' : ''}</div>
     </div>`;
 
     document.getElementById('mainView').innerHTML = html;
   }
 
   window.toggleToken = function(idx) {
+    if (divideResults[currentTaskIndex] !== null) return;
     const pos = selectedTokens.indexOf(idx);
     if (pos >= 0) selectedTokens.splice(pos, 1);
     else selectedTokens.push(idx);
     renderDivide();
   };
 
-  // ==================== 提交划分 ====================
   window.submitDivide = function() {
+    if (divideResults[currentTaskIndex] !== null) return;
     const q = questions[currentIndex];
     const task = q.tasks[currentTaskIndex];
     const correct = [...task.indices].sort((a,b)=>a-b);
     const user = [...selectedTokens].sort((a,b)=>a-b);
     const ok = arraysEqual(correct, user);
-    const fb = document.getElementById('feedback');
 
     if (ok) {
       divideResults[currentTaskIndex] = true;
-      fb.innerHTML = '✅ 正确';
+      document.querySelector('.feedback').innerHTML = '✅ 正确';
       setTimeout(() => {
         currentTaskIndex++;
         selectedTokens = [];
-        if (currentTaskIndex >= q.tasks.length) {
-          currentPhase = 'parts';
-          renderParts();
-        } else {
-          renderDivide();
-        }
-      }, 800);
+        if (currentTaskIndex >= q.tasks.length) { currentPhase = 'parts'; renderParts(); }
+        else renderDivide();
+      }, 500);
     } else {
       divideWrongCounts[currentTaskIndex]++;
       const left = 3 - divideWrongCounts[currentTaskIndex];
       if (left <= 0) {
         divideResults[currentTaskIndex] = false;
-        fb.innerHTML = '❌ 机会用完，正确答案已标绿，自动进入下一题';
+        renderDivide();
         setTimeout(() => {
           currentTaskIndex++;
           selectedTokens = [];
-          if (currentTaskIndex >= q.tasks.length) {
-            currentPhase = 'parts';
-            renderParts();
-          } else {
-            renderDivide();
-          }
+          if (currentTaskIndex >= q.tasks.length) { currentPhase = 'parts'; renderParts(); }
+          else renderDivide();
         }, 1500);
       } else {
-        fb.innerHTML = `❌ 错误，剩余 ${left} 次机会`;
+        document.querySelector('.feedback').innerHTML = `❌ 错误，剩余 ${left} 次机会`;
         selectedTokens = [];
         renderDivide();
       }
@@ -359,27 +430,26 @@
   function renderParts() {
     const q = questions[currentIndex];
     let html = `<div class="card">
-      <div class="task-title">🔤 请翻译出句子的各个成分</div>
+      <h2>🔤 请翻译出句子的各个成分</h2>
       <div class="sentence-box">${escapeHtml(q.sentence)}</div>`;
 
     q.tasks.forEach((task, idx) => {
-      html += `<div class="trans-item">
-        <label>${task.title}</label>
+      html += `<div style="margin-bottom:20px;">
+        <label style="font-weight:600; display:block; margin-bottom:4px;">${task.title}</label>
         <textarea id="partInput-${idx}" placeholder="请输入中文翻译">${escapeHtml(partsUserInput[idx]||'')}</textarea>
       </div>`;
     });
 
     html += `<div class="controls">
         <button onclick="submitParts()">提交成分翻译</button>
-        <button onclick="renderQuestionList()">返回题库</button>
+        <button class="secondary" onclick="renderQuestionList()">返回列表</button>
       </div>
       <div class="feedback" id="partsFeedback"></div>
     </div>`;
 
     document.getElementById('mainView').innerHTML = html;
-    // 保存输入
     q.tasks.forEach((_, idx) => {
-      document.getElementById(`partInput-${idx}`).addEventListener('input', function(e) {
+      document.getElementById(`partInput-${idx}`).addEventListener('input', e => {
         partsUserInput[idx] = e.target.value;
       });
     });
@@ -389,45 +459,45 @@
     const q = questions[currentIndex];
     const total = q.tasks.length;
     let correctCount = 0;
-    const details = [];
+    const tempDetail = [];
 
     for (let i = 0; i < total; i++) {
-      const user = partsUserInput[i] || '';
+      const user = partsUserInput[i] ? partsUserInput[i].trim() : '';
       const std = q.tasks[i].translation || '';
-      if (!std) continue;
-      const dice = diceSimilarity(user, std);
-      let aiOk = false;
-      if (dice < 0.6 && modelReady) {
-        const semScore = await semanticSimilarity(user, std);
-        aiOk = semScore > 0.7;
+      let match = false;
+      if (std) {
+        // 先使用 Dice 基础评分
+        if (diceSimilarity(user, std) > 0.6) match = true;
+        // 如果有 AI，再尝试语义评分
+        else if (modelReady && useAI) {
+          const sem = await semanticSimilarity(user, std);
+          match = (sem > 0.7);
+        }
+      } else {
+        match = true; // 没有标准答案则默认正确
       }
-      const ok = (dice > 0.6) || aiOk;
-      if (ok) correctCount++;
-      details.push(ok);
+      if (match) correctCount++;
+      tempDetail.push(match);
     }
 
-    document.getElementById('partsFeedback').innerHTML = `成分翻译正确：${correctCount}/${total}`;
-    // 存储细节
-    window._partsDetail = details;
-    window._partsCorrect = correctCount;
-
-    setTimeout(() => {
-      currentPhase = 'full';
-      renderFull();
-    }, 1200);
+    partsDetail = tempDetail;
+    document.getElementById('partsFeedback').innerHTML = `成分翻译匹配：${correctCount} / ${total}`;
+    setTimeout(() => { currentPhase = 'full'; renderFull(); }, 800);
   };
 
   // ==================== 整句翻译 ====================
   function renderFull() {
     const q = questions[currentIndex];
     let html = `<div class="card">
-      <div class="task-title">📝 请按照公式将句子翻译出来</div>
+      <h2>📝 请按照公式将句子翻译出来</h2>
+      <div class="sentence-box">${escapeHtml(q.sentence)}</div>
       <div>点击下方你输入的成分译文片段可填入输入框</div>
-      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">`;
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin:12px 0;">`;
 
-    partsUserInput.forEach((text, i) => {
+    partsUserInput.forEach(text => {
       if (text.trim()) {
-        html += `<span class="snippet" onclick="appendSnippet('${escapeHtml(text).replace(/'/g, "&#39;")}')">${escapeHtml(text)}</span>`;
+        html += `<span class="token" style="background:#e8f0fe; cursor:pointer; padding:4px 16px; border-radius:999px;"
+                  onclick="appendSnippet('${escapeHtml(text).replace(/'/g, "&#39;")}')">${escapeHtml(text)}</span>`;
       }
     });
 
@@ -435,79 +505,93 @@
       <textarea id="fullTranslationInput" placeholder="请输入整句中文翻译">${escapeHtml(fullUserInput)}</textarea>
       <div class="controls">
         <button onclick="submitFull()">提交整句翻译</button>
-        <button onclick="renderQuestionList()">返回题库</button>
+        <button class="secondary" onclick="renderQuestionList()">返回列表</button>
       </div>
       <div class="feedback" id="fullFeedback"></div>
     </div>`;
 
     document.getElementById('mainView').innerHTML = html;
-    document.getElementById('fullTranslationInput').addEventListener('input', function(e) {
+    document.getElementById('fullTranslationInput').addEventListener('input', e => {
       fullUserInput = e.target.value;
     });
   }
 
   window.appendSnippet = function(text) {
     const ta = document.getElementById('fullTranslationInput');
-    ta.value = ta.value ? ta.value + text : text;
-    fullUserInput = ta.value;
+    if (ta) {
+      ta.value = ta.value ? ta.value + text : text;
+      fullUserInput = ta.value;
+    }
   };
 
+  // ==================== 最终评分 ====================
   window.submitFull = async function() {
     const q = questions[currentIndex];
     const input = fullUserInput.trim();
     const fb = document.getElementById('fullFeedback');
+    if (!input) { fb.innerHTML = '请输入整句翻译'; return; }
 
-    if (!input) {
-      fb.innerHTML = '请输入翻译';
-      return;
-    }
+    fb.innerHTML = '<span style="color:#1f3f72;">正在评分...</span>';
 
-    fb.innerHTML = '<span class="loading"></span> 正在综合评分...';
+    const standard = q.fullTranslation || '';
+    let finalScore;
+    let aiUsed = false;
 
-    const standard = q.fullTranslation;
-    let aiScore = -1;
-    if (modelReady) {
-      aiScore = await semanticSimilarity(input, standard);
-    }
-    const baseScore = diceSimilarity(input, standard);
-
-    let totalScore;
-    if (aiScore >= 0) {
-      totalScore = Math.round(aiScore * 0.75 * 100 + baseScore * 0.25 * 100);
+    if (modelReady && useAI && standard) {
+      const sem = await semanticSimilarity(input, standard);
+      const dice = diceSimilarity(input, standard);
+      finalScore = Math.round(sem * 75 + dice * 25);
+      aiUsed = true;
     } else {
-      totalScore = Math.round(baseScore * 100);
+      finalScore = standard ? Math.round(diceSimilarity(input, standard) * 100) : 100;
     }
 
-    const divideCorrect = divideResults.filter(Boolean).length;
-    const partsCorrect = window._partsCorrect || 0;
-    const partsTotal = (window._partsDetail && window._partsDetail.length) || q.tasks.length;
+    const divideCorrect = divideResults.filter(r => r === true).length;
+    const translateCorrect = partsDetail.filter(Boolean).length;
 
     let level = '';
-    if (totalScore >= 90) level = '🌟 非常优秀';
-    else if (totalScore >= 75) level = '✅ 良好';
-    else if (totalScore >= 60) level = '⚠️ 基本正确';
+    if (finalScore >= 90) level = '🌟 非常优秀';
+    else if (finalScore >= 75) level = '✅ 良好';
+    else if (finalScore >= 60) level = '⚠️ 基本正确';
     else level = '❌ 需改进';
+
+    let tableHtml = `<table class="detail-table">
+      <tr><th>成分</th><th>划分</th><th>你的翻译</th><th>参考答案</th><th>匹配</th></tr>`;
+    q.tasks.forEach((task, idx) => {
+      const divOk = divideResults[idx] === true ? '✅' : (divideResults[idx] === false ? '❌' : '—');
+      const userTrans = partsUserInput[idx] || '（空）';
+      const refTrans = task.translation || '';
+      const transOk = partsDetail[idx] ? '✅' : '❌';
+      tableHtml += `<tr>
+        <td>${task.title}</td>
+        <td class="${divideResults[idx] ? 'pass' : 'fail'}">${divOk}</td>
+        <td>${escapeHtml(userTrans)}</td>
+        <td>${escapeHtml(refTrans)}</td>
+        <td class="${partsDetail[idx] ? 'pass' : 'fail'}">${transOk}</td>
+      </tr>`;
+    });
+    tableHtml += '</table>';
 
     fb.innerHTML = `
       <div class="result">
-        <div class="score">整句翻译综合得分：${totalScore}%</div>
-        <div>${level}</div>
-        <div style="margin-top:16px;">📘 结构划分正确：${divideCorrect}/${q.tasks.length}</div>
-        <div>🔤 成分翻译正确：${partsCorrect}/${partsTotal}</div>
-        ${aiScore >= 0 ? `<div style="margin-top:10px;">🧠 AI语义匹配：${Math.round(aiScore*100)}%</div>` : '<div style="margin-top:10px;color:#64748b;">当前使用基础评分模式</div>'}
-        <div style="margin-top:18px;"><strong>标准答案：</strong></div>
-        <div>${escapeHtml(standard)}</div>
-        <div class="controls" style="margin-top:18px;">
+        <div class="score">整句翻译综合得分：${finalScore}% (${level})</div>
+        ${aiUsed ? '<div style="color:#2563eb; margin-bottom:8px;">🤖 使用了 AI 语义评分</div>' : '<div style="color:#64748b; margin-bottom:8px;">⚡ 基础评分模式</div>'}
+        <div><strong>标准整句译文：</strong>${escapeHtml(standard)}</div>
+        <div><strong>你的整句译文：</strong>${escapeHtml(input)}</div>
+        <div style="margin-top:16px; font-weight:bold;">📘 结构划分正确：${divideCorrect} / ${q.tasks.length}</div>
+        <div style="font-weight:bold;">🔤 成分翻译匹配：${translateCorrect} / ${q.tasks.length}</div>
+        <div style="overflow-x:auto; margin-top:12px;">${tableHtml}</div>
+        <div class="controls">
           <button onclick="renderQuestionList()">返回题库</button>
           <button onclick="startQuestion(${currentIndex})">重新练习</button>
         </div>
       </div>`;
   };
 
-  // ==================== 初始化 ====================
+  // ==================== 启动 ====================
   async function init() {
     await loadQuestions();
-    loadAIModel();
+    renderModeSelection();
   }
 
   init();
