@@ -695,40 +695,33 @@ function submitDivide(){
 
   const ok = arraysEqual(correct,user);
 
-  divideResults.push(ok);
+  const tokens = tokenize(q.sentence);
 
-  const feedback = document.getElementById('feedback');
+  const correctText = correct
+    .map(i=>tokens[i].text)
+    .join(' ');
+
+  appState.divideResults.push({
+    title: task.title,
+    correct: ok,
+    correctText
+  });
 
   if(ok){
 
-    feedback.innerHTML = '✅ 正确';
+    renderPartTranslation();
 
   }else{
 
+    const feedback =
+      document.getElementById('feedback');
+
     feedback.innerHTML = `
-      ❌ 不正确
+      ❌ 错误<br><br>
+      正确答案：${correctText}
     `;
 
   }
-
-  setTimeout(()=>{
-
-    currentTaskIndex++;
-
-    selectedTokens = [];
-
-    if(currentTaskIndex >= q.tasks.length){
-
-      renderTranslation();
-
-    }else{
-
-      renderTask();
-
-    }
-
-  },800);
-
 }
 
 
