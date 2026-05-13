@@ -288,9 +288,29 @@ let modelReady = false;
 
 let currentIndex = -1;
 
-let currentTaskIndex = 0;
+const appState = {
 
-let selectedTokens = [];
+  currentQuestion: 0,
+
+  currentTaskIndex: 0,
+
+  currentPhase: 'divide',
+
+  divideResults: [],
+
+  translationResults: [],
+
+  fullTranslationResult: null,
+
+  selectedTokens: [],
+
+  score: {
+    structure: 0,
+    translation: 0,
+    semantic: 0,
+    final: 0
+  }
+}
 
 let divideResults = [];
 
