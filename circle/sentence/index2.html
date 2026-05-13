@@ -210,24 +210,28 @@
   }
 
   async function loadEncoderModel() {
-    if (encoderModel) return true;
-    if (modelLoading) return false;
-    modelLoading = true;
-    modelStatus.innerHTML = '<span class="spinner"></span> 正在加载智能评分引擎...';
-    try {
-      encoderModel = await use.load();
-      await encoderModel.embed(['测试']);
-      modelStatus.innerHTML = '✅ 智能评分引擎已就绪';
-      modelLoading = false;
-      return true;
-    } catch (e) {
-      console.warn('USE 加载失败', e);
-      modelLoadFailed = true;
-      modelStatus.innerHTML = '📋 基础评分模式（智能引擎暂不可用）';
-      modelLoading = false;
-      return false;
-    }
+  if (encoderModel) return true;
+  if (modelLoading) return false;
+  modelLoading = true;
+  modelStatus.innerHTML = '<span class="spinner"></span> 正在加载智能评分引擎…';
+
+  
+  try {
+    // 让 use.load() 和超时竞速
+    encoderModel = await Promise.race([use.load(), timeoutPromise]);
+    // 预热模型
+    await encoderModel.embed(['测试']);
+    modelStatus.innerHTML = '✅ 智能评分引擎已就绪';
+    modelLoading = false;
+    return true;
+  } catch (e) {
+    console.warn('USE 加载失败：', e);
+    modelLoadFailed = true;
+    modelStatus.innerHTML = '📋 基础评分模式（智能引擎暂不可用）';
+    modelLoading = false;
+    return false;
   }
+}
 
   async function getSemanticSimilarity(text1, text2) {
     if (!encoderModel) return -1;
