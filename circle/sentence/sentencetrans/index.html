@@ -1069,148 +1069,36 @@ async function submitTranslation(){
       .value
       .trim();
 
-  const feedback =
-    document.getElementById('translationFeedback');
-
-  if(!input){
-
-    feedback.innerHTML = '请输入翻译';
-
-    return;
-
-  }
-
-  feedback.innerHTML =
-    '<span class="loading"></span> 正在评分...';
-
-  const standard = q.translation.full;
-
-  let score = 0;
-
-  let aiScore = -1;
-
-  ////////////////////////////////////////////////////////
-  // AI评分
-  ////////////////////////////////////////////////////////
-
-  if(modelReady){
-
-    aiScore = await semanticSimilarity(input,standard);
-
-  }
-
-  ////////////////////////////////////////////////////////
-  // fallback评分
-  ////////////////////////////////////////////////////////
-
-  const baseScore =
-    diceSimilarity(input,standard);
-
-  ////////////////////////////////////////////////////////
-  // 综合评分
-  ////////////////////////////////////////////////////////
-
-  if(aiScore >= 0){
-
-    score = Math.round(
-      aiScore * 0.75 * 100 +
-      baseScore * 0.25 * 100
+  const semantic =
+    await semanticSimilarity(
+      input,
+      q.fullTranslation
     );
 
-  }else{
+  const structureScore =
+    appState.divideResults.filter(x=>x.correct)
+      .length
+    /
+    q.tasks.length;
 
-    score = Math.round(baseScore * 100);
+  const semanticScore =
+    semantic >= 0
+      ? semantic
+      : diceSimilarity(input, q.fullTranslation);
 
-  }
+  const finalScore = Math.round(
+    structureScore * 30
+    + semanticScore * 70
+  );
 
-  ////////////////////////////////////////////////////////
-  // 等级
-  ////////////////////////////////////////////////////////
+  appState.fullTranslationResult = {
+    user: input,
+    semantic: Math.round(semanticScore * 100),
+    final: finalScore
+  };
 
-  let level = '';
-
-  if(score >= 90){
-
-    level = '🌟 非常优秀';
-
-  }else if(score >= 75){
-
-    level = '✅ 良好';
-
-  }else if(score >= 60){
-
-    level = '⚠️ 基本正确';
-
-  }else{
-
-    level = '❌ 需改进';
-
-  }
-
-  ////////////////////////////////////////////////////////
-  // 输出结果
-  ////////////////////////////////////////////////////////
-
-  const divideCorrect =
-    divideResults.filter(Boolean).length;
-
-  feedback.innerHTML = `
-
-    <div class="result">
-
-      <div class="score">
-        综合得分：${score}%
-      </div>
-
-      <div>
-        ${level}
-      </div>
-
-      <div style="margin-top:16px;">
-        📘 结构划分：
-        ${divideCorrect}/${q.tasks.length}
-      </div>
-
-      ${aiScore >= 0 ? `
-
-      <div style="margin-top:10px;">
-        🧠 AI语义匹配：
-        ${Math.round(aiScore*100)}%
-      </div>
-
-      ` : `
-
-      <div style="margin-top:10px;color:#64748b;">
-        当前使用基础评分模式
-      </div>
-
-      `}
-
-      <div style="margin-top:18px;">
-        <strong>标准答案：</strong>
-      </div>
-
-      <div style="margin-top:8px;line-height:1.8;">
-        ${escapeHtml(standard)}
-      </div>
-
-      <div class="controls" style="margin-top:18px;">
-
-        <button onclick="renderQuestionList()">
-          返回题库
-        </button>
-
-        <button onclick="startQuestion(${currentIndex})">
-          重新练习
-        </button>
-
-      </div>
-
-    </div>
-  `;
-
+  renderFinalResult();
 }
-
 ////////////////////////////////////////////////////////
 // 初始化
 ////////////////////////////////////////////////////////
