@@ -829,6 +829,194 @@ function submitDivide(){
   }
 }
 
+
+
+  function renderFinalResult(){
+
+  const q = questions[currentIndex];
+
+  let html = `
+
+    <div class="card">
+
+      <div class="task-title">
+        📊 详细结果反馈
+      </div>
+  `;
+
+  ///////////////////////////////////////////////////////
+  // 结构结果
+  ///////////////////////////////////////////////////////
+
+  html += `
+    <div style="margin-top:20px;">
+      <strong>结构划分结果：</strong>
+    </div>
+  `;
+
+  appState.divideResults.forEach(item=>{
+
+    html += `
+      <div class="result">
+
+        <div>
+          ${item.title}
+        </div>
+
+        <div style="margin-top:8px;">
+          ${item.correct ? '✅ 正确' : '❌ 错误'}
+        </div>
+
+        ${!item.correct ? `
+
+        <div style="margin-top:8px;">
+          正确答案：
+          ${item.correctText}
+        </div>
+
+        ` : ''}
+
+      </div>
+    `;
+
+  });
+
+  ///////////////////////////////////////////////////////
+  // 成分翻译结果
+  ///////////////////////////////////////////////////////
+
+  html += `
+    <div style="margin-top:24px;">
+      <strong>成分翻译结果：</strong>
+    </div>
+  `;
+
+  appState.translationResults.forEach(item=>{
+
+    html += `
+      <div class="result">
+
+        <div>
+          ${item.title}
+        </div>
+
+        <div style="margin-top:8px;">
+          你的答案：${item.user}
+        </div>
+
+        <div style="margin-top:8px;">
+          标准答案：${item.correct}
+        </div>
+
+        <div style="margin-top:8px;">
+          得分：${item.score}%
+        </div>
+
+      </div>
+    `;
+
+  });
+
+  ///////////////////////////////////////////////////////
+  // 整句翻译
+  ///////////////////////////////////////////////////////
+
+  html += `
+
+    <div style="margin-top:24px;">
+      <strong>整句翻译：</strong>
+    </div>
+
+    <div class="result">
+
+      <div>
+        你的答案：
+      </div>
+
+      <div style="margin-top:8px;">
+        ${appState.fullTranslationResult.user}
+      </div>
+
+      <div style="margin-top:14px;">
+        标准答案：
+      </div>
+
+      <div style="margin-top:8px;">
+        ${q.fullTranslation}
+      </div>
+
+      <div style="margin-top:14px;">
+        AI语义分：
+        ${appState.fullTranslationResult.semantic}%
+      </div>
+
+      <div style="margin-top:8px;">
+        综合得分：
+        ${appState.fullTranslationResult.final}%
+      </div>
+
+    </div>
+  `;
+
+  ///////////////////////////////////////////////////////
+  // AI反馈
+  ///////////////////////////////////////////////////////
+
+  html += `
+
+    <div style="margin-top:24px;">
+      <strong>AI错误分析：</strong>
+    </div>
+
+    <div class="result">
+      ${generateFeedback()}
+    </div>
+
+  `;
+
+  html += `</div>`;
+
+  document.getElementById('mainView').innerHTML = html;
+}
+
+  function generateFeedback(){
+
+  const result = appState.fullTranslationResult;
+
+  let feedback = [];
+
+  if(result.semantic < 60){
+
+    feedback.push('整体语义偏差较大');
+
+  }
+
+  if(result.semantic >= 60 && result.semantic < 80){
+
+    feedback.push('整体语义基本正确，但存在细节问题');
+
+  }
+
+  if(result.semantic >= 80){
+
+    feedback.push('整体翻译较准确');
+
+  }
+
+  const wrongParts =
+    appState.divideResults.filter(x=>!x.correct);
+
+  if(wrongParts.length > 0){
+
+    feedback.push(
+      `有 ${wrongParts.length} 个结构划分错误`
+    );
+
+  }
+
+  return feedback.join('；');
+}
+
 ////////////////////////////////////////////////////////
 // 翻译页面
 ////////////////////////////////////////////////////////
