@@ -107,7 +107,8 @@ textarea:focus{ outline:none; border-color:#2563eb; }
   body{ padding:10px; }
   .app{ padding:18px; }
   h1{ font-size:24px; }
-  .sentence-box{ font-size:17px; }
+  .sentence-box{ font-size:17px;
+               touch-action: none;   /* 新增 */ }
 }
 </style>
 </head>
@@ -138,6 +139,12 @@ let partsUserInput = [];
 let partsDetail = [];
 let fullUserInput = '';
 let divideFeedback = '';
+
+ // 拖动和 Shift 选择辅助
+let touchActive = false;
+let touchStartPos = { x: 0, y: 0 };
+let touchLastIdx = -1;
+let lastClickedIdx = -1;   // 用于 Shift 连续选择
 
 let embedder = null;
 
