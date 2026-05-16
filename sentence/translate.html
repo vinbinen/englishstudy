@@ -334,11 +334,94 @@ function renderDivide(){
   document.getElementById('mainView').innerHTML = html;
 }
 
-window.toggleToken = function(idx){
-  if(divideResults[currentTaskIndex] !== null) return;
+// 单击/Shift 点击切换选中
+window.toggleToken = function(idx, event) {
+  if (divideResults[currentTaskIndex] !== null) return;
+
+  // Shift 连续选择：从上次点击位置到当前点击位置全部选中
+  if (event && event.shiftKey && lastClickedIdx !== -1) {
+    const from = Math.min(lastClickedIdx, idx);
+    const to = Math.max(lastClickedIdx, idx);
+    selectedTokens = [];
+    for (let i = from; i <= to; i++) {
+      selectedTokens.push(i);
+    }
+    renderDivide();
+    lastClickedIdx = idx;
+    return;
+  }
+
+  // 普通单击切换
   const pos = selectedTokens.indexOf(idx);
-  if(pos >= 0) selectedTokens.splice(pos,1);
-  else selectedTokens.push(idx);
+  if (pos >= 0) {
+    selectedTokens.splice(pos, 1);
+  } else {
+    selectedTokens.push(idx);
+  }
+  lastClickedIdx = idx;
+  renderDivide();
+};
+
+// 触摸开始（手指按下）
+window.touchStartWord = function(e, idx) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  touchActive = false;
+  touchStartPos = { x: touch.clientX, y: touch.clientY };
+
+  if (!selectedTokens.includes(idx)) {
+    selectedTokens.push(idx);
+    renderDivide();
+  }
+  touchLastIdx = idx;
+};
+
+// 触摸移动（手指滑动）
+window.touchMoveWord = function(e, idx) {
+  e.preventDefault();
+  if (divideResults[currentTaskIndex] !== null) return;
+
+  const touch = e.touches[0];
+  const dx = touch.clientX - touchStartPos.x;
+  const dy = touch.clientY - touchStartPos.y;
+
+  if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+    touchActive = true;
+  }
+  if (!touchActive) return;
+
+  const from = Math.min(touchLastIdx, idx);
+  const to = Math.max(touchLastIdx, idx);
+  let changed = false;
+  for (let i = from; i <= to; i++) {
+    if (!selectedTokens.includes(i)) {
+      selectedTokens.push(i);
+      changed = true;
+    }
+  }
+  if (changed) renderDivide();
+  touchLastIdx = idx;
+};
+
+// 触摸结束（手指抬起）
+window.touchEndWord = function(e) {
+  if (!touchActive) {
+    // 是点击，不是滑动：撤销触摸开始时自动加上的单词，交给 toggleToken 处理
+    const idx = touchLastIdx;
+    if (idx >= 0 && selectedTokens.includes(idx)) {
+      const pos = selectedTokens.indexOf(idx);
+      if (pos >= 0) selectedTokens.splice(pos, 1);
+      renderDivide();
+    }
+  }
+  touchActive = false;
+  touchLastIdx = -1;
+};
+
+// 取消所有选中
+window.cancelSelection = function() {
+  selectedTokens = [];
+  lastClickedIdx = -1;
   renderDivide();
 };
 
