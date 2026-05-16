@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 智能英语翻译练习系统</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
+            --bg-color: #f5f7fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* 状态条 */
+        #progress-container {
+            display: none;
+            width: 100%;
+            background: #eee;
+            height: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.3s;
+        }
+
+        /* 练习区域 */
+        .section {
+            margin-bottom: 25px;
+            padding: 15px;
+            border: 1px solid #f0f0f0;
+            border-radius: 10px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-secondary { background: #95a5a6; color: white; }
+        
+        .score-tag {
+            font-size: 24px;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .log-area {
+            background: #2c3e50;
+            color: #2ecc71;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 100px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>翻译练习：数字经济报告</h2>
+        <div class="controls">
+            <label>
+                <input type="checkbox" id="ai-toggle"> 开启 AI 语义评分
+            </label>
+            <button class="btn btn-secondary" onclick="clearAICache()">清理缓存</button>
+        </div>
+    </div>
+
+    <div id="status-text">模型未加载 (约 125MB)</div>
+    <div id="progress-container"><div id="progress-bar"></div></div>
+
+    <div class="section">
+        <div class="section-title">1. 成分翻译练习 <span id="part-score"></span></div>
+        <p>原句：In its first Digital Economy Report, the UN states...</p>
+        <div style="display: grid; gap: 10px;">
+            <div>提到：<input type="text" id="input-1" placeholder="指出 / 提到"></div>
+            <div>中美：<input type="text" id="input-2" placeholder="美国和中国 / 中美"></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">2. 整句翻译 <span id="full-score"></span></div>
+        <textarea id="full-input" style="width:100%; height:80px; border-radius:5px; padding:10px;" placeholder="请输入完整译文..."></textarea>
+    </div>
+
+    <button class="btn btn-primary" style="width: 100%; padding: 15px;" onclick="calculateAll()">提交评分</button>
+
+    <div class="section" style="margin-top: 20px; text-align: center;">
+        <div>综合得分</div>
+        <div id="total-score" class="score-tag">--</div>
+    </div>
+
+    <div class="log-area" id="console-log">控制台日志将显示在这里...</div>
+</div>
+
+<script>
+    // --- 1. Web Worker 内联初始化 (解决文件分离问题) ---
+    const workerCode = `
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.16.1';
+        
+        env.allowLocalModels = false;
+        env.useBrowserCache = true;
+        env.remoteHost = 'https://huggingface.co'; 
+
+        let extractor;
+
+        self.onmessage = async (e) => {
+            if (e.data.type === 'init') {
+                extractor = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2', {
+                    progress_callback: (p) => self.postMessage({ type: 'progress', progress: p.progress })
+                });
+                self.postMessage({ type: 'done' });
+            } else if (e.data.type === 'compare') {
+                const outA = await extractor(e.data.textA, { pooling: 'mean', normalize: true });
+                const outB = await extractor(e.data.textB, { pooling: 'mean', normalize: true });
+                let similarity = 0;
+                for (let i = 0; i < outA.data.length; i++) similarity += outA.data[i] * outB.data[i];
+                self.postMessage({ type: 'res', similarity });
+            }
+        };
+    `;
+
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const aiWorker = new Worker(URL.createObjectURL(blob), { type: 'module' });
+    const workerCallbacks = {};
+
+    // --- 2. 基础算法与工具 ---
+    
+    // 字符比对 (Levenshtein)
+    function levenshteinRatio(s1, s2) {
+        const len1 = s1.length, len2 = s2.length;
+        const matrix = Array.from({length: len1 + 1}, () => Array(len2 + 1).fill(0));
+        for (let i = 0; i <= len1; i++) matrix[i][0] = i;
+        for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+        for (let i = 1; i <= len1; i++) {
+            for (let j = 1; j <= len2; j++) {
+                const cost = s1[i-1] === s2[j-1] ? 0 : 1;
+                matrix[i][j] = Math.min(matrix[i-1][j]+1, matrix[i][j-1]+1, matrix[i-1][j-1]+cost);
+            }
+        }
+        return 1 - matrix[len1][len2] / Math.max(len1, len2);
+    }
+
+    // 🌟 简称展开工具 (处理中外简称)
+    function expandAbbreviations(text) {
+        const countryMap = {'美':'美国','日':'日本','英':'英国','韩':'韩国','德':'德国','法':'法国','俄':'俄罗斯'};
+        const countries = Object.keys(countryMap).join('');
+        const regex = new RegExp("([中" + countries + "])([" + countries + "])", "g");
+        
+        let expanded = text.replace(regex, (m, p1, p2) => {
+            const n1 = p1 === '中' ? '中国' : (countryMap[p1] || p1);
+            const n2 = countryMap[p2] || p2;
+            return n1 + "和" + n2;
+        });
+        return expanded.replace(/其首份/g, '它的第一份').replace(/指出/g, '提到');
+    }
+
+    // 🧠 核心 AI 语义比对逻辑
+    async function aiSimilarity(a, b) {
+        const expA = expandAbbreviations(a);
+        const expB = expandAbbreviations(b);
+        const cleanRegex = /[，。！？、《》、“”‘’：；\s]/g;
+        const cleanA = expA.replace(cleanRegex, '');
+        const cleanB = expB.replace(cleanRegex, '');
+
+        if (!extractorReady) return levenshteinRatio(cleanA, cleanB);
+
+        const seqSim = levenshteinRatio(cleanA, cleanB);
+        aiWorker.postMessage({ type: 'compare', textA: expA, textB: expB });
+
+        return new Promise(resolve => {
+            workerCallbacks.compare = (semanticSim) => {
+                let finalScore;
+                if (semanticSim > 0.88) {
+                    finalScore = (semanticSim * 0.9) + (seqSim * 0.1);
+                } else {
+                    let weight = cleanA.length <= 12 ? 0.85 : 0.75;
+                    finalScore = (semanticSim * weight) + (seqSim * (1-weight));
+                }
+                // 开根号映射，让人心情愉悦
+                finalScore = Math.min(Math.sqrt(finalScore), 1.0);
+                log(`比对结果: 语义 ${semanticSim.toFixed(2)} | 最终 ${finalScore.toFixed(2)}`);
+                resolve(finalScore);
+            };
+        });
+    }
+
+    // --- 3. 交互逻辑 ---
+    let extractorReady = false;
+
+    document.getElementById('ai-toggle').addEventListener('change', function(e) {
+        if (this.checked && !extractorReady) {
+            document.getElementById('progress-container').style.display = 'block';
+            document.getElementById('status-text').textContent = '正在下载 AI 模型 (约 125MB)...';
+            aiWorker.postMessage({ type: 'init' });
+        }
+    });
+
+    aiWorker.onmessage = (e) => {
+        if (e.data.type === 'progress') {
+            const p = Math.floor(e.data.progress);
+            document.getElementById('progress-bar').style.width = p + '%';
+            document.getElementById('status-text').textContent = `正在加载: ${p}%`;
+        } else if (e.data.type === 'done') {
+            extractorReady = true;
+            document.getElementById('status-text').textContent = '✅ AI 引擎就绪 (模型已缓存)';
+            document.getElementById('progress-container').style.display = 'none';
+        } else if (e.data.type === 'res') {
+            if (workerCallbacks.compare) workerCallbacks.compare(e.data.similarity);
+        }
+    };
+
+    async function calculateAll() {
+        log("开始评分...");
+        const s1 = await aiSimilarity(document.getElementById('input-1').value, "指出");
+        const s2 = await aiSimilarity(document.getElementById('input-2').value, "美国和中国");
+        const sFull = await aiSimilarity(document.getElementById('full-input').value, "在其首份《数字经济报告》中，联合国指出，美国和中国引领了这一趋势。");
+
+        const partAvg = (s1 + s2) / 2;
+        document.getElementById('part-score').textContent = Math.round(partAvg * 100) + "分";
+        document.getElementById('full-score').textContent = Math.round(sFull * 100) + "分";
+        
+        // 综合得分: 成分 40% + 整句 60%
+        const total = Math.round((partAvg * 0.4 + sFull * 0.6) * 100);
+        document.getElementById('total-score').textContent = total + "%";
+    }
+
+    function log(msg) {
+        const consoleEl = document.getElementById('console-log');
+        consoleEl.innerHTML += `<div>> ${msg}</div>`;
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    async function clearAICache() {
+        if ('caches' in window) {
+            await caches.delete('transformers-cache');
+            alert('缓存已清理，下次使用 AI 模式将重新下载模型。');
+            location.reload();
+        }
+    }
+</script>
+
+</body>
+</html>
