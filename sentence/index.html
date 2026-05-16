@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI句子结构划分与翻译系统</title>
+
+<link rel="stylesheet" href="style.css">
+
+<!-- Transformers.js -->
+<script type="module">
+  import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers';
+  window.pipeline = pipeline;
+</script>
+
+</head>
+<body>
+
+<div class="app">
+
+  <h1>📘 AI句子结构划分与翻译系统</h1>
+
+  <div id="loadingBox" class="loading-box">
+    ⏳ AI语义模型加载中（首次可能需要10~30秒）...
+  </div>
+
+  <div id="mainView"></div>
+
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
