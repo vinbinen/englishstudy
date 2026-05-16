@@ -379,13 +379,13 @@ async function initApp() {
   const progressStatus = document.getElementById('progressStatus');
 
   try {
-    // 加载模型，使用进度回调更新进度条
     embedder = await pipeline('feature-extraction', 
       'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
       {
         progress_callback: (progress) => {
           if (progress.status === 'progress' && progress.progress !== undefined) {
-            const percent = Math.floor(progress.progress); // progress 是 0-100 的浮点数
+            // progress.progress 是 0~1 的小数，转成百分比
+            const percent = Math.floor(progress.progress * 100);
             progressFill.style.width = percent + '%';
             progressFill.textContent = percent + '%';
             progressStatus.textContent = `正在下载模型文件... ${progress.file || ''}`;
@@ -394,22 +394,17 @@ async function initApp() {
             progressFill.textContent = '100%';
             progressStatus.textContent = '模型加载完成！正在准备题目...';
           } else if (progress.status === 'ready') {
-            // 模型完全就绪
             progressStatus.textContent = '模型已就绪';
           }
         }
       }
     );
 
-    // 加载完成后，短暂显示完成状态
     progressFill.style.width = '100%';
     progressFill.textContent = '100%';
     progressStatus.textContent = '✅ AI 模型加载完成';
 
-    // 稍作停顿后加载题库
-    setTimeout(() => {
-      loadQuestions();
-    }, 600);
+    setTimeout(() => loadQuestions(), 600);
 
   } catch(err) {
     document.getElementById('mainView').innerHTML = `
@@ -419,7 +414,6 @@ async function initApp() {
           请检查网络连接，或刷新页面重试。
         </div>
       </div>`;
-    // 降级：仍尝试加载题库，但评分会用旧方法
     embedder = null;
     loadQuestions();
   }
