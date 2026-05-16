@@ -157,7 +157,8 @@ textarea:focus{ outline:none; border-color:#2563eb; }
 // ========== Web Worker 独立线程代码 (解决网页死锁卡顿) ==========
 // ========== Web Worker 独立线程代码 (已加入国内镜像加速) ==========
 
-    const workerBlobCode = `
+    
+     const workerBlobCode = `
 // 使用最稳健的加载方式
 try {
     importScripts('https://fastly.jsdelivr.net/npm/@xenova/transformers@2.17.2');
@@ -210,7 +211,7 @@ self.onmessage = async (e) => {
     }
   }
 };
-`;
+`; 
 
 // ========== 全局变量 ==========
 let questions = [];
