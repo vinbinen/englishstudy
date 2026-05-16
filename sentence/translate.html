@@ -605,11 +605,11 @@ function renderFull(){
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">`;
 
   partsUserInput.forEach(text => {
-    if(text.trim()){
-      html += `<span class="token" style="background:#dbeafe;cursor:pointer;padding:6px 14px;border-radius:999px;" 
-               onclick="window.appendSnippet(${JSON.stringify(text)})">${escapeHtml(text)}</span>`;
-    }
-  });
+  if(text.trim()){
+    html += `<span class="token" style="background:#dbeafe;cursor:pointer;padding:6px 14px;border-radius:999px;" 
+             onclick='window.appendSnippet(${JSON.stringify(text)})'>${escapeHtml(text)}</span>`;
+  }
+});
 
   html += `
       </div>
