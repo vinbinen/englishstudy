@@ -3,219 +3,85 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>句子结构划分与翻译 (AI 语义评分)</title>
-
+<title>句子结构划分与翻译</title>
 <style>
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
-}
-
+*{ margin:0; padding:0; box-sizing:border-box; }
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-  background:#f3f6fb;
-  padding:20px;
-  display:flex;
-  justify-content:center;
+  background:#f3f6fb; padding:20px; display:flex; justify-content:center;
 }
-
 .app{
-  width:100%;
-  max-width:850px;
-  background:#fff;
-  border-radius:24px;
-  padding:24px;
-  box-shadow:0 10px 30px rgba(0,0,0,.08);
+  width:100%; max-width:850px; background:#fff; border-radius:24px;
+  padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.08);
 }
-
-h1{
-  font-size:30px;
-  margin-bottom:24px;
-  color:#16345f;
-}
-
-.card{
-  background:#f8fbff;
-  border-radius:20px;
-  padding:24px;
-  margin-bottom:20px;
-}
-
+h1{ font-size:30px; margin-bottom:16px; color:#16345f; }
+.card{ background:#f8fbff; border-radius:20px; padding:24px; margin-bottom:20px; }
 .list-item{
-  background:white;
-  border:1px solid #d9e3f2;
-  border-radius:16px;
-  padding:18px;
-  margin-bottom:14px;
-  cursor:pointer;
-  transition:.2s;
+  background:white; border:1px solid #d9e3f2; border-radius:16px;
+  padding:18px; margin-bottom:14px; cursor:pointer; transition:.2s;
 }
-
-.list-item:hover{
-  border-color:#2563eb;
-  background:#f8fbff;
-}
-
-.list-title{
-  font-size:17px;
-  line-height:1.8;
-  color:#16345f;
-}
-
-.list-sub{
-  margin-top:8px;
-  color:#64748b;
-  font-size:14px;
-}
-
-.task-title{
-  font-size:20px;
-  font-weight:700;
-  color:#173860;
-  margin-bottom:16px;
-}
-
+.list-item:hover{ border-color:#2563eb; background:#f8fbff; }
+.list-title{ font-size:17px; line-height:1.8; color:#16345f; }
+.list-sub{ margin-top:8px; color:#64748b; font-size:14px; }
+.task-title{ font-size:20px; font-weight:700; color:#173860; margin-bottom:16px; }
 .sentence-box{
-  background:white;
-  border-left:5px solid #2563eb;
-  border-radius:14px;
-  padding:18px;
-  line-height:2;
-  font-size:20px;
-  color:#0f2744;
-  margin:16px 0;
+  background:white; border-left:5px solid #2563eb; border-radius:14px;
+  padding:18px; line-height:2; font-size:20px; color:#0f2744; margin:16px 0;
 }
-
-.token{
-  display:inline-block;
-  padding:3px 8px;
-  border-radius:8px;
-}
-
-.word{
-  cursor:pointer;
-  transition:.15s;
-}
-
-.word:hover{
-  background:#e8f0ff;
-}
-
-.selected{
-  background:#ffd966;
-  border-bottom:3px solid #d97706;
-}
-
-.correct-highlight{
-  background:#bbf7d0;
-  border-bottom:3px solid #059669;
-}
-
-.feedback{
-  margin-top:16px;
-  min-height:28px;
-  font-weight:700;
-  color:#1e3b6b;
-}
-
-.controls{
-  display:flex;
-  flex-wrap:wrap;
-  gap:12px;
-  margin-top:18px;
-}
-
+.token{ display:inline-block; padding:3px 8px; border-radius:8px; }
+.word{ cursor:pointer; transition:.15s; }
+.word:hover{ background:#e8f0ff; }
+.selected{ background:#ffd966; border-bottom:3px solid #d97706; }
+.correct-highlight{ background:#bbf7d0; border-bottom:3px solid #059669; }
+.feedback{ margin-top:16px; min-height:28px; font-weight:700; color:#1e3b6b; }
+.controls{ display:flex; flex-wrap:wrap; gap:12px; margin-top:18px; }
 button{
-  border:none;
-  border-radius:999px;
-  padding:12px 24px;
-  background:#1f3f72;
-  color:white;
-  font-weight:700;
-  cursor:pointer;
-  transition:.2s;
-  font-size:15px;
+  border:none; border-radius:999px; padding:12px 24px;
+  background:#1f3f72; color:white; font-weight:700; cursor:pointer;
+  transition:.2s; font-size:15px;
 }
-
-button:hover{
-  background:#17315b;
-}
-
-button.secondary{
-  background:white;
-  color:#1f3f72;
-  border:2px solid #1f3f72;
-}
-
-button.secondary:hover{
-  background:#eef3ff;
-}
-
+button:hover{ background:#17315b; }
+button.secondary{ background:white; color:#1f3f72; border:2px solid #1f3f72; }
+button.secondary:hover{ background:#eef3ff; }
 textarea{
-  width:100%;
-  min-height:90px;
-  resize:vertical;
-  border:1px solid #cfd9ea;
-  border-radius:14px;
-  padding:14px;
-  font-size:16px;
-  margin-top:8px;
+  width:100%; min-height:90px; resize:vertical; border:1px solid #cfd9ea;
+  border-radius:14px; padding:14px; font-size:16px; margin-top:8px;
 }
-
-textarea:focus{
-  outline:none;
-  border-color:#2563eb;
-}
-
+textarea:focus{ outline:none; border-color:#2563eb; }
 .result{
-  background:#f6fffb;
-  border:1px solid #d1fae5;
-  border-radius:16px;
-  padding:20px;
-  margin-top:20px;
+  background:#f6fffb; border:1px solid #d1fae5; border-radius:16px;
+  padding:20px; margin-top:20px;
 }
+.score{ font-size:26px; font-weight:800; margin-bottom:14px; }
+.detail-table{ width:100%; border-collapse:collapse; margin-top:16px; font-size:15px; }
+.detail-table th,.detail-table td{ border:1px solid #d1d5db; padding:10px; text-align:left; }
+.detail-table th{ background:#eef2ff; }
+.pass{ color:#10b981; font-weight:bold; }
+.fail{ color:#ef4444; font-weight:bold; }
 
-.score{
-  font-size:26px;
-  font-weight:800;
-  margin-bottom:14px;
+.mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px 18px;
+  background: #f1f5f9;
+  border-radius: 16px;
 }
-
-.detail-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:16px;
-  font-size:15px;
+.mode-switch label {
+  font-weight: 700;
+  color: #1e3b6b;
+  cursor: pointer;
 }
-
-.detail-table th,
-.detail-table td{
-  border:1px solid #d1d5db;
-  padding:10px;
-  text-align:left;
+.mode-switch input {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
 }
-
-.detail-table th{
-  background:#eef2ff;
-}
-
-.pass{
-  color:#10b981;
-  font-weight:bold;
-}
-
-.fail{
-  color:#ef4444;
-  font-weight:bold;
-}
-
-/* 进度条样式 */
 .loading-container {
   text-align: center;
   padding: 40px;
 }
-
 .progress-bar {
   width: 100%;
   height: 24px;
@@ -224,7 +90,6 @@ textarea:focus{
   overflow: hidden;
   margin: 16px 0;
 }
-
 .progress-fill {
   height: 100%;
   width: 0%;
@@ -238,49 +103,31 @@ textarea:focus{
   font-weight: bold;
   font-size: 14px;
 }
-
 @media(max-width:640px){
-  body{
-    padding:10px;
-  }
-  .app{
-    padding:18px;
-  }
-  h1{
-    font-size:24px;
-  }
-  .sentence-box{
-    font-size:17px;
-  }
+  body{ padding:10px; }
+  .app{ padding:18px; }
+  h1{ font-size:24px; }
+  .sentence-box{ font-size:17px; }
 }
 </style>
 </head>
-
 <body>
-
 <div class="app">
   <h1>📘 句子结构划分与翻译</h1>
+  <div class="mode-switch">
+    <input type="checkbox" id="modeToggle">
+    <label for="modeToggle">🧠 AI 语义评分（更准确，需在线下载模型）</label>
+  </div>
   <div id="mainView">
-    <!-- 初始显示模型加载进度 -->
     <div class="loading-container">
-      <div style="font-size:20px; margin-bottom:8px;">⏳ 正在加载 AI 评分模型...</div>
-      <div class="progress-bar">
-        <div class="progress-fill" id="progressFill">0%</div>
-      </div>
-      <div id="progressStatus" style="color:#64748b; font-size:14px;">准备连接...</div>
+      <div>📝 基础模式已就绪，点击题目开始练习</div>
     </div>
   </div>
 </div>
 
 <script type="module">
-// ========== 导入 Transformers.js ==========
-import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 
-// 把 Hugging Face 的域名改成国内镜像
-env.remoteHost = 'https://hf-mirror.com';
-env.remotePathTemplate = '{model}/resolve/{revision}/{file}';
-
-// ========== 全局变量 ==========
 let questions = [];
 let currentIndex = -1;
 let currentTaskIndex = 0;
@@ -292,15 +139,10 @@ let partsDetail = [];
 let fullUserInput = '';
 let divideFeedback = '';
 
-// AI 嵌入器实例（加载完成后赋值）
 let embedder = null;
 
-// ========== 工具函数 ==========
 function escapeHtml(str){
-  return String(str)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function tokenize(sentence){
@@ -321,33 +163,8 @@ function arraysEqual(a,b){
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-// ========== Transformer 语义相似度（替代旧函数）==========
-async function chineseSimilarity(a, b) {
-  if (!embedder) {
-    // 如果模型还没加载好，降级为简单字符匹配（极端情况）
-    console.warn('嵌入模型尚未就绪，使用字符匹配降级');
-    return fallbackSimilarity(a, b);
-  }
-  try {
-    // 对两个文本进行嵌入，均值池化 + 归一化
-    const [embA, embB] = await Promise.all([
-      embedder(a, { pooling: 'mean', normalize: true }),
-      embedder(b, { pooling: 'mean', normalize: true }),
-    ]);
-    // 余弦相似度（向量已归一化，点积 = 余弦）
-    let dot = 0;
-    for (let i = 0; i < embA.data.length; i++) {
-      dot += embA.data[i] * embB.data[i];
-    }
-    return dot; // 范围 0~1
-  } catch (err) {
-    console.error('相似度计算失败：', err);
-    return fallbackSimilarity(a, b);
-  }
-}
-
-// 降级函数（旧的字符匹配）
-function fallbackSimilarity(a, b) {
+// 基础字符评分
+function basicSimilarity(a, b) {
   a = a.replace(/[，。！？、“”‘’：；\s]/g,'');
   b = b.replace(/[，。！？、“”‘’：；\s]/g,'');
   if (!a || !b) return 0;
@@ -360,7 +177,77 @@ function fallbackSimilarity(a, b) {
   return hit / Math.max(a.length, b.length);
 }
 
-// ========== 加载题库 ==========
+// AI 语义评分
+async function aiSimilarity(a, b) {
+  if (!embedder) return basicSimilarity(a, b);
+  try {
+    const [embA, embB] = await Promise.all([
+      embedder(a, { pooling: 'mean', normalize: true }),
+      embedder(b, { pooling: 'mean', normalize: true }),
+    ]);
+    let dot = 0;
+    for (let i = 0; i < embA.data.length; i++) {
+      dot += embA.data[i] * embB.data[i];
+    }
+    return dot;
+  } catch (err) {
+    console.warn('AI 评分出错，降级为基础评分', err);
+    return basicSimilarity(a, b);
+  }
+}
+
+let currentSimilarity = basicSimilarity;
+
+const modeToggle = document.getElementById('modeToggle');
+modeToggle.addEventListener('change', async () => {
+  if (modeToggle.checked) {
+    if (!embedder) {
+      const success = await loadAIModel();
+      if (!success) {
+        modeToggle.checked = false;
+        return;
+      }
+    }
+    currentSimilarity = aiSimilarity;
+    document.querySelector('label[for="modeToggle"]').textContent = '🧠 AI 语义评分 (已启用)';
+  } else {
+    currentSimilarity = basicSimilarity;
+    document.querySelector('label[for="modeToggle"]').textContent = '📝 基础字符评分 (已启用)';
+  }
+});
+
+async function loadAIModel() {
+  const label = document.querySelector('label[for="modeToggle"]');
+  label.textContent = '⏳ 正在下载 AI 模型... 0%';
+
+  try {
+    embedder = await pipeline('feature-extraction',
+      'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
+      {
+        progress_callback: (progress) => {
+          if (progress.status === 'progress' && progress.progress !== undefined) {
+            const pct = Math.floor(progress.progress * 100);
+            label.textContent = `⏳ 正在下载 AI 模型... ${pct}%`;
+          } else if (progress.status === 'done') {
+            label.textContent = '✅ AI 模型加载完成';
+          }
+        }
+      }
+    );
+    label.textContent = '🧠 AI 语义评分 (已启用)';
+    return true;
+  } catch (err) {
+    console.error('AI 模型加载失败', err);
+    label.textContent = '❌ AI 模型加载失败，已切换为基础评分';
+    embedder = null;
+    setTimeout(() => {
+      label.textContent = '📝 基础字符评分 (已启用)';
+    }, 2000);
+    return false;
+  }
+}
+
+// 题库加载
 async function loadQuestions(){
   try {
     const resp = await fetch('./questions.json');
@@ -377,57 +264,7 @@ async function loadQuestions(){
   }
 }
 
-// ========== 初始化：加载模型 + 进度条 ==========
-async function initApp() {
-  const progressFill = document.getElementById('progressFill');
-  const progressStatus = document.getElementById('progressStatus');
-
-  // 使用国内镜像加速
-  env.remoteHost = 'https://hf-mirror.com';
-  env.remotePathTemplate = '{model}/resolve/{revision}/{file}';
-
-  try {
-    embedder = await pipeline('feature-extraction', 
-      'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
-      {
-        progress_callback: (progress) => {
-          if (progress.status === 'progress' && progress.progress !== undefined) {
-            const percent = Math.floor(progress.progress * 100);
-            progressFill.style.width = percent + '%';
-            progressFill.textContent = percent + '%';
-            progressStatus.textContent = `正在下载模型文件... ${progress.file || ''}`;
-          } else if (progress.status === 'done') {
-            progressFill.style.width = '100%';
-            progressFill.textContent = '100%';
-            progressStatus.textContent = '模型加载完成！正在准备题目...';
-          } else if (progress.status === 'ready') {
-            progressStatus.textContent = '模型已就绪';
-          }
-        }
-      }
-    );
-
-    progressFill.style.width = '100%';
-    progressFill.textContent = '100%';
-    progressStatus.textContent = '✅ AI 模型加载完成';
-
-    setTimeout(() => loadQuestions(), 600);
-
-  } catch(err) {
-    document.getElementById('mainView').innerHTML = `
-      <div class="card">
-        <div style="color:red;font-weight:bold;">
-          ❌ 模型加载失败：${err.message}<br>
-          请检查网络连接，或刷新页面重试。
-        </div>
-      </div>`;
-    embedder = null;
-    loadQuestions();
-  }
-}
-
-// ========== 界面渲染函数（与原文逻辑一致，只改评分部分）==========
-
+// 以下所有界面函数与之前相同，但评分调用 currentSimilarity
 function renderQuestionList(){
   let html = '';
   questions.forEach((q,i)=>{
@@ -487,7 +324,6 @@ function renderDivide(){
       </div>
       <div class="feedback">${divideFeedback}</div>
     </div>`;
-
   document.getElementById('mainView').innerHTML = html;
 }
 
@@ -567,7 +403,6 @@ function renderParts(){
     </div>
     <div id="partsFeedback" class="feedback"></div>
   </div>`;
-
   document.getElementById('mainView').innerHTML = html;
 
   q.tasks.forEach((task,idx)=>{
@@ -582,7 +417,6 @@ window.submitParts = async function(){
   let correctCount = 0;
   partsDetail = [];
 
-  // 异步计算每个成分的语义相似度
   for (let idx = 0; idx < q.tasks.length; idx++) {
     const user = partsUserInput[idx].trim();
     const std = q.tasks[idx].translation;
@@ -590,8 +424,9 @@ window.submitParts = async function(){
       partsDetail.push(false);
       continue;
     }
-    const sim = await chineseSimilarity(user, std);
-    const ok = sim >= 0.75;  // 提高阈值，更准确的语义匹配
+    const sim = await currentSimilarity(user, std);
+    const threshold = embedder ? 0.75 : 0.6;
+    const ok = sim >= threshold;
     if (ok) correctCount++;
     partsDetail.push(ok);
   }
@@ -612,11 +447,11 @@ function renderFull(){
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">`;
 
   partsUserInput.forEach(text => {
-  if(text.trim()){
-    html += `<span class="token" style="background:#dbeafe;cursor:pointer;padding:6px 14px;border-radius:999px;" 
-             onclick='window.appendSnippet(${JSON.stringify(text)})'>${escapeHtml(text)}</span>`;
-  }
-});
+    if(text.trim()){
+      html += `<span class="token" style="background:#dbeafe;cursor:pointer;padding:6px 14px;border-radius:999px;" 
+               onclick='window.appendSnippet(${JSON.stringify(text)})'>${escapeHtml(text)}</span>`;
+    }
+  });
 
   html += `
       </div>
@@ -627,7 +462,6 @@ function renderFull(){
       </div>
       <div id="fullFeedback" class="feedback"></div>
     </div>`;
-
   document.getElementById('mainView').innerHTML = html;
   document.getElementById('fullTranslationInput').addEventListener('input', e => {
     fullUserInput = e.target.value;
@@ -652,15 +486,12 @@ window.submitFull = async function(){
     return;
   }
 
-  // 使用 AI 语义相似度
-  const fullSim = await chineseSimilarity(input, standard);
+  const fullSim = await currentSimilarity(input, standard);
   const fullScore = Math.round(fullSim * 100);
 
-  // 计算划分得分（不变）
   const divideCorrect = divideResults.filter(x => x === true).length;
   const divideScore = Math.round(divideCorrect / q.tasks.length * 100);
 
-  // 成分翻译得分（已在 submitParts 中算好）
   const partCorrect = partsDetail.filter(Boolean).length;
   const partScore = Math.round(partCorrect / q.tasks.length * 100);
 
@@ -704,7 +535,6 @@ window.submitFull = async function(){
     </div>`;
 };
 
-// 将需要全局调用的函数挂载到 window
 window.renderQuestionList = renderQuestionList;
 window.startQuestion = startQuestion;
 window.toggleToken = toggleToken;
@@ -712,13 +542,8 @@ window.submitDivide = submitDivide;
 window.submitParts = submitParts;
 window.appendSnippet = appendSnippet;
 window.submitFull = submitFull;
-window.renderDivide = renderDivide;
-window.renderParts = renderParts;
 
-// ========== 启动应用 ==========
-initApp();
-
+loadQuestions();
 </script>
-
 </body>
 </html>
