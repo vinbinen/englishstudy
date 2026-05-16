@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>句子结构划分与翻译 (AI 语义评分)</title>
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:#f3f6fb;
+  padding:20px;
+  display:flex;
+  justify-content:center;
+}
+
+.app{
+  width:100%;
+  max-width:850px;
+  background:#fff;
+  border-radius:24px;
+  padding:24px;
+  box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+
+h1{
+  font-size:30px;
+  margin-bottom:24px;
+  color:#16345f;
+}
+
+.card{
+  background:#f8fbff;
+  border-radius:20px;
+  padding:24px;
+  margin-bottom:20px;
+}
+
+.list-item{
+  background:white;
+  border:1px solid #d9e3f2;
+  border-radius:16px;
+  padding:18px;
+  margin-bottom:14px;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.list-item:hover{
+  border-color:#2563eb;
+  background:#f8fbff;
+}
+
+.list-title{
+  font-size:17px;
+  line-height:1.8;
+  color:#16345f;
+}
+
+.list-sub{
+  margin-top:8px;
+  color:#64748b;
+  font-size:14px;
+}
+
+.task-title{
+  font-size:20px;
+  font-weight:700;
+  color:#173860;
+  margin-bottom:16px;
+}
+
+.sentence-box{
+  background:white;
+  border-left:5px solid #2563eb;
+  border-radius:14px;
+  padding:18px;
+  line-height:2;
+  font-size:20px;
+  color:#0f2744;
+  margin:16px 0;
+}
+
+.token{
+  display:inline-block;
+  padding:3px 8px;
+  border-radius:8px;
+}
+
+.word{
+  cursor:pointer;
+  transition:.15s;
+}
+
+.word:hover{
+  background:#e8f0ff;
+}
+
+.selected{
+  background:#ffd966;
+  border-bottom:3px solid #d97706;
+}
+
+.correct-highlight{
+  background:#bbf7d0;
+  border-bottom:3px solid #059669;
+}
+
+.feedback{
+  margin-top:16px;
+  min-height:28px;
+  font-weight:700;
+  color:#1e3b6b;
+}
+
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-top:18px;
+}
+
+button{
+  border:none;
+  border-radius:999px;
+  padding:12px 24px;
+  background:#1f3f72;
+  color:white;
+  font-weight:700;
+  cursor:pointer;
+  transition:.2s;
+  font-size:15px;
+}
+
+button:hover{
+  background:#17315b;
+}
+
+button.secondary{
+  background:white;
+  color:#1f3f72;
+  border:2px solid #1f3f72;
+}
+
+button.secondary:hover{
+  background:#eef3ff;
+}
+
+textarea{
+  width:100%;
+  min-height:90px;
+  resize:vertical;
+  border:1px solid #cfd9ea;
+  border-radius:14px;
+  padding:14px;
+  font-size:16px;
+  margin-top:8px;
+}
+
+textarea:focus{
+  outline:none;
+  border-color:#2563eb;
+}
+
+.result{
+  background:#f6fffb;
+  border:1px solid #d1fae5;
+  border-radius:16px;
+  padding:20px;
+  margin-top:20px;
+}
+
+.score{
+  font-size:26px;
+  font-weight:800;
+  margin-bottom:14px;
+}
+
+.detail-table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:16px;
+  font-size:15px;
+}
+
+.detail-table th,
+.detail-table td{
+  border:1px solid #d1d5db;
+  padding:10px;
+  text-align:left;
+}
+
+.detail-table th{
+  background:#eef2ff;
+}
+
+.pass{
+  color:#10b981;
+  font-weight:bold;
+}
+
+.fail{
+  color:#ef4444;
+  font-weight:bold;
+}
+
+/* 进度条样式 */
+.loading-container {
+  text-align: center;
+  padding: 40px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 24px;
+  background: #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 16px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #2563eb, #7c3aed);
+  border-radius: 12px;
+  transition: width 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+@media(max-width:640px){
+  body{
+    padding:10px;
+  }
+  .app{
+    padding:18px;
+  }
+  h1{
+    font-size:24px;
+  }
+  .sentence-box{
+    font-size:17px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+  <h1>📘 句子结构划分与翻译</h1>
+  <div id="mainView">
+    <!-- 初始显示模型加载进度 -->
+    <div class="loading-container">
+      <div style="font-size:20px; margin-bottom:8px;">⏳ 正在加载 AI 评分模型...</div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill">0%</div>
+      </div>
+      <div id="progressStatus" style="color:#64748b; font-size:14px;">准备连接...</div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// ========== 导入 Transformers.js ==========
+import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+// ========== 全局变量 ==========
+let questions = [];
+let currentIndex = -1;
+let currentTaskIndex = 0;
+let selectedTokens = [];
+let divideResults = [];
+let divideWrongCounts = [];
+let partsUserInput = [];
+let partsDetail = [];
+let fullUserInput = '';
+let divideFeedback = '';
+
+// AI 嵌入器实例（加载完成后赋值）
+let embedder = null;
+
+// ========== 工具函数 ==========
+function escapeHtml(str){
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+}
+
+function tokenize(sentence){
+  const regex = /([A-Za-z]+(?:[-'][A-Za-z]+)*|\d+|[.,!?;:()—-])|(\s+)/g;
+  const tokens = [];
+  let match;
+  while((match = regex.exec(sentence)) !== null){
+    if(match[1]){
+      tokens.push({ text:match[1], isWord:true, index:tokens.length });
+    } else if(match[2]){
+      tokens.push({ text:match[2], isWord:false, index:tokens.length });
+    }
+  }
+  return tokens;
+}
+
+function arraysEqual(a,b){
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+// ========== Transformer 语义相似度（替代旧函数）==========
+async function chineseSimilarity(a, b) {
+  if (!embedder) {
+    // 如果模型还没加载好，降级为简单字符匹配（极端情况）
+    console.warn('嵌入模型尚未就绪，使用字符匹配降级');
+    return fallbackSimilarity(a, b);
+  }
+  try {
+    // 对两个文本进行嵌入，均值池化 + 归一化
+    const [embA, embB] = await Promise.all([
+      embedder(a, { pooling: 'mean', normalize: true }),
+      embedder(b, { pooling: 'mean', normalize: true }),
+    ]);
+    // 余弦相似度（向量已归一化，点积 = 余弦）
+    let dot = 0;
+    for (let i = 0; i < embA.data.length; i++) {
+      dot += embA.data[i] * embB.data[i];
+    }
+    return dot; // 范围 0~1
+  } catch (err) {
+    console.error('相似度计算失败：', err);
+    return fallbackSimilarity(a, b);
+  }
+}
+
+// 降级函数（旧的字符匹配）
+function fallbackSimilarity(a, b) {
+  a = a.replace(/[，。！？、“”‘’：；\s]/g,'');
+  b = b.replace(/[，。！？、“”‘’：；\s]/g,'');
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  if (a.includes(b) || b.includes(a)) return 0.9;
+  let hit = 0;
+  for (const ch of a) {
+    if (b.includes(ch)) hit++;
+  }
+  return hit / Math.max(a.length, b.length);
+}
+
+// ========== 加载题库 ==========
+async function loadQuestions(){
+  try {
+    const resp = await fetch('./questions.json');
+    if (!resp.ok) throw new Error('questions.json 加载失败');
+    questions = await resp.json();
+    renderQuestionList();
+  } catch(err) {
+    document.getElementById('mainView').innerHTML = `
+      <div class="card">
+        <div style="color:red;font-weight:bold;">
+          ❌ ${err.message}
+        </div>
+      </div>`;
+  }
+}
+
+// ========== 初始化：加载模型 + 进度条 ==========
+async function initApp() {
+  const progressFill = document.getElementById('progressFill');
+  const progressStatus = document.getElementById('progressStatus');
+
+  try {
+    // 加载模型，使用进度回调更新进度条
+    embedder = await pipeline('feature-extraction', 
+      'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
+      {
+        progress_callback: (progress) => {
+          if (progress.status === 'progress' && progress.progress !== undefined) {
+            const percent = Math.floor(progress.progress); // progress 是 0-100 的浮点数
+            progressFill.style.width = percent + '%';
+            progressFill.textContent = percent + '%';
+            progressStatus.textContent = `正在下载模型文件... ${progress.file || ''}`;
+          } else if (progress.status === 'done') {
+            progressFill.style.width = '100%';
+            progressFill.textContent = '100%';
+            progressStatus.textContent = '模型加载完成！正在准备题目...';
+          } else if (progress.status === 'ready') {
+            // 模型完全就绪
+            progressStatus.textContent = '模型已就绪';
+          }
+        }
+      }
+    );
+
+    // 加载完成后，短暂显示完成状态
+    progressFill.style.width = '100%';
+    progressFill.textContent = '100%';
+    progressStatus.textContent = '✅ AI 模型加载完成';
+
+    // 稍作停顿后加载题库
+    setTimeout(() => {
+      loadQuestions();
+    }, 600);
+
+  } catch(err) {
+    document.getElementById('mainView').innerHTML = `
+      <div class="card">
+        <div style="color:red;font-weight:bold;">
+          ❌ 模型加载失败：${err.message}<br>
+          请检查网络连接，或刷新页面重试。
+        </div>
+      </div>`;
+    // 降级：仍尝试加载题库，但评分会用旧方法
+    embedder = null;
+    loadQuestions();
+  }
+}
+
+// ========== 界面渲染函数（与原文逻辑一致，只改评分部分）==========
+
+function renderQuestionList(){
+  let html = '';
+  questions.forEach((q,i)=>{
+    html += `
+      <div class="list-item" onclick="window.startQuestion(${i})">
+        <div class="list-title">${escapeHtml(q.sentence)}</div>
+        <div class="list-sub">共 ${q.tasks.length} 个结构成分</div>
+      </div>`;
+  });
+  document.getElementById('mainView').innerHTML = html;
+}
+
+window.startQuestion = function(index){
+  currentIndex = index;
+  currentTaskIndex = 0;
+  selectedTokens = [];
+  divideResults = new Array(questions[index].tasks.length).fill(null);
+  divideWrongCounts = new Array(questions[index].tasks.length).fill(0);
+  partsUserInput = new Array(questions[index].tasks.length).fill('');
+  partsDetail = [];
+  fullUserInput = '';
+  divideFeedback = '';
+  renderDivide();
+};
+
+function renderDivide(){
+  const q = questions[currentIndex];
+  const task = q.tasks[currentTaskIndex];
+  const tokens = tokenize(q.sentence);
+  const wrongCount = divideWrongCounts[currentTaskIndex];
+  const remaining = Math.max(0, 3 - wrongCount);
+  const showCorrect = divideResults[currentTaskIndex] === false && remaining === 0;
+
+  let html = `
+    <div class="card">
+      <div class="task-title">第 ${currentTaskIndex + 1} 题：请选择【${task.title}】</div>
+      <div>剩余机会：${remaining} / 3</div>
+      <div class="sentence-box">`;
+
+  tokens.forEach((tok,idx)=>{
+    if(tok.isWord){
+      let cls = 'token word';
+      if(showCorrect && task.indices.includes(idx)) cls += ' correct-highlight';
+      else if(selectedTokens.includes(idx)) cls += ' selected';
+      html += `<span class="${cls}" onclick="window.toggleToken(${idx})">${escapeHtml(tok.text)}</span>`;
+    } else {
+      html += tok.text;
+    }
+  });
+
+  html += `
+      </div>
+      <div>进度：${currentTaskIndex + 1} / ${q.tasks.length}</div>
+      <div class="controls">
+        <button onclick="window.submitDivide()" ${divideResults[currentTaskIndex] !== null ? 'disabled' : ''}>提交答案</button>
+        <button class="secondary" onclick="window.renderQuestionList()">返回列表</button>
+      </div>
+      <div class="feedback">${divideFeedback}</div>
+    </div>`;
+
+  document.getElementById('mainView').innerHTML = html;
+}
+
+window.toggleToken = function(idx){
+  if(divideResults[currentTaskIndex] !== null) return;
+  const pos = selectedTokens.indexOf(idx);
+  if(pos >= 0) selectedTokens.splice(pos,1);
+  else selectedTokens.push(idx);
+  renderDivide();
+};
+
+window.submitDivide = function(){
+  if(divideResults[currentTaskIndex] !== null) return;
+  const q = questions[currentIndex];
+  const task = q.tasks[currentTaskIndex];
+  const correct = [...task.indices].sort((a,b)=>a-b);
+  const user = [...selectedTokens].sort((a,b)=>a-b);
+  const ok = arraysEqual(correct, user);
+
+  if(ok){
+    divideResults[currentTaskIndex] = true;
+    divideFeedback = '✅ 正确';
+    renderDivide();
+    setTimeout(()=>{
+      currentTaskIndex++;
+      selectedTokens = [];
+      divideFeedback = '';
+      if(currentTaskIndex >= q.tasks.length) renderParts();
+      else renderDivide();
+    }, 800);
+  } else {
+    divideWrongCounts[currentTaskIndex]++;
+    const left = 3 - divideWrongCounts[currentTaskIndex];
+    if(left <= 0){
+      divideResults[currentTaskIndex] = false;
+      divideFeedback = '❌ 机会已用完，正确答案已标绿';
+      renderDivide();
+      setTimeout(()=>{
+        currentTaskIndex++;
+        selectedTokens = [];
+        divideFeedback = '';
+        if(currentTaskIndex >= q.tasks.length) renderParts();
+        else renderDivide();
+      }, 1800);
+    } else {
+      divideFeedback = `❌ 错误，还剩 ${left} 次机会`;
+      selectedTokens = [];
+      renderDivide();
+    }
+  }
+};
+
+function renderParts(){
+  const q = questions[currentIndex];
+  const tokens = tokenize(q.sentence);
+  let html = `
+    <div class="card">
+      <h2 style="margin-bottom:18px;">🔤 请翻译各个成分</h2>
+      <div class="sentence-box">${escapeHtml(q.sentence)}</div>`;
+
+  q.tasks.forEach((task,idx)=>{
+    const englishPart = task.indices.map(i=>tokens[i]?.text || '').join(' ');
+    html += `
+      <div style="margin-bottom:24px;">
+        <label style="font-weight:700;">${task.title}</label>
+        <div style="background:#eef2ff;padding:8px 12px;border-radius:10px;margin:8px 0;color:#334155;">
+          ${escapeHtml(englishPart)}
+        </div>
+        <textarea id="partInput-${idx}" placeholder="请输入中文翻译">${escapeHtml(partsUserInput[idx])}</textarea>
+      </div>`;
+  });
+
+  html += `
+    <div class="controls">
+      <button onclick="window.submitParts()">提交成分翻译</button>
+      <button class="secondary" onclick="window.renderQuestionList()">返回列表</button>
+    </div>
+    <div id="partsFeedback" class="feedback"></div>
+  </div>`;
+
+  document.getElementById('mainView').innerHTML = html;
+
+  q.tasks.forEach((task,idx)=>{
+    document.getElementById(`partInput-${idx}`).addEventListener('input', e => {
+      partsUserInput[idx] = e.target.value;
+    });
+  });
+}
+
+window.submitParts = async function(){
+  const q = questions[currentIndex];
+  let correctCount = 0;
+  partsDetail = [];
+
+  // 异步计算每个成分的语义相似度
+  for (let idx = 0; idx < q.tasks.length; idx++) {
+    const user = partsUserInput[idx].trim();
+    const std = q.tasks[idx].translation;
+    if (!user) {
+      partsDetail.push(false);
+      continue;
+    }
+    const sim = await chineseSimilarity(user, std);
+    const ok = sim >= 0.75;  // 提高阈值，更准确的语义匹配
+    if (ok) correctCount++;
+    partsDetail.push(ok);
+  }
+
+  document.getElementById('partsFeedback').innerHTML = 
+    `成分翻译匹配：${correctCount} / ${q.tasks.length}`;
+
+  setTimeout(() => renderFull(), 1000);
+};
+
+function renderFull(){
+  const q = questions[currentIndex];
+  let html = `
+    <div class="card">
+      <h2 style="margin-bottom:18px;">📝 请翻译整句</h2>
+      <div class="sentence-box">${escapeHtml(q.sentence)}</div>
+      <div style="margin-bottom:12px;">点击下面词块可快速填入：</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">`;
+
+  partsUserInput.forEach(text => {
+    if(text.trim()){
+      html += `<span class="token" style="background:#dbeafe;cursor:pointer;padding:6px 14px;border-radius:999px;" 
+               onclick="window.appendSnippet(${JSON.stringify(text)})">${escapeHtml(text)}</span>`;
+    }
+  });
+
+  html += `
+      </div>
+      <textarea id="fullTranslationInput" placeholder="请输入整句翻译">${escapeHtml(fullUserInput)}</textarea>
+      <div class="controls">
+        <button onclick="window.submitFull()">提交整句翻译</button>
+        <button class="secondary" onclick="window.renderQuestionList()">返回列表</button>
+      </div>
+      <div id="fullFeedback" class="feedback"></div>
+    </div>`;
+
+  document.getElementById('mainView').innerHTML = html;
+  document.getElementById('fullTranslationInput').addEventListener('input', e => {
+    fullUserInput = e.target.value;
+  });
+}
+
+window.appendSnippet = function(text){
+  const ta = document.getElementById('fullTranslationInput');
+  if(!ta) return;
+  ta.value = ta.value ? ta.value + text : text;
+  fullUserInput = ta.value;
+};
+
+window.submitFull = async function(){
+  const q = questions[currentIndex];
+  const input = fullUserInput.trim();
+  const standard = q.fullTranslation;
+  const fb = document.getElementById('fullFeedback');
+
+  if(!input){
+    fb.innerHTML = '请输入整句翻译';
+    return;
+  }
+
+  // 使用 AI 语义相似度
+  const fullSim = await chineseSimilarity(input, standard);
+  const fullScore = Math.round(fullSim * 100);
+
+  // 计算划分得分（不变）
+  const divideCorrect = divideResults.filter(x => x === true).length;
+  const divideScore = Math.round(divideCorrect / q.tasks.length * 100);
+
+  // 成分翻译得分（已在 submitParts 中算好）
+  const partCorrect = partsDetail.filter(Boolean).length;
+  const partScore = Math.round(partCorrect / q.tasks.length * 100);
+
+  const finalScore = Math.round(divideScore * 0.4 + partScore * 0.3 + fullScore * 0.3);
+
+  let level = '';
+  if(finalScore >= 90) level = '🌟 非常优秀';
+  else if(finalScore >= 80) level = '✅ 良好';
+  else if(finalScore >= 60) level = '⚠️ 基本正确';
+  else level = '❌ 需改进';
+
+  let tableHtml = `
+    <table class="detail-table">
+      <tr><th>成分</th><th>划分</th><th>你的翻译</th><th>参考答案</th><th>匹配</th></tr>`;
+
+  q.tasks.forEach((task,idx)=>{
+    tableHtml += `
+      <tr>
+        <td>${task.title}</td>
+        <td class="${divideResults[idx] ? 'pass' : 'fail'}">${divideResults[idx] ? '✅' : '❌'}</td>
+        <td>${escapeHtml(partsUserInput[idx])}</td>
+        <td>${escapeHtml(task.translation)}</td>
+        <td class="${partsDetail[idx] ? 'pass' : 'fail'}">${partsDetail[idx] ? '✅' : '❌'}</td>
+      </tr>`;
+  });
+  tableHtml += '</table>';
+
+  fb.innerHTML = `
+    <div class="result">
+      <div class="score">综合得分：${finalScore}% (${level})</div>
+      <div>📘 结构划分：${divideScore}%</div>
+      <div>🔤 成分翻译：${partScore}%</div>
+      <div>📝 整句翻译：${fullScore}%</div>
+      <div style="margin-top:16px;"><strong>标准译文：</strong>${escapeHtml(standard)}</div>
+      <div style="margin-top:8px;"><strong>你的译文：</strong>${escapeHtml(input)}</div>
+      <div style="overflow-x:auto;">${tableHtml}</div>
+      <div class="controls">
+        <button onclick="window.renderQuestionList()">返回题库</button>
+        <button onclick="window.startQuestion(${currentIndex})">重新练习</button>
+      </div>
+    </div>`;
+};
+
+// 将需要全局调用的函数挂载到 window
+window.renderQuestionList = renderQuestionList;
+window.startQuestion = startQuestion;
+window.toggleToken = toggleToken;
+window.submitDivide = submitDivide;
+window.submitParts = submitParts;
+window.appendSnippet = appendSnippet;
+window.submitFull = submitFull;
+window.renderDivide = renderDivide;
+window.renderParts = renderParts;
+
+// ========== 启动应用 ==========
+initApp();
+
+</script>
+
+</body>
+</html>
