@@ -154,8 +154,15 @@ textarea:focus{ outline:none; border-color:#2563eb; }
 <script type="module">
 
 // ========== Web Worker 独立线程代码 (解决网页死锁卡顿) ==========
+// ========== Web Worker 独立线程代码 (已加入国内镜像加速) ==========
 const workerBlobCode = `
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+// 🛑 核心修改：强制让 Transformers.js 去国内阿里云/百度等维护的镜像站下载模型
+env.allowLocalModels = false;
+env.remoteHost = 'https://hf-mirror.com';
+env.remoteObjectURL = 'https://hf-mirror.com';
+
 let embedder = null;
 
 self.onmessage = async (e) => {
@@ -163,6 +170,7 @@ self.onmessage = async (e) => {
   
   if (type === 'init') {
     try {
+      // 从国内镜像站下载会非常快，且不会断连
       embedder = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2', {
         progress_callback: (p) => {
           if (p.status === 'progress' && p.progress !== undefined) {
