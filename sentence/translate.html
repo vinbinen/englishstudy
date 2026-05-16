@@ -331,6 +331,7 @@ function renderDivide(){
       </div>
       <div>进度：${currentTaskIndex + 1} / ${q.tasks.length}</div>
       <div class="controls">
+      <button class="secondary" onclick="window.cancelSelection()">取消</button>
         <button onclick="window.submitDivide()" ${divideResults[currentTaskIndex] !== null ? 'disabled' : ''}>提交答案</button>
         <button class="secondary" onclick="window.renderQuestionList()">返回列表</button>
       </div>
