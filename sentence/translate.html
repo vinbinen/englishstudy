@@ -274,7 +274,11 @@ textarea:focus{
 
 <script type="module">
 // ========== 导入 Transformers.js ==========
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+// 把 Hugging Face 的域名改成国内镜像
+env.remoteHost = 'https://hf-mirror.com';
+env.remotePathTemplate = '{model}/resolve/{revision}/{file}';
 
 // ========== 全局变量 ==========
 let questions = [];
@@ -378,13 +382,16 @@ async function initApp() {
   const progressFill = document.getElementById('progressFill');
   const progressStatus = document.getElementById('progressStatus');
 
+  // 使用国内镜像加速
+  env.remoteHost = 'https://hf-mirror.com';
+  env.remotePathTemplate = '{model}/resolve/{revision}/{file}';
+
   try {
     embedder = await pipeline('feature-extraction', 
       'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
       {
         progress_callback: (progress) => {
           if (progress.status === 'progress' && progress.progress !== undefined) {
-            // progress.progress 是 0~1 的小数，转成百分比
             const percent = Math.floor(progress.progress * 100);
             progressFill.style.width = percent + '%';
             progressFill.textContent = percent + '%';
