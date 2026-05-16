@@ -243,19 +243,60 @@ function arraysEqual(a,b){
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-// 基础字符评分
-function basicSimilarity(a, b) {
-  a = a.replace(/[，。！？、“”‘’：；\s]/g,'');
-  b = b.replace(/[，。！？、“”‘’：；\s]/g,'');
+  // ================= 1. 新增：编辑距离算法（语序警察，在主线程运行） =================
+function levenshteinRatio(a, b) {
   if (!a || !b) return 0;
   if (a === b) return 1;
-  if (a.includes(b) || b.includes(a)) return 0.9;
-  let hit = 0;
-  for (const ch of a) {
-    if (b.includes(ch)) hit++;
+  let matrix = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(null));
+  for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
+  for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
+  
+  for (let j = 1; j <= b.length; j++) {
+    for (let i = 1; i <= a.length; i++) {
+      const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[j][i] = Math.min(
+        matrix[j][i - 1] + 1,       
+        matrix[j - 1][i] + 1,       
+        matrix[j - 1][i - 1] + indicator 
+      );
+    }
   }
-  return hit / Math.max(a.length, b.length);
+  const dist = matrix[b.length][a.length];
+  const maxLen = Math.max(a.length, b.length);
+  return 1 - (dist / maxLen); 
 }
+
+// ================= 2. 重写基础评分 =================
+function basicSimilarity(a, b) {
+  const cleanA = a.replace(/[，。！？、“”‘’：；\s]/g,'');
+  const cleanB = b.replace(/[，。！？、“”‘’：；\s]/g,'');
+  return levenshteinRatio(cleanA, cleanB);
+}
+
+// ================= 3. 重写 AI 评分 (完美适配 Web Worker 版) =================
+async function aiSimilarity(a, b) {
+  const cleanA = a.replace(/[，。！？、“”‘’：；\s]/g,'');
+  const cleanB = b.replace(/[，。！？、“”‘’：；\s]/g,'');
+
+  // 如果 Worker 还没加载好，安全降级为基础语序评分
+  if (!aiWorker) return basicSimilarity(cleanA, cleanB);
+
+  // 步骤 A：主线程瞬间自己算出语序得分 (40%权重)
+  const seqSim = levenshteinRatio(cleanA, cleanB);
+
+  // 步骤 B：给 Worker 发消息，让后台去算纯语义得分
+  aiWorker.postMessage({ type: 'compare', textA: a, textB: b });
+
+  return new Promise((resolve) => {
+    // 步骤 C：等待 Worker 算完返回语义得分 (60%权重)
+    workerCallbacks.compare = (semanticSim) => {
+      // 将后台的语义分 和 主线程的语序分 进行终极混合！
+      const finalScore = (semanticSim * 0.6) + (seqSim * 0.4);
+      resolve(finalScore);
+    };
+  });
+}
+
 
 // 初始化 Worker 与消息分发中心
 function initWorker() {
@@ -280,14 +321,7 @@ function initWorker() {
   };
 }
 
-// AI 语义评分
-async function aiSimilarity(a, b) {
-  if (!aiWorker) return basicSimilarity(a, b);
-  aiWorker.postMessage({ type: 'compare', textA: a, textB: b });
-  return new Promise((resolve) => {
-    workerCallbacks.compare = resolve;
-  });
-}
+
 
 let currentSimilarity = basicSimilarity;
 
