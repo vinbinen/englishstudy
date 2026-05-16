@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>句子结构划分与翻译</title>
+<script src="https://fastly.jsdelivr.net/npm/@xenova/transformers@2.17.2"></script>
 <style>
 *{ margin:0; padding:0; box-sizing:border-box; }
 body{
@@ -155,11 +156,17 @@ textarea:focus{ outline:none; border-color:#2563eb; }
 
 // ========== Web Worker 独立线程代码 (解决网页死锁卡顿) ==========
 // ========== Web Worker 独立线程代码 (已加入国内镜像加速) ==========
-const workerBlobCode = `
-// 1. 使用 importScripts 这种传统方式加载，兼容性最好
-importScripts('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
 
-// 2. 配置国内镜像源
+    const workerBlobCode = `
+// 使用最稳健的加载方式
+try {
+    importScripts('https://fastly.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+} catch (e) {
+    // 如果上面失败，尝试另一个备用 CDN
+    importScripts('https://unpkg.com/@xenova/transformers@2.17.2');
+}
+
+// 镜像站配置 (关键：确保模型下载飞快)
 transformers.env.allowLocalModels = false;
 transformers.env.remoteHost = 'https://hf-mirror.com';
 transformers.env.remoteObjectURL = 'https://hf-mirror.com';
@@ -171,7 +178,7 @@ self.onmessage = async (e) => {
   
   if (type === 'init') {
     try {
-      // 注意：使用 importScripts 后，pipeline 函数在 transformers 对象下
+      // 通过全局变量 transformers 调用 pipeline
       embedder = await transformers.pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2', {
         progress_callback: (p) => {
           if (p.status === 'progress' && p.progress !== undefined) {
@@ -187,10 +194,7 @@ self.onmessage = async (e) => {
   }
 
   if (type === 'compare') {
-    if (!embedder) {
-      self.postMessage({ type: 'res', similarity: 0 });
-      return;
-    }
+    if (!embedder) return;
     try {
       const [embA, embB] = await Promise.all([
         embedder(textA, { pooling: 'mean', normalize: true }),
