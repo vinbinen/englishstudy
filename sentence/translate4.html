@@ -682,7 +682,7 @@ window.submitParts = async function(){
       continue;
     }
     const sim = await currentSimilarity(user, std);
-    const threshold = aiWorker ? 0.75 : 0.6;
+    const threshold = aiWorker ? 0.68 : 0.6;
     const ok = sim >= threshold;
     if (ok) correctCount++;
     partsDetail.push(ok);
