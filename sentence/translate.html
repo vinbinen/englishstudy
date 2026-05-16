@@ -316,7 +316,12 @@ function renderDivide(){
       let cls = 'token word';
       if(showCorrect && task.indices.includes(idx)) cls += ' correct-highlight';
       else if(selectedTokens.includes(idx)) cls += ' selected';
-      html += `<span class="${cls}" onclick="window.toggleToken(${idx})">${escapeHtml(tok.text)}</span>`;
+      html += `<span class="${cls}" 
+  onclick="window.toggleToken(${idx}, event)"
+  ontouchstart="window.touchStartWord(event, ${idx})"
+  ontouchmove="window.touchMoveWord(event, ${idx})"
+  ontouchend="window.touchEndWord(event)">
+  ${escapeHtml(tok.text)}</span>`;
     } else {
       html += tok.text;
     }
