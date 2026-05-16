@@ -311,7 +311,7 @@ async function aiSimilarity(a, b) {
 function initWorker() {
   if (aiWorker) return;
   const blob = new Blob([workerBlobCode], { type: 'text/javascript' });
-  aiWorker = new Worker(URL.createObjectURL(blob), { type: 'module' });
+  aiWorker = new Worker(URL.createObjectURL(blob));
   
   aiWorker.onmessage = (e) => {
     const label = document.querySelector('label[for="modeToggle"]');
