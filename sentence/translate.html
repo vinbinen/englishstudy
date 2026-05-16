@@ -27,6 +27,7 @@ h1{ font-size:30px; margin-bottom:16px; color:#16345f; }
 .sentence-box{
   background:white; border-left:5px solid #2563eb; border-radius:14px;
   padding:18px; line-height:2; font-size:20px; color:#0f2744; margin:16px 0;
+  touch-action: none;   /* 全局禁止触摸滚动，保证滑动选词流畅 */
 }
 .token{ display:inline-block; padding:3px 8px; border-radius:8px; }
 .word{ cursor:pointer; transition:.15s; }
@@ -107,8 +108,7 @@ textarea:focus{ outline:none; border-color:#2563eb; }
   body{ padding:10px; }
   .app{ padding:18px; }
   h1{ font-size:24px; }
-  .sentence-box{ font-size:17px;
-               touch-action: none;   /* 新增 */ }
+  .sentence-box{ font-size:17px; }
 }
 </style>
 </head>
@@ -129,6 +129,7 @@ textarea:focus{ outline:none; border-color:#2563eb; }
 <script type="module">
 import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 
+// ========== 全局变量 ==========
 let questions = [];
 let currentIndex = -1;
 let currentTaskIndex = 0;
@@ -140,13 +141,14 @@ let partsDetail = [];
 let fullUserInput = '';
 let divideFeedback = '';
 
- // 拖动和 Shift 选择辅助
+// 拖动选择辅助
 let touchActive = false;
 let touchStartPos = { x: 0, y: 0 };
 let touchLastIdx = -1;
-let lastClickedIdx = -1;   // 用于 Shift 连续选择
+let lastClickedIdx = -1;   // Shift 连续选择
 
 let embedder = null;
+let currentTokens = [];    // 缓存当前句子的分词结果
 
 function escapeHtml(str){
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -271,7 +273,7 @@ async function loadQuestions(){
   }
 }
 
-// 以下所有界面函数与之前相同，但评分调用 currentSimilarity
+// ========== 界面渲染 ==========
 function renderQuestionList(){
   let html = '';
   questions.forEach((q,i)=>{
@@ -294,13 +296,15 @@ window.startQuestion = function(index){
   partsDetail = [];
   fullUserInput = '';
   divideFeedback = '';
+  // 缓存当前句子的 tokens
+  currentTokens = tokenize(questions[index].sentence);
   renderDivide();
 };
 
 function renderDivide(){
   const q = questions[currentIndex];
   const task = q.tasks[currentTaskIndex];
-  const tokens = tokenize(q.sentence);
+  const tokens = currentTokens;  // 使用缓存的 tokens
   const wrongCount = divideWrongCounts[currentTaskIndex];
   const remaining = Math.max(0, 3 - wrongCount);
   const showCorrect = divideResults[currentTaskIndex] === false && remaining === 0;
@@ -309,21 +313,20 @@ function renderDivide(){
     <div class="card">
       <div class="task-title">第 ${currentTaskIndex + 1} 题：请选择【${task.title}】</div>
       <div>剩余机会：${remaining} / 3</div>
-      <div class="sentence-box">`;
+      <div class="sentence-box" id="sentenceContainer"
+           ontouchstart="window.handleTouchStart(event)"
+           ontouchmove="window.handleTouchMove(event)"
+           ontouchend="window.handleTouchEnd(event)">`;
 
   tokens.forEach((tok,idx)=>{
     if(tok.isWord){
       let cls = 'token word';
       if(showCorrect && task.indices.includes(idx)) cls += ' correct-highlight';
       else if(selectedTokens.includes(idx)) cls += ' selected';
-      html += `<span class="${cls}" 
-  onclick="window.toggleToken(${idx}, event)"
-  ontouchstart="window.touchStartWord(event, ${idx})"
-  ontouchmove="window.touchMoveWord(event, ${idx})"
-  ontouchend="window.touchEndWord(event)">
-  ${escapeHtml(tok.text)}</span>`;
+      html += `<span class="${cls}" data-index="${idx}"
+                    onclick="window.toggleToken(${idx}, event)">${escapeHtml(tok.text)}</span>`;
     } else {
-      html += tok.text;
+      html += tok.text;  // 空格保留纯文本
     }
   });
 
@@ -331,7 +334,7 @@ function renderDivide(){
       </div>
       <div>进度：${currentTaskIndex + 1} / ${q.tasks.length}</div>
       <div class="controls">
-      <button class="secondary" onclick="window.cancelSelection()">取消</button>
+        <button class="secondary" onclick="window.cancelSelection()">取消</button>
         <button onclick="window.submitDivide()" ${divideResults[currentTaskIndex] !== null ? 'disabled' : ''}>提交答案</button>
         <button class="secondary" onclick="window.renderQuestionList()">返回列表</button>
       </div>
@@ -340,17 +343,19 @@ function renderDivide(){
   document.getElementById('mainView').innerHTML = html;
 }
 
-// 单击/Shift 点击切换选中
+// ========== 单词选择交互 ==========
+
+// 单击 / Shift 点击
 window.toggleToken = function(idx, event) {
   if (divideResults[currentTaskIndex] !== null) return;
 
-  // Shift 连续选择：从上次点击位置到当前点击位置全部选中
+  // Shift 连续选择
   if (event && event.shiftKey && lastClickedIdx !== -1) {
     const from = Math.min(lastClickedIdx, idx);
     const to = Math.max(lastClickedIdx, idx);
     selectedTokens = [];
     for (let i = from; i <= to; i++) {
-      selectedTokens.push(i);
+      if (currentTokens[i]?.isWord) selectedTokens.push(i);
     }
     renderDivide();
     lastClickedIdx = idx;
@@ -368,39 +373,46 @@ window.toggleToken = function(idx, event) {
   renderDivide();
 };
 
-// 触摸开始（手指按下）
-window.touchStartWord = function(e, idx) {
-  e.preventDefault();
-  const touch = e.touches[0];
-  touchActive = false;
-  touchStartPos = { x: touch.clientX, y: touch.clientY };
+// ========== 触摸滑动选择（容器代理） ==========
+window.handleTouchStart = function(e) {
+  if (divideResults[currentTaskIndex] !== null) return;
+  const idx = getWordIndexAtTouch(e.touches[0]);
+  if (idx === -1) return;
 
-  if (!selectedTokens.includes(idx)) {
-    selectedTokens.push(idx);
-    renderDivide();
-  }
+  touchActive = false;
+  touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   touchLastIdx = idx;
+  // 不阻止默认，也不修改选中，留给 click 处理轻点
 };
 
-// 触摸移动（手指滑动）
-window.touchMoveWord = function(e, idx) {
-  e.preventDefault();
+window.handleTouchMove = function(e) {
   if (divideResults[currentTaskIndex] !== null) return;
 
   const touch = e.touches[0];
   const dx = touch.clientX - touchStartPos.x;
   const dy = touch.clientY - touchStartPos.y;
 
-  if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+  // 滑动超过阈值才激活拖动选择
+  if (!touchActive && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
     touchActive = true;
+    e.preventDefault();   // 阻止页面滚动
+    // 先把起始单词加入选中（如果还没选中）
+    if (touchLastIdx !== -1 && !selectedTokens.includes(touchLastIdx)) {
+      selectedTokens.push(touchLastIdx);
+      renderDivide();
+    }
   }
+
   if (!touchActive) return;
+
+  const idx = getWordIndexAtTouch(touch);
+  if (idx === -1 || idx === touchLastIdx) return;
 
   const from = Math.min(touchLastIdx, idx);
   const to = Math.max(touchLastIdx, idx);
   let changed = false;
   for (let i = from; i <= to; i++) {
-    if (!selectedTokens.includes(i)) {
+    if (currentTokens[i]?.isWord && !selectedTokens.includes(i)) {
       selectedTokens.push(i);
       changed = true;
     }
@@ -409,20 +421,26 @@ window.touchMoveWord = function(e, idx) {
   touchLastIdx = idx;
 };
 
-// 触摸结束（手指抬起）
-window.touchEndWord = function(e) {
-  if (!touchActive) {
-    // 是点击，不是滑动：撤销触摸开始时自动加上的单词，交给 toggleToken 处理
-    const idx = touchLastIdx;
-    if (idx >= 0 && selectedTokens.includes(idx)) {
-      const pos = selectedTokens.indexOf(idx);
-      if (pos >= 0) selectedTokens.splice(pos, 1);
-      renderDivide();
-    }
-  }
+window.handleTouchEnd = function(e) {
   touchActive = false;
   touchLastIdx = -1;
+  // 轻点的情况完全交给 click，这里不做任何撤销
 };
+
+// 根据触摸坐标获取单词索引
+function getWordIndexAtTouch(touch) {
+  const container = document.getElementById('sentenceContainer');
+  if (!container) return -1;
+  const spans = container.querySelectorAll('span[data-index]');
+  for (let i = 0; i < spans.length; i++) {
+    const rect = spans[i].getBoundingClientRect();
+    if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
+        touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+      return parseInt(spans[i].getAttribute('data-index'), 10);
+    }
+  }
+  return -1;
+}
 
 // 取消所有选中
 window.cancelSelection = function() {
@@ -431,6 +449,7 @@ window.cancelSelection = function() {
   renderDivide();
 };
 
+// ========== 提交划分 ==========
 window.submitDivide = function(){
   if(divideResults[currentTaskIndex] !== null) return;
   const q = questions[currentIndex];
@@ -447,6 +466,7 @@ window.submitDivide = function(){
       currentTaskIndex++;
       selectedTokens = [];
       divideFeedback = '';
+      lastClickedIdx = -1;
       if(currentTaskIndex >= q.tasks.length) renderParts();
       else renderDivide();
     }, 800);
@@ -461,20 +481,23 @@ window.submitDivide = function(){
         currentTaskIndex++;
         selectedTokens = [];
         divideFeedback = '';
+        lastClickedIdx = -1;
         if(currentTaskIndex >= q.tasks.length) renderParts();
         else renderDivide();
       }, 1800);
     } else {
       divideFeedback = `❌ 错误，还剩 ${left} 次机会`;
       selectedTokens = [];
+      lastClickedIdx = -1;
       renderDivide();
     }
   }
 };
 
+// ========== 成分翻译 ==========
 function renderParts(){
   const q = questions[currentIndex];
-  const tokens = tokenize(q.sentence);
+  const tokens = currentTokens;
   let html = `
     <div class="card">
       <h2 style="margin-bottom:18px;">🔤 请翻译各个成分</h2>
@@ -533,6 +556,7 @@ window.submitParts = async function(){
   setTimeout(() => renderFull(), 1000);
 };
 
+// ========== 整句翻译 ==========
 function renderFull(){
   const q = questions[currentIndex];
   let html = `
@@ -631,14 +655,20 @@ window.submitFull = async function(){
     </div>`;
 };
 
+// 挂载全局函数
 window.renderQuestionList = renderQuestionList;
 window.startQuestion = startQuestion;
 window.toggleToken = toggleToken;
+window.cancelSelection = cancelSelection;
 window.submitDivide = submitDivide;
 window.submitParts = submitParts;
 window.appendSnippet = appendSnippet;
 window.submitFull = submitFull;
+window.handleTouchStart = handleTouchStart;
+window.handleTouchMove = handleTouchMove;
+window.handleTouchEnd = handleTouchEnd;
 
+// 启动
 loadQuestions();
 </script>
 </body>
