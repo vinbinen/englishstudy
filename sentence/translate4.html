@@ -353,7 +353,7 @@ async function aiSimilarity(a, b) {
     // 步骤 C：等待 Worker 算完返回语义得分 (60%权重)
     workerCallbacks.compare = (semanticSim) => {
       // 将后台的语义分 和 主线程的语序分 进行终极混合！
-      const finalScore = (semanticSim * 0.6) + (seqSim * 0.4);
+      const finalScore = (semanticSim * 0.8) + (seqSim * 0.2);
       resolve(finalScore);
     };
   });
