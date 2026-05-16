@@ -344,7 +344,7 @@ function initWorker() {
     const label = document.querySelector('label[for="modeToggle"]');
     if (e.data.type === 'progress') {
       const pct = Math.floor(e.data.progress);
-      label.textContent = `⏳ 正在下载 AI 模型... ${pct}%`;
+      label.textContent = `⏳ 正在下载 AI 模型 (总计约 125MB)... ${pct}%`;
     } else if (e.data.type === 'done') {
       label.textContent = '🧠 AI 语义评分 (已启用)';
       if (workerCallbacks.init) workerCallbacks.init(true);
@@ -380,7 +380,7 @@ modeToggle.addEventListener('change', async () => {
 
 async function loadAIModel() {
   const label = document.querySelector('label[for="modeToggle"]');
-  label.textContent = '⏳ 正在下载 AI 模型... 0%';
+  label.textContent = '⏳ 正在连接节点 (模型共约 125MB，仅首次需下载)... 0%';
   aiWorker.postMessage({ type: 'init' });
   return new Promise((resolve) => {
     workerCallbacks.init = resolve;
