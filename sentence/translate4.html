@@ -158,44 +158,70 @@ textarea:focus{ outline:none; border-color:#2563eb; }
 // ========== Web Worker 独立线程代码 (已加入国内镜像加速) ==========
 
     
-     const workerBlobCode = `
-// 使用最稳健的加载方式
-try {
-    importScripts('https://fastly.jsdelivr.net/npm/@xenova/transformers@2.17.2');
-} catch (e) {
-    // 如果上面失败，尝试另一个备用 CDN
-    importScripts('https://unpkg.com/@xenova/transformers@2.17.2');
-}
-
-// 镜像站配置 (关键：确保模型下载飞快)
-transformers.env.allowLocalModels = false;
-transformers.env.remoteHost = 'https://hf-mirror.com';
-transformers.env.remoteObjectURL = 'https://hf-mirror.com';
-
+     // ========== Web Worker 独立线程代码 (解决网页死锁卡顿) ==========
+const workerBlobCode = `
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 let embedder = null;
+
+// 1. 关闭本地文件系统加载（纯网页端不需要）
+env.allowLocalModels = false;
+
+// 2. 配置备用镜像节点列表 (排在越前面的越优先尝试)
+const MIRROR_HOSTS = [
+  'https://hf-mirror.com',             // 国内最稳定的 HF 镜像站
+  'https://huggingface.co'             // 官方源 (兜底，或者用户自备梯子时可用)
+  // 你还可以在这里添加自己反代的 URL，例如 'https://your-cloudflare-worker.workers.dev'
+];
 
 self.onmessage = async (e) => {
   const { type, textA, textB } = e.data;
   
   if (type === 'init') {
-    try {
-      // 通过全局变量 transformers 调用 pipeline
-      embedder = await transformers.pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2', {
-        progress_callback: (p) => {
-          if (p.status === 'progress' && p.progress !== undefined) {
-            self.postMessage({ type: 'progress', progress: p.progress });
-          } else if (p.status === 'done') {
-            self.postMessage({ type: 'done' });
+    let success = false;
+    let lastError = null;
+
+    // 3. 轮询重试机制：依次尝试各个备用链接
+    for (let i = 0; i < MIRROR_HOSTS.length; i++) {
+      const host = MIRROR_HOSTS[i];
+      try {
+        // 修改 Transformers.js 的远端拉取地址
+        env.remoteHost = host;
+        
+        // 也可以顺便通知主线程当前正在尝试哪个节点 (可选)
+        // self.postMessage({ type: 'progress', progress: 0, msg: '尝试连接节点 ' + (i+1) });
+
+        embedder = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2', {
+          progress_callback: (p) => {
+            if (p.status === 'progress' && p.progress !== undefined) {
+              self.postMessage({ type: 'progress', progress: p.progress });
+            } else if (p.status === 'done') {
+              self.postMessage({ type: 'done' });
+            }
           }
-        }
-      });
-    } catch (err) {
-      self.postMessage({ type: 'error', error: err.message });
+        });
+        
+        // 如果上面没有抛出异常，说明加载成功，直接跳出循环！
+        success = true;
+        break; 
+
+      } catch (err) {
+        console.warn(\`从节点 \${host} 加载失败，正在尝试下一个... 错误信息:\`, err);
+        lastError = err;
+        // 继续下一次循环尝试下一个备用链接
+      }
+    }
+
+    // 4. 如果所有备用链接都挂了，才向主线程报错
+    if (!success) {
+      self.postMessage({ type: 'error', error: lastError?.message || '所有镜像节点均加载失败' });
     }
   }
 
   if (type === 'compare') {
-    if (!embedder) return;
+    if (!embedder) {
+      self.postMessage({ type: 'res', similarity: 0 });
+      return;
+    }
     try {
       const [embA, embB] = await Promise.all([
         embedder(textA, { pooling: 'mean', normalize: true }),
@@ -211,7 +237,7 @@ self.onmessage = async (e) => {
     }
   }
 };
-`; 
+`;
 
 // ========== 全局变量 ==========
 let questions = [];
