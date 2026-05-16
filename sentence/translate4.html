@@ -343,7 +343,7 @@ function initWorker() {
   aiWorker.onmessage = (e) => {
     const label = document.querySelector('label[for="modeToggle"]');
     if (e.data.type === 'progress') {
-      const pct = Math.floor(e.data.progress * 100);
+      const pct = Math.floor(e.data.progress);
       label.textContent = `⏳ 正在下载 AI 模型... ${pct}%`;
     } else if (e.data.type === 'done') {
       label.textContent = '🧠 AI 语义评分 (已启用)';
