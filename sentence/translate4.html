@@ -334,6 +334,7 @@ function initWorker() {
 let currentSimilarity = basicSimilarity;
 
 const modeToggle = document.getElementById('modeToggle');
+// 请找到这一段并替换，确保切换开关时文字显示完美
 modeToggle.addEventListener('change', async () => {
   if (modeToggle.checked) {
     initWorker();
@@ -346,10 +347,10 @@ modeToggle.addEventListener('change', async () => {
     currentSimilarity = aiSimilarity;
   } else {
     currentSimilarity = basicSimilarity;
-    document.querySelector('label[for="modeToggle"]').textContent = '编组 📝 基础字符评分 (已启用)';
+    // ✅ 修复后：文案恢复干净清爽
+    document.querySelector('label[for="modeToggle"]').textContent = '🧠 AI 语义评分（更准确，需在线下载模型）';
   }
 });
-
 async function loadAIModel() {
   const label = document.querySelector('label[for="modeToggle"]');
   label.textContent = '⏳ 正在下载 AI 模型... 0%';
