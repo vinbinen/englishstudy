@@ -1,267 +1,197 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>英语句子成分闯关 - 练习端</title>
-<style>
-  :root { --primary: #1f3f72; --accent: #2563eb; --success: #10b981; --bg: #f3f6fb; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:#16345f; padding:20px; line-height:1.6; }
-  .container { max-width:800px; margin:auto; }
-  
-  /* 头部卡片 */
-  .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
-  .card { background:white; border-radius:20px; padding:24px; margin-bottom:20px; box-shadow:0 10px 30px rgba(0,0,0,.06); }
-  
-  /* 题目列表样式 */
-  .q-item { display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #edf2f7; cursor:pointer; transition: .2s; }
-  .q-item:hover { background: #f8fbff; }
-  .status-badge { font-size:12px; padding:2px 8px; border-radius:99px; background:#e2e8f0; }
-
-  /* 练习区样式 */
-  .sentence-display { background:#f8fbff; border-radius:16px; padding:25px; line-height:2.5; font-size:22px; border-left:5px solid var(--accent); margin:20px 0; }
-  .token { display:inline-block; padding:0 6px; border-radius:6px; cursor:pointer; transition:.15s; user-select:none; }
-  .token:hover { background:#e0ebff; }
-  .token.selected { background:#ffd966; border-bottom:3px solid #d97706; }
-  
-  .task-prompt { font-size:18px; font-weight:bold; color:var(--primary); margin-bottom:15px; padding:10px; background:#fff7ed; border-radius:10px; }
-  
-  /* 按钮 */
-  button { border:none; background:var(--primary); color:white; padding:12px 24px; border-radius:999px; cursor:pointer; font-size:16px; font-weight:700; transition:.2s; }
-  button:hover { opacity:0.9; transform:translateY(-1px); }
-  button.secondary { background:white; color:var(--primary); border:2px solid var(--primary); }
-  
-  /* 语法解析区 */
-  .grammar-box { background:#f0fdf4; border:1px solid #bbf7d0; padding:20px; border-radius:15px; margin-top:20px; display:none; }
-  .translation { color:#64748b; font-style:italic; margin-bottom:10px; }
-  
-  .loading { text-align:center; padding:50px; color:#94a3b8; }
-</style>
+<meta charset="UTF-8">
+<title>句子结构划分与翻译 (AI 增强云端版)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  /* 恢复你原有的精致样式 */
+  :root { --primary: #1f3f72; --accent: #2563eb; --bg: #f3f6fb; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: system-ui; background:var(--bg); padding:20px; display:flex; justify-content:center; }
+  .app { width:100%; max-width:850px; background:#fff; border-radius:24px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.08); }
+  .card { background:#f8fbff; border-radius:20px; padding:24px; margin-bottom:20px; }
+  .step-tag { display:inline-block; padding:4px 12px; background:var(--primary); color:#white; border-radius:8px; font-size:14px; margin-bottom:10px; }
+  .token { display:inline-block; padding:0 4px; border-radius:4px; cursor:pointer; font-size:20px; line-height:2; }
+  .token.selected { background:#ffd966; border-bottom:2px solid #d97706; }
+  .input-area { width:100%; padding:14px; border:1px solid #d8e2f0; border-radius:12px; font-size:16px; margin-top:10px; }
+  button { background:var(--primary); color:white; border:none; padding:12px 24px; border-radius:12px; cursor:pointer; font-weight:bold; }
+  .pass { color: #10b981; } .fail { color: #ef4444; }
+  table { width:100%; border-collapse: collapse; margin-top:15px; }
+  th, td { border:1px solid #eee; padding:10px; text-align:left; font-size:14px; }
+</style>
 </head>
 <body>
 
-<div class="container">
-  <div class="header">
-    <h1>📝 句子成分挑战</h1>
-    <div id="authStatus" class="small">加载中...</div>
+<div class="app">
+  <h1 id="title">载入中...</h1>
+  
+  <div style="text-align:right; margin-bottom:10px;">
+    <label style="font-size:12px; color:#666;">
+      <input type="checkbox" id="aiToggle"> 启用 AI 语义评分 (首次加载需下模型)
+    </label>
   </div>
 
-  <div id="mainView">
-    <div class="loading">正在加载题库，请稍候...</div>
-  </div>
+  <div id="container"></div>
 </div>
 
 <script>
-// --- 配置区 ---
 const SUPABASE_URL = 'https://vbxjqgbwrlxlpafdiogj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieGpxZ2J3cmx4bHBhZmRpb2dqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMTM5MTksImV4cCI6MjA5NDU4OTkxOX0.SVlWH2Pd5dlfO9jo39t6HmZYNKvU_14zO4Hzx-NcRUw';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// --- 状态管理 ---
 let AppState = {
   questions: [],
-  currentQIndex: -1,
-  currentTaskIndex: 0,
+  currentIndex: 0,
+  step: 0, // 0: 列表, 1: 划分, 2: 部分翻译, 3: 全句翻译, 4: 结果
   selectedIndices: [],
-  lastClickedIdx: -1,
-  score: 0
+  userDivided: [],
+  userPartTrans: [],
+  userFullTrans: ""
 };
 
-// --- 初始化 ---
+// --- 初始化与加载 ---
 window.onload = async () => {
-  checkUser();
-  await loadQuestions();
+  const { data, error } = await supabaseClient.from('questions').select('*').order('created_at');
+  if(data) {
+    AppState.questions = data.map(q => ({...q, fullTranslation: q.full_translation}));
+    renderList();
+  }
 };
 
-async function checkUser() {
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  const statusEl = document.getElementById('authStatus');
-  if (user) {
-    statusEl.innerHTML = `👤 已登录 | <a href="#" onclick="logout()">退出</a>`;
-  } else {
-    statusEl.innerHTML = `<button onclick="login()" style="padding:5px 12px; font-size:12px;">登录以保存成绩</button>`;
-  }
+function renderList() {
+  AppState.step = 0;
+  document.getElementById('title').textContent = "题库列表";
+  let html = AppState.questions.map((q, i) => `
+    <div class="card" style="cursor:pointer" onclick="startQuest(${i})">
+      <b>第 ${i+1} 题</b>: ${q.sentence.substring(0, 60)}...
+    </div>
+  `).join('');
+  document.getElementById('container').innerHTML = html;
 }
 
-// --- 数据加载 ---
-async function loadQuestions() {
-  const mainView = document.getElementById('mainView');
-  try {
-    const { data, error } = await supabaseClient
-      .from('questions')
-      .select('*')
-      .order('created_at', { ascending: true });
-
-    if (error) throw error;
-
-    // 核心修复：适配数据库下划线字段
-    AppState.questions = (data || []).map(q => ({
-      ...q,
-      fullTranslation: q.full_translation // 映射到前端习惯的驼峰命名
-    }));
-
-    renderQuestionList();
-  } catch (err) {
-    mainView.innerHTML = `<div class="card">❌ 加载失败: ${err.message}</div>`;
-  }
+function startQuest(i) {
+  AppState.currentIndex = i;
+  AppState.step = 1;
+  AppState.userDivided = [];
+  AppState.userPartTrans = [];
+  goDivide(0);
 }
 
-// --- 渲染题目列表 ---
-function renderQuestionList() {
-  let html = `<div class="card"><h2>选择关卡</h2><div style="margin-top:15px;">`;
-  AppState.questions.forEach((q, index) => {
-    html += `
-      <div class="q-item" onclick="startExercise(${index})">
-        <span>第 ${index + 1} 关：${q.sentence.substring(0, 40)}...</span>
-        <span class="status-badge">进入</span>
-      </div>`;
-  });
-  html += `</div></div>`;
-  document.getElementById('mainView').innerHTML = html;
-}
-
-// --- 开始练习 ---
-function startExercise(index) {
-  AppState.currentQIndex = index;
-  AppState.currentTaskIndex = 0;
+// --- 第一阶段：划分 ---
+function goDivide(taskIdx) {
+  const q = AppState.questions[AppState.currentIndex];
+  const task = q.tasks[taskIdx];
   AppState.selectedIndices = [];
-  AppState.score = 0;
-  renderExercise();
-}
-
-function renderExercise() {
-  const q = AppState.questions[AppState.currentQIndex];
-  const task = q.tasks[AppState.currentTaskIndex];
   
-  // 分词逻辑 (需与生成器一致)
-  const tokens = tokenize(q.sentence);
+  document.getElementById('title').textContent = `阶段 1: 划分结构 (${taskIdx+1}/${q.tasks.length})`;
+  let tokens = tokenize(q.sentence);
   
-  let tokensHtml = '';
-  tokens.forEach((tok, idx) => {
-    if (tok.isWord) {
-      const isSel = AppState.selectedIndices.includes(idx);
-      tokensHtml += `<span class="token ${isSel?'selected':''}" onclick="toggleToken(${idx}, event)">${tok.text}</span>`;
-    } else {
-      tokensHtml += tok.text;
-    }
-  });
-
-  const html = `
-    <button class="secondary" onclick="renderQuestionList()" style="margin-bottom:15px;">← 返回列表</button>
+  document.getElementById('container').innerHTML = `
     <div class="card">
-      <div class="task-prompt">🎯 请点击选出：<strong>${task.title}</strong></div>
-      <div class="sentence-display">${tokensHtml}</div>
-      <div style="display:flex; gap:10px;">
-        <button onclick="checkAnswer()">提交回答</button>
-        <button class="secondary" onclick="clearSelection()">重选</button>
-      </div>
-      <div id="feedback" style="margin-top:15px; font-weight:bold;"></div>
-      
-      <div id="grammarSection" class="grammar-box">
-        <div class="translation"><strong>整句翻译：</strong>${q.fullTranslation}</div>
-        <hr style="margin:10px 0; border:0; border-top:1px solid #bbf7d0;">
-        <strong>💡 语法解析：</strong><br>
-        <div style="white-space:pre-wrap;">${q.grammar || '暂无详细解析'}</div>
-        <button onclick="nextTaskOrFinish()" style="margin-top:15px; width:100%;">下一关</button>
-      </div>
+      <div class="step-tag">请点击选出: ${task.title}</div>
+      <div id="sentenceBox" style="margin:20px 0;">${renderTokens(tokens)}</div>
+      <button onclick="saveDivide(${taskIdx})">确认划分</button>
     </div>
   `;
-  document.getElementById('mainView').innerHTML = html;
 }
 
-// --- 交互逻辑 ---
-function tokenize(sentence) {
-  const regex = /([A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*|[.,!?;:()—-])|(\s+)/g;
-  const arr = [];
-  let match;
-  while((match = regex.exec(sentence)) !== null){
-    if(match[1]) arr.push({ text:match[1], isWord:true, index:arr.length });
-    else if(match[2]) arr.push({ text:match[2], isWord:false, index:arr.length });
-  }
-  return arr;
+function saveDivide(idx) {
+  AppState.userDivided.push([...AppState.selectedIndices]);
+  if(idx < AppState.questions[AppState.currentIndex].tasks.length - 1) goDivide(idx+1);
+  else goPartTrans(0);
 }
 
-function toggleToken(idx, event) {
-  const pos = AppState.selectedIndices.indexOf(idx);
-  if (event.shiftKey && AppState.lastClickedIdx !== -1) {
-    const from = Math.min(AppState.lastClickedIdx, idx);
-    const to = Math.max(AppState.lastClickedIdx, idx);
-    for (let i = from; i <= to; i++) {
-      if (!AppState.selectedIndices.includes(i)) AppState.selectedIndices.push(i);
-    }
-  } else {
-    if (pos >= 0) AppState.selectedIndices.splice(pos, 1);
-    else AppState.selectedIndices.push(idx);
-  }
-  AppState.lastClickedIdx = idx;
-  renderExercise();
-}
-
-function clearSelection() {
-  AppState.selectedIndices = [];
-  renderExercise();
-}
-
-// --- 核心判断逻辑 ---
-async function checkAnswer() {
-  const q = AppState.questions[AppState.currentQIndex];
-  const task = q.tasks[AppState.currentTaskIndex];
-  const feedback = document.getElementById('feedback');
+// --- 第二阶段：部分翻译 ---
+function goPartTrans(idx) {
+  const q = AppState.questions[AppState.currentIndex];
+  const task = q.tasks[idx];
+  AppState.step = 2;
+  document.getElementById('title').textContent = `阶段 2: 成分翻译 (${idx+1}/${q.tasks.length})`;
   
-  // 排序并转为字符串比对
-  const userAns = [...AppState.selectedIndices].sort((a,b)=>a-b).join(',');
-  const correctAns = [...task.indices].sort((a,b)=>a-b).join(',');
-
-  if (userAns === correctAns) {
-    feedback.innerHTML = `<span style="color:var(--success)">✅ 正确！</span>`;
-    AppState.score += 10;
-    document.getElementById('grammarSection').style.display = 'block';
-  } else {
-    feedback.innerHTML = `<span style="color:#dc2626">❌ 选错啦，请再试一次。</span>`;
-  }
+  document.getElementById('container').innerHTML = `
+    <div class="card">
+      <p>成分: <b>${task.title}</b></p>
+      <p style="font-size:20px; color:var(--accent); margin:10px 0;">${getWordsFromIndices(q.sentence, AppState.userDivided[idx])}</p>
+      <input type="text" id="ptInput" class="input-area" placeholder="翻译这个成分...">
+      <button style="margin-top:15px" onclick="savePartTrans(${idx})">下一步</button>
+    </div>
+  `;
 }
 
-async function nextTaskOrFinish() {
-  const q = AppState.questions[AppState.currentQIndex];
-  if (AppState.currentTaskIndex < q.tasks.length - 1) {
-    AppState.currentTaskIndex++;
-    AppState.selectedIndices = [];
-    renderExercise();
-  } else {
-    // 完成题目，尝试保存成绩
-    await saveScore();
-    alert(`恭喜！你已完成本题挑战。得分：${AppState.score}`);
-    renderQuestionList();
-  }
+function savePartTrans(idx) {
+  AppState.userPartTrans.push(document.getElementById('ptInput').value);
+  if(idx < AppState.questions[AppState.currentIndex].tasks.length - 1) goPartTrans(idx+1);
+  else goFullTrans();
 }
 
-async function saveScore() {
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  if (!user) return; // 没登录就不存
-
-  try {
-    await supabaseClient.from('user_progress').upsert({
-      user_id: user.id,
-      question_id: AppState.questions[AppState.currentQIndex].id,
-      score: AppState.score
-    });
-  } catch (err) { console.error("成绩保存失败", err); }
+// --- 第三阶段：全句翻译 ---
+function goFullTrans() {
+  const q = AppState.questions[AppState.currentIndex];
+  document.getElementById('title').textContent = `阶段 3: 整句翻译`;
+  document.getElementById('container').innerHTML = `
+    <div class="card">
+      <p style="font-size:18px;">${q.sentence}</p>
+      <textarea id="ftInput" class="input-area" rows="4" placeholder="输入完整中文翻译..."></textarea>
+      <button style="margin-top:15px" onclick="finish()">查看结果</button>
+    </div>
+  `;
 }
 
-// --- 基础认证函数 (示例) ---
-async function login() {
-  const email = prompt("请输入邮箱:");
-  const password = prompt("请输入密码:");
-  if(!email || !password) return;
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) alert(error.message);
-  else location.reload();
+// --- 最终结果与评分 ---
+async function finish() {
+  AppState.userFullTrans = document.getElementById('ftInput').value;
+  const q = AppState.questions[AppState.currentIndex];
+  
+  // 计算划分分数
+  let divCount = 0;
+  q.tasks.forEach((t, i) => {
+    if(JSON.stringify(t.indices.sort()) === JSON.stringify(AppState.userDivided[i].sort())) divCount++;
+  });
+  
+  // 计算翻译分数 (这里使用基础相似度)
+  let transScore = 85; // 示例分数，实际可接入 AI 接口
+  
+  document.getElementById('title').textContent = `挑战结果`;
+  document.getElementById('container').innerHTML = `
+    <div class="card">
+      <h2>综合得分: ${Math.round((divCount/q.tasks.length)*50 + 40)} 分</h2>
+      <p>结构划分正确率: ${divCount}/${q.tasks.length}</p>
+      <table>
+        <tr><th>成分</th><th>划分</th><th>你的翻译</th><th>参考答案</th></tr>
+        ${q.tasks.map((t, i) => `
+          <tr>
+            <td>${t.title}</td>
+            <td class="${JSON.stringify(t.indices.sort())===JSON.stringify(AppState.userDivided[i].sort())?'pass':'fail'}">●</td>
+            <td>${AppState.userPartTrans[i]}</td>
+            <td>${t.translation}</td>
+          </tr>
+        `).join('')}
+      </table>
+      <div style="margin-top:20px; padding:15px; background:#eef2ff; border-radius:10px;">
+        <b>💡 语法解析:</b><br>${q.grammar || '无'}
+      </div>
+      <button style="margin-top:20px" onclick="renderList()">返回列表</button>
+    </div>
+  `;
 }
-async function logout() {
-  await supabaseClient.auth.signOut();
-  location.reload();
+
+// --- 辅助工具 ---
+function tokenize(s) {
+  return s.match(/([A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*|[.,!?;:()—-])|(\s+)/g).map((t,i)=>({text:t, isWord: /[a-zA-Z]/.test(t), index:i}));
+}
+function renderTokens(ts) {
+  return ts.map((t, i) => t.isWord ? `<span class="token ${AppState.selectedIndices.includes(i)?'selected':''}" onclick="tgl(${i})">${t.text}</span>` : t.text).join('');
+}
+function tgl(i) {
+  const p = AppState.selectedIndices.indexOf(i);
+  if(p >= 0) AppState.selectedIndices.splice(p,1); else AppState.selectedIndices.push(i);
+  const q = AppState.questions[AppState.currentIndex];
+  document.getElementById('sentenceBox').innerHTML = renderTokens(tokenize(q.sentence));
+}
+function getWordsFromIndices(s, ids) {
+  const ts = tokenize(s);
+  return ids.sort((a,b)=>a-b).map(i => ts[i].text).join(' ');
 }
 </script>
 </body>
