@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>高考英语：长难句结构分析专家</title>
+<style>
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1e40af;
+  --bg: #f8fafc;
+  --card-bg: #ffffff;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --accent: #f59e0b;
+  --success: #10b981;
+  --error: #ef4444;
+}
+
+*{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body{
+  font-family: -apple-system, "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text-main); line-height: 1.6;
+  padding: 20px; display: flex; justify-content: center;
+}
+
+.app {
+  width: 100%; max-width: 900px; min-height: 90vh;
+}
+
+/* 顶部导航 */
+.header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;
+}
+h1 { font-size: 24px; color: #0f172a; display: flex; align-items: center; gap: 8px; }
+
+/* AI 状态面板 */
+.ai-status-bar {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+  padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center;
+  gap: 12px; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+.status-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
+
+/* 卡片样式 */
+.card {
+  background: var(--card-bg); border-radius: 20px; padding: 24px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 20px;
+  position: relative; animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* 题目列表项 */
+.list-item {
+  background: white; border: 1px solid #e2e8f0; border-radius: 16px;
+  padding: 20px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.list-item:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 4px 12px rgba(37,99,235,0.1); }
+.list-info { flex: 1; }
+.list-title { font-weight: 600; color: #334155; margin-bottom: 4px; }
+.list-badge { 
+    font-size: 12px; padding: 2px 8px; border-radius: 6px; 
+    background: #f1f5f9; color: #64748b; 
+}
+.score-tag { font-weight: 800; color: var(--primary); font-size: 18px; }
+
+/* 核心交互区 */
+.sentence-box {
+  background: #f1f5f9; border-radius: 14px; padding: 20px;
+  line-height: 2.2; font-size: 21px; color: #1e293b; margin: 20px 0;
+  touch-action: pan-y pinch-zoom; user-select: none;
+}
+.word {
+  display: inline-block; padding: 0 4px; cursor: pointer; border-radius: 4px;
+  transition: background 0.1s; margin: 0 1px;
+}
+.word.selected { background: var(--accent); color: white; }
+.word.correct { background: var(--success); color: white; }
+
+/* 语法解析框 */
+.grammar-insight {
+  background: #fffbeb; border-left: 4px solid var(--accent);
+  padding: 16px; border-radius: 8px; margin-top: 16px; display: none;
+}
+
+/* 按钮组 */
+.btn-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+button {
+  border: none; border-radius: 12px; padding: 12px 20px;
+  font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 15px;
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-secondary { background: #f1f5f9; color: #475569; }
+.btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 朗读按钮图标 */
+.speaker-icon { cursor: pointer; color: var(--primary); font-size: 18px; }
+
+textarea {
+  width: 100%; min-height: 120px; border: 2px solid #e2e8f0;
+  border-radius: 16px; padding: 16px; font-size: 16px; margin-top: 12px;
+  transition: border-color 0.2s;
+}
+textarea:focus { outline: none; border-color: var(--primary); }
+
+.overlay {
+  position: absolute; inset: 0; background: rgba(255,255,255,0.85);
+  display: flex; flex-direction: column; justify-content: center;
+  align-items: center; z-index: 100; border-radius: 20px; backdrop-filter: blur(4px);
+}
+
+@media(max-width:640px){
+  body { padding: 10px; }
+  .sentence-box { font-size: 19px; padding: 15px; }
+  .btn-group button { flex: 1; justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <h1>📘 英语结构专家</h1>
+    <button class="btn-secondary" style="padding: 6px 12px; font-size:12px;" onclick="location.reload()">刷新页面</button>
+  </div>
+
+  <div class="ai-status-bar">
+    <div id="aiDot" class="status-dot"></div>
+    <div style="flex:1">
+        <strong id="aiLabel">基础模式已就绪</strong>
+        <div id="aiProgress" style="font-size:11px; color:#94a3b8; display:none;">正在初始化 AI...</div>
+    </div>
+    <input type="checkbox" id="aiMode" style="width:18px;height:18px;">
+    <label for="aiMode" style="font-weight:700">开启语义评分</label>
+  </div>
+
+  <div id="mainView">
+    <div style="text-align:center; padding:50px;">加载题库中...</div>
+  </div>
+</div>
+
+<script type="module">
+// Web Worker Blob (逻辑同前，保持稳定)
+const workerCode = `
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+let embedder = null;
+env.allowLocalModels = false;
+env.remoteHost = 'https://hf-mirror.com';
+
+self.onmessage = async (e) => {
+  const { type, textA, textB } = e.data;
+  if (type === 'init') {
+    try {
+      embedder = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2', {
+        progress_callback: (p) => { if(p.status==='progress') self.postMessage({type:'progress', p: p.progress}); }
+      });
+      self.postMessage({type:'ready'});
+    } catch(err) { self.postMessage({type:'error', err: err.message}); }
+  }
+  if (type === 'compare') {
+    if(!embedder) return;
+    const [eA, eB] = await Promise.all([
+      embedder(textA, { pooling:'mean', normalize:true }),
+      embedder(textB, { pooling:'mean', normalize:true })
+    ]);
+    let dot = 0;
+    for(let i=0; i<eA.data.length; i++) dot += eA.data[i] * eB.data[i];
+    self.postMessage({type:'res', score: dot});
+  }
+};`;
+
+// 状态管理
+const State = {
+  data: [],
+  history: JSON.parse(localStorage.getItem('eng_expert_history') || '{}'),
+  curIdx: -1,
+  curTask: 0,
+  selected: [],
+  wrongCounts: [],
+  answers: [],
+  fullTrans: '',
+  tokens: [],
+  isAIReady: false,
+  aiWorker: null
+};
+
+// 工具函数
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+// 语音合成
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'en-US';
+  utter.rate = 0.85;
+  window.speechSynthesis.speak(utter);
+}
+
+// 单词划分优化
+function tokenize(text) {
+  const regex = /([A-Za-z]+(?:[-'][A-Za-z]+)*|\d+|[.,!?;:()—-])|(\s+)/g;
+  const list = [];
+  let m;
+  while ((m = regex.exec(text)) !== null) {
+    list.push({ text: m[1] || m[2], isWord: !!m[1], idx: list.length });
+  }
+  return list;
+}
+
+// 初始化 AI Worker
+function initAI() {
+  if (State.aiWorker) return;
+  const blob = new Blob([workerCode], {type:'text/javascript'});
+  State.aiWorker = new Worker(URL.createObjectURL(blob), {type:'module'});
+  
+  $('aiLabel').textContent = '正在连接 AI 节点...';
+  $('aiProgress').style.display = 'block';
+  State.aiWorker.postMessage({type:'init'});
+
+  State.aiWorker.onmessage = (e) => {
+    if(e.data.type === 'progress') {
+        $('aiProgress').textContent = `已下载: ${Math.floor(e.data.p)}%`;
+    } else if(e.data.type === 'ready') {
+        State.isAIReady = true;
+        $('aiDot').classList.add('active');
+        $('aiLabel').textContent = 'AI 语义评分已启用';
+        $('aiProgress').style.display = 'none';
+    } else if(e.data.type === 'res') {
+        if (State.aiResolve) State.aiResolve(e.data.score);
+    }
+  };
+}
+
+// 相似度计算
+async function getSimilarity(a, b) {
+  if (!State.isAIReady || !$('aiMode').checked) {
+    const clean = (s) => s.replace(/[^\u4e00-\u9fa5]/g, '');
+    const s1 = clean(a), s2 = clean(b);
+    if (!s1 || !s2) return 0;
+    let match = 0;
+    for (let char of s1) if (s2.includes(char)) match++;
+    return match / Math.max(s1.length, s2.length);
+  }
+
+  State.aiWorker.postMessage({type: 'compare', textA: a, textB: b});
+  return new Promise(res => State.aiResolve = res);
+}
+
+// 视图渲染：列表
+function renderList() {
+  let html = `<div class="card"><h2 style="margin-bottom:15px;">选择练习题</h2>`;
+  State.data.forEach((q, i) => {
+    const hist = State.history[q.id || i];
+    html += `
+      <div class="list-item" onclick="startQuiz(${i})">
+        <div class="list-info">
+            <div class="list-title">${esc(q.sentence)}</div>
+            <span class="list-badge">${q.tasks.length} 个结构分析</span>
+        </div>
+        ${hist ? `<div class="score-tag">${hist.score}%</div>` : '<div>未开始</div>'}
+      </div>`;
+  });
+  html += `</div>`;
+  $('mainView').innerHTML = html;
+}
+
+// 开始题目
+window.startQuiz = (idx) => {
+  State.curIdx = idx;
+  State.curTask = 0;
+  State.selected = [];
+  State.wrongCounts = new Array(State.data[idx].tasks.length).fill(0);
+  State.answers = [];
+  State.tokens = tokenize(State.data[idx].sentence);
+  renderDivide();
+};
+
+// 视图：划分练习
+function renderDivide() {
+  const q = State.data[State.curIdx];
+  const task = q.tasks[State.curTask];
+  const wrong = State.wrongCounts[State.curTask];
+  const isDead = wrong >= 3;
+
+  let html = `
+    <div class="card">
+      <div style="display:flex; justify-content:space-between">
+        <strong>第 ${State.curTask + 1} / ${q.tasks.length} 步</strong>
+        <span style="color:var(--text-muted)">剩余机会: ${3-wrong}</span>
+      </div>
+      <h2 style="margin:12px 0">请选出：<span style="color:var(--primary)">${esc(task.title)}</span></h2>
+      
+      <div class="sentence-box" id="sentBox">`;
+  
+  State.tokens.forEach(t => {
+    if(t.isWord) {
+      let cls = 'word';
+      if(State.selected.includes(t.idx)) cls += ' selected';
+      if(isDead && task.indices.includes(t.idx)) cls += ' correct';
+      html += `<span class="${cls}" data-idx="${t.idx}" onclick="toggleWord(${t.idx})">${esc(t.text)}</span>`;
+    } else {
+      html += esc(t.text);
+    }
+  });
+
+  html += `</div>
+      <div id="insight" class="grammar-insight">
+        <strong>💡 解析：</strong>${esc(task.explanation || "该成分在句中起重要修饰或连接作用。")}
+      </div>
+      <div class="btn-group">
+        <button class="btn-primary" id="btnSub" onclick="submitDivide()">提交选择</button>
+        <button class="btn-secondary" onclick="State.selected=[];renderDivide()">重置</button>
+        <button class="btn-outline" onclick="renderList()">退出</button>
+      </div>
+    </div>`;
+  
+  $('mainView').innerHTML = html;
+}
+
+window.toggleWord = (idx) => {
+    const p = State.selected.indexOf(idx);
+    if(p > -1) State.selected.splice(p, 1);
+    else State.selected.push(idx);
+    renderDivide();
+};
+
+window.submitDivide = () => {
+    const task = State.data[State.curIdx].tasks[State.curTask];
+    const user = [...State.selected].sort((a,b)=>a-b);
+    const target = [...task.indices].sort((a,b)=>a-b);
+    
+    if(JSON.stringify(user) === JSON.stringify(target)) {
+        $('btnSub').disabled = true;
+        $('insight').style.display = 'block';
+        // 自动读一下正确的词组
+        const txt = State.tokens.filter(t => target.includes(t.idx)).map(t=>t.text).join(' ');
+        speak(txt);
+
+        setTimeout(() => {
+            State.curTask++;
+            State.selected = [];
+            if(State.curTask >= State.data[State.curIdx].tasks.length) renderTranslation();
+            else renderDivide();
+        }, 2500);
+    } else {
+        State.wrongCounts[State.curTask]++;
+        if(State.wrongCounts[State.curTask] >= 3) {
+            $('btnSub').disabled = true;
+            $('insight').style.display = 'block';
+            setTimeout(() => {
+                State.curTask++;
+                State.selected = [];
+                if(State.curTask >= State.data[State.curIdx].tasks.length) renderTranslation();
+                else renderDivide();
+            }, 3000);
+        } else {
+            alert('划分不完全正确，请再试一次！');
+            State.selected = [];
+            renderDivide();
+        }
+    }
+};
+
+// 视图：成分翻译
+function renderTranslation() {
+    const q = State.data[State.curIdx];
+    let html = `<div class="card"><h2>🔤 成分翻译与读音</h2>`;
+    
+    q.tasks.forEach((t, i) => {
+        const eng = t.indices.map(idx => State.tokens[idx].text).join(' ');
+        html += `
+        <div style="margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
+            <div style="display:flex; align-items:center; gap:10px; font-weight:700">
+                ${esc(t.title)} <span class="speaker-icon" onclick="speak('${esc(eng)}')">🔊</span>
+            </div>
+            <div style="color:var(--primary); font-family:serif; margin:5px 0">${esc(eng)}</div>
+            <textarea id="taskTrans-${i}" placeholder="输入中文意思..." style="min-height:60px"></textarea>
+        </div>`;
+    });
+
+    html += `
+        <div class="btn-group">
+            <button class="btn-primary" onclick="submitPartTrans()">下一步：整句翻译</button>
+        </div>
+    </div>`;
+    $('mainView').innerHTML = html;
+}
+
+window.submitPartTrans = () => {
+    const q = State.data[State.curIdx];
+    q.tasks.forEach((_, i) => {
+        State.answers.push($(`taskTrans-${i}`).value);
+    });
+    renderFullTrans();
+};
+
+// 视图：整句翻译
+function renderFullTrans() {
+    const q = State.data[State.curIdx];
+    let html = `
+    <div class="card">
+        <h2>📝 整句润色翻译</h2>
+        <div class="sentence-box" style="font-size:18px">${esc(q.sentence)} <span class="speaker-icon" onclick="speak('${esc(q.sentence)}')">🔊</span></div>
+        <div style="margin:10px 0; font-size:14px; color:var(--text-muted)">提示：你可以参考刚才翻译的词块</div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px">
+            ${State.answers.map(a => `<span style="background:#eef2ff; padding:4px 10px; border-radius:20px; font-size:13px">${esc(a)}</span>`).join('')}
+        </div>
+        <textarea id="fullInput" placeholder="结合以上成分，写出流畅的整句中文翻译..."></textarea>
+        <div class="btn-group">
+            <button class="btn-primary" id="btnFinal" onclick="calcFinal()">提交并查看报告</button>
+        </div>
+    </div>`;
+    $('mainView').innerHTML = html;
+}
+
+// 结算
+async function calcFinal() {
+    const btn = $('btnFinal');
+    btn.disabled = true;
+    btn.textContent = 'AI 正在深度评分中...';
+    
+    const q = State.data[State.curIdx];
+    const userFull = $('fullInput').value;
+    
+    // 综合评分逻辑
+    let totalSim = 0;
+    for(let i=0; i<q.tasks.length; i++) {
+        totalSim += await getSimilarity(State.answers[i], q.tasks[i].translation);
+    }
+    const fullSim = await getSimilarity(userFull, q.fullTranslation);
+    
+    const score = Math.round((totalSim/q.tasks.length * 40) + (fullSim * 60));
+    
+    // 持久化
+    State.history[q.id || State.curIdx] = { score, date: new Date().toISOString() };
+    localStorage.setItem('eng_expert_history', JSON.stringify(State.history));
+
+    let report = `
+    <div class="card">
+        <div style="text-align:center; margin-bottom:20px">
+            <div style="font-size:48px; font-weight:800; color:var(--primary)">${score}</div>
+            <div style="color:var(--text-muted)">综合评分</div>
+        </div>
+        <div style="background:#f8fafc; padding:15px; border-radius:12px; margin-bottom:15px">
+            <strong>标准参考：</strong><br>${esc(q.fullTranslation)}
+        </div>
+        <div style="background:#fffbeb; padding:15px; border-radius:12px">
+            <strong>你的译文：</strong><br>${esc(userFull)}
+        </div>
+        <div class="btn-group">
+            <button class="btn-primary" onclick="renderList()">回到列表</button>
+            <button class="btn-secondary" onclick="startQuiz(${State.curIdx})">重新练习</button>
+        </div>
+    </div>`;
+    
+    $('mainView').innerHTML = report;
+}
+
+// 初始加载
+async function load() {
+    try {
+        const r = await fetch('./questions.json');
+        State.data = await r.json();
+        renderList();
+        // 默认初始化 AI
+        initAI();
+    } catch(e) {
+        $('mainView').innerHTML = '<div class="card">未找到 questions.json 配置文件。</div>';
+    }
+}
+
+$('aiMode').addEventListener('change', (e) => {
+    if(e.target.checked) initAI();
+});
+
+load();
+</script>
+</body>
+</html>
