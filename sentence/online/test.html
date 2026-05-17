@@ -1,548 +1,268 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>句子结构划分与翻译 (云端版)</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>英语句子成分闯关 - 练习端</title>
 <style>
-*{ margin:0; padding:0; box-sizing:border-box; }
-body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#f3f6fb; padding:20px; display:flex; justify-content:center; }
-.app{ width:100%; max-width:850px; background:#fff; border-radius:24px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.08); }
-h1{ font-size:30px; margin-bottom:16px; color:#16345f; text-align: center; }
-.card{ background:#f8fbff; border-radius:20px; padding:24px; margin-bottom:20px; position: relative; transition: all 0.3s ease; }
-.list-item{ background:white; border:1px solid #d9e3f2; border-radius:16px; padding:18px; margin-bottom:14px; cursor:pointer; transition:.2s; }
-.list-item:hover{ border-color:#2563eb; background:#f8fbff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37,99,235,0.08); }
-.list-title{ font-size:17px; line-height:1.8; color:#16345f; font-weight: 500; }
-.list-sub{ margin-top:8px; color:#64748b; font-size:14px; }
-.task-title{ font-size:20px; font-weight:700; color:#173860; margin-bottom:16px; }
-.sentence-box{ background:white; border-left:5px solid #2563eb; border-radius:14px; padding:18px; line-height:2; font-size:20px; color:#0f2744; margin:16px 0; touch-action: pan-y pinch-zoom; }
-.token{ display:inline-block; border-radius:8px; }
-.word{ cursor:pointer; transition:.15s; padding:6px 10px; min-height:36px; user-select: none; }
-.word:hover{ background:#e8f0ff; }
-.selected{ background:#ffd966; border-bottom:3px solid #d97706; }
-.correct-highlight{ background:#bbf7d0; border-bottom:3px solid #059669; }
-.feedback{ margin-top:16px; min-height:28px; font-weight:700; color:#1e3b6b; }
-.controls{ display:flex; flex-wrap:wrap; gap:12px; margin-top:18px; }
-button{ border:none; border-radius:999px; padding:12px 24px; background:#1f3f72; color:white; font-weight:700; cursor:pointer; transition:.2s; font-size:15px; }
-button:hover:not(:disabled){ background:#17315b; }
-button:disabled { background:#94a3b8; cursor:not-allowed; }
-button.secondary{ background:white; color:#1f3f72; border:2px solid #1f3f72; }
-button.secondary:hover:not(:disabled){ background:#eef3ff; }
-textarea{ width:100%; min-height:90px; resize:vertical; border:1px solid #cfd9ea; border-radius:14px; padding:14px; font-size:16px; margin-top:8px; font-family: inherit; }
-textarea:focus{ outline:none; border-color:#2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-textarea:disabled { background: #f1f5f9; cursor: not-allowed; }
-.result{ background:#f6fffb; border:1px solid #d1fae5; border-radius:16px; padding:20px; margin-top:20px; }
-.score{ font-size:26px; font-weight:800; margin-bottom:14px; }
-.detail-table{ width:100%; border-collapse:collapse; margin-top:16px; font-size:15px; background: white; border-radius: 8px; overflow: hidden;}
-.detail-table th,.detail-table td{ border:1px solid #e5e7eb; padding:12px; text-align:left; }
-.detail-table th{ background:#eef2ff; color: #1e3b8a; }
-.pass{ color:#10b981; font-weight:bold; }
-.fail{ color:#ef4444; font-weight:bold; }
-.mode-switch { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 12px 18px; background: #f1f5f9; border-radius: 16px; }
-.mode-switch label { font-weight: 700; color: #1e3b6b; cursor: pointer; flex: 1; }
-.mode-switch input { width: 20px; height: 20px; cursor: pointer; accent-color: #2563eb; }
-.loading-container { text-align: center; padding: 40px; color: #64748b; font-weight: 500; }
-.overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:10; display:flex; justify-content:center; align-items:center; border-radius:20px; font-weight:bold; color:#1f3f72; font-size: 18px; backdrop-filter: blur(2px); }
-.audio-btn { background: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; border-radius: 50%; width: 42px; height: 42px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 18px; transition: 0.2s; }
-.audio-btn:hover { background: #bae6fd; transform: scale(1.05); }
+  :root { --primary: #1f3f72; --accent: #2563eb; --success: #10b981; --bg: #f3f6fb; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:#16345f; padding:20px; line-height:1.6; }
+  .container { max-width:800px; margin:auto; }
+  
+  /* 头部卡片 */
+  .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+  .card { background:white; border-radius:20px; padding:24px; margin-bottom:20px; box-shadow:0 10px 30px rgba(0,0,0,.06); }
+  
+  /* 题目列表样式 */
+  .q-item { display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #edf2f7; cursor:pointer; transition: .2s; }
+  .q-item:hover { background: #f8fbff; }
+  .status-badge { font-size:12px; padding:2px 8px; border-radius:99px; background:#e2e8f0; }
 
-@media(max-width:640px){
-  body{ padding:10px; background: #f3f6fb; }
-  .app{ padding:16px; border-radius: 16px; }
-  h1{ font-size:22px; text-align: center; margin-bottom: 12px; }
-  .sentence-box{ font-size:19px; line-height: 2.6; padding: 14px; margin: 12px 0; }
-  .token.word { margin: 2px 2px; border-radius: 6px; background: rgba(37, 99, 235, 0.04); }
-  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .controls button.secondary:last-child { grid-column: span 2; }
-  button { padding: 14px 18px; font-size: 16px; width: 100%; text-align: center; }
-  .detail-table { display: block; overflow-x: auto; white-space: nowrap; }
-}
+  /* 练习区样式 */
+  .sentence-display { background:#f8fbff; border-radius:16px; padding:25px; line-height:2.5; font-size:22px; border-left:5px solid var(--accent); margin:20px 0; }
+  .token { display:inline-block; padding:0 6px; border-radius:6px; cursor:pointer; transition:.15s; user-select:none; }
+  .token:hover { background:#e0ebff; }
+  .token.selected { background:#ffd966; border-bottom:3px solid #d97706; }
+  
+  .task-prompt { font-size:18px; font-weight:bold; color:var(--primary); margin-bottom:15px; padding:10px; background:#fff7ed; border-radius:10px; }
+  
+  /* 按钮 */
+  button { border:none; background:var(--primary); color:white; padding:12px 24px; border-radius:999px; cursor:pointer; font-size:16px; font-weight:700; transition:.2s; }
+  button:hover { opacity:0.9; transform:translateY(-1px); }
+  button.secondary { background:white; color:var(--primary); border:2px solid var(--primary); }
+  
+  /* 语法解析区 */
+  .grammar-box { background:#f0fdf4; border:1px solid #bbf7d0; padding:20px; border-radius:15px; margin-top:20px; display:none; }
+  .translation { color:#64748b; font-style:italic; margin-bottom:10px; }
+  
+  .loading { text-align:center; padding:50px; color:#94a3b8; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<div class="app">
-  <h1>📘 句子结构划分与翻译</h1>
-  <div id="user-area"></div>
 
-  <div class="mode-switch">
-    <input type="checkbox" id="modeToggle">
-    <label for="modeToggle">🧠 AI 语义评分 (需在线下载模型)</label>
-    <button class="secondary" style="padding: 6px 12px; font-size: 12px; width: auto;" onclick="clearAICache()">清理缓存</button>
+<div class="container">
+  <div class="header">
+    <h1>📝 句子成分挑战</h1>
+    <div id="authStatus" class="small">加载中...</div>
   </div>
+
   <div id="mainView">
-    <div class="loading-container">
-      <div id="loadingText">⏳ 正在连接云端服务器...</div>
-    </div>
+    <div class="loading">正在加载题库，请稍候...</div>
   </div>
 </div>
 
-<script type="module">
-// ==========================================
-// 1. Supabase 基础配置
-// ==========================================
+<script>
+// --- 配置区 ---
 const SUPABASE_URL = 'https://vbxjqgbwrlxlpafdiogj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieGpxZ2J3cmx4bHBhZmRpb2dqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMTM5MTksImV4cCI6MjA5NDU4OTkxOX0.SVlWH2Pd5dlfO9jo39t6HmZYNKvU_14zO4Hzx-NcRUw';
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let currentUser = null;
-
-// ==========================================
-// 2. 语音播报功能
-// ==========================================
-window.playAudio = function(text) {
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel(); 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US'; 
-    utterance.rate = 0.9;     
-    window.speechSynthesis.speak(utterance);
-  } else {
-    alert('⚠️ 你的浏览器不支持语音播报功能。');
-  }
+// --- 状态管理 ---
+let AppState = {
+  questions: [],
+  currentQIndex: -1,
+  currentTaskIndex: 0,
+  selectedIndices: [],
+  lastClickedIdx: -1,
+  score: 0
 };
 
-// ==========================================
-// 3. 用户认证与登录逻辑
-// ==========================================
+// --- 初始化 ---
+window.onload = async () => {
+  checkUser();
+  await loadQuestions();
+};
+
 async function checkUser() {
-  const { data: { user } } = await supabase.auth.getUser();
-  currentUser = user;
-  renderUserUI();
-  
-  if (currentUser) {
-    await loadQuestions(); // 已登录：加载云端题库
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  const statusEl = document.getElementById('authStatus');
+  if (user) {
+    statusEl.innerHTML = `👤 已登录 | <a href="#" onclick="logout()">退出</a>`;
   } else {
-    renderLoginPrompt(); // 未登录：显示锁定屏幕
+    statusEl.innerHTML = `<button onclick="login()" style="padding:5px 12px; font-size:12px;">登录以保存成绩</button>`;
   }
 }
 
-function renderUserUI() {
-  const userDiv = document.getElementById('user-area');
-  userDiv.style = 'margin-bottom:20px; padding:12px; background:#eef2ff; border-radius:12px; font-size:14px; display:flex; justify-content:space-between; align-items:center;';
-  if(currentUser) {
-    userDiv.innerHTML = `<span>👤 欢迎: <b>${currentUser.email}</b></span><button onclick="handleLogout()" style="padding:6px 14px; font-size:13px; background:#ef4444;">注销账号</button>`;
-  } else {
-    userDiv.innerHTML = `<span>🔒 你需要登录才能获取最新题库。</span><button onclick="handleAuth()" style="padding:6px 14px; font-size:13px;">登录 / 注册</button>`;
-  }
-}
-
-window.handleAuth = async () => {
-  const email = prompt("📧 请输入邮箱:");
-  if (!email) return;
-  const password = prompt("🔑 请输入密码 (至少6位):");
-  if(!password) return;
-
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    const wantRegister = confirm(`登录失败或账号不存在: ${error.message}\n\n是否使用此邮箱直接注册新账号？`);
-    if(wantRegister) {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
-      if (signUpError) alert("❌ 注册失败: " + signUpError.message);
-      else { 
-        alert("✅ 注册成功！即将自动登录..."); 
-        location.reload(); 
-      }
-    }
-  } else {
-    location.reload(); 
-  }
-};
-
-window.handleLogout = async () => {
-  await supabase.auth.signOut();
-  location.reload();
-};
-
-function renderLoginPrompt() {
-  document.getElementById('mainView').innerHTML = `
-    <div class="card" style="text-align:center; padding:50px 20px;">
-      <div style="font-size:50px; margin-bottom:20px;">🔒</div>
-      <h2 style="margin-bottom:12px; color:#1e3b8a;">学习进度已锁定</h2>
-      <p style="color:#64748b; margin-bottom:24px;">本系统采用云端同步，请登录账号解锁题库，你的每一次练习都会被永久记录。</p>
-      <button onclick="window.handleAuth()" style="font-size: 16px; padding: 14px 30px;">立即登录 / 免费注册</button>
-    </div>
-  `;
-}
-
-// ==========================================
-// 4. 从云端获取题目数据
-// ==========================================
-const AppState = {
-  questions: [], progressData: [],
-  currentIndex: -1, currentTaskIndex: 0,
-  selectedTokens: [], divideResults: [], divideWrongCounts: [],
-  partsUserInput: [], partsDetail: [], fullUserInput: '',
-  divideFeedback: '', currentTokens: [], lastClickedIdx: -1,
-  timeoutId: null, isAILoading: false
-};
-
+// --- 数据加载 ---
 async function loadQuestions() {
+  const mainView = document.getElementById('mainView');
   try {
-    // 获取云端题目
-    const { data: questionsData, error: qError } = await supabase
+    const { data, error } = await supabaseClient
       .from('questions')
       .select('*')
-      .order('id', { ascending: true });
-      
-    if (qError) throw qError;
+      .order('created_at', { ascending: true });
 
-    // 获取当前用户进度
-    const { data: progressData, error: pError } = await supabase
-      .from('user_progress')
-      .select('question_id, score')
-      .eq('user_id', currentUser.id);
+    if (error) throw error;
 
-    AppState.questions = (questionsData || []).map(q => ({
+    // 核心修复：适配数据库下划线字段
+    AppState.questions = (data || []).map(q => ({
       ...q,
-      fullTranslation: q.full_translation // 兼容字段名
+      fullTranslation: q.full_translation // 映射到前端习惯的驼峰命名
     }));
-    AppState.progressData = progressData || [];
-    
+
     renderQuestionList();
-
   } catch (err) {
-    document.getElementById('mainView').innerHTML = `<div class="card" style="color:red;font-weight:bold;">❌ 题库加载失败: ${err.message}</div>`;
+    mainView.innerHTML = `<div class="card">❌ 加载失败: ${err.message}</div>`;
   }
 }
 
+// --- 渲染题目列表 ---
 function renderQuestionList() {
-  if (AppState.questions.length === 0) {
-    document.getElementById('mainView').innerHTML = `<div class="card" style="text-align:center;color:#64748b;">📭 目前云端题库为空，请使用管理员工具录入题目。</div>`;
-    return;
-  }
-
-  let html = '';
-  AppState.questions.forEach((q, i) => {
-    const record = AppState.progressData.find(p => p.question_id === q.id);
-    const scoreTag = record ? `<span style="color:#10b981; font-weight:bold;"> (最高分: ${record.score})</span>` : '';
+  let html = `<div class="card"><h2>选择关卡</h2><div style="margin-top:15px;">`;
+  AppState.questions.forEach((q, index) => {
     html += `
-      <div class="list-item" onclick="window.startQuestion(${i})">
-        <div class="list-title">${record ? '✅' : '📝'} ${escapeHtml(q.sentence)} ${scoreTag}</div>
-        <div class="list-sub">包含 ${q.tasks.length} 个结构成分需要划分</div>
+      <div class="q-item" onclick="startExercise(${index})">
+        <span>第 ${index + 1} 关：${q.sentence.substring(0, 40)}...</span>
+        <span class="status-badge">进入</span>
       </div>`;
   });
+  html += `</div></div>`;
   document.getElementById('mainView').innerHTML = html;
 }
 
-// ==========================================
-// 5. 以下是核心答题逻辑 (划分与翻译)
-// ==========================================
-window.startQuestion = function(index){
-  AppState.currentIndex = index; AppState.currentTaskIndex = 0; AppState.selectedTokens = [];
-  AppState.divideResults = new Array(AppState.questions[index].tasks.length).fill(null);
-  AppState.divideWrongCounts = new Array(AppState.questions[index].tasks.length).fill(0);
-  AppState.partsUserInput = new Array(AppState.questions[index].tasks.length).fill('');
-  AppState.partsDetail = []; AppState.fullUserInput = ''; AppState.divideFeedback = '';
-  AppState.currentTokens = tokenize(AppState.questions[index].sentence); AppState.lastClickedIdx = -1;
-  renderDivide();
-};
+// --- 开始练习 ---
+function startExercise(index) {
+  AppState.currentQIndex = index;
+  AppState.currentTaskIndex = 0;
+  AppState.selectedIndices = [];
+  AppState.score = 0;
+  renderExercise();
+}
 
-function renderDivide(){
-  const q = AppState.questions[AppState.currentIndex], task = q.tasks[AppState.currentTaskIndex], tokens = AppState.currentTokens;
-  const remaining = Math.max(0, 3 - AppState.divideWrongCounts[AppState.currentTaskIndex]);
-  const showCorrect = AppState.divideResults[AppState.currentTaskIndex] === false && remaining === 0;
-
-  let html = `
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 12px;">
-        <div class="task-title" style="margin-bottom:0;">第 ${AppState.currentTaskIndex + 1} 步：圈出【${escapeHtml(task.title)}】</div>
-        <button class="audio-btn" onclick="window.playAudio('${q.sentence.replace(/'/g, "\\'")}')">🔊</button>
-      </div>
-      <div style="color: #64748b;">剩余尝试：${remaining} / 3</div>
-      <div class="sentence-box" id="sentenceContainer">`;
-
-  tokens.forEach((tok,idx)=>{
-    if(tok.isWord){
-      let cls = 'token word';
-      if(showCorrect && task.indices.includes(idx)) cls += ' correct-highlight';
-      else if(AppState.selectedTokens.includes(idx)) cls += ' selected';
-      html += `<span class="${cls}" data-index="${idx}" onclick="window.toggleToken(${idx}, event)">${escapeHtml(tok.text)}</span>`;
-    } else html += escapeHtml(tok.text);
-  });
-
-  const disableSubmit = AppState.divideResults[AppState.currentTaskIndex] !== null;
-  html += `</div>
-      <div class="controls">
-        <button class="secondary" onclick="window.cancelSelection()">清除选择</button>
-        <button onclick="window.submitDivide()" ${disableSubmit ? 'disabled' : ''}>提交答案</button>
-        <button class="secondary" onclick="window.renderQuestionList()">放弃返回</button>
-      </div>
-      <div class="feedback">${AppState.divideFeedback}</div>
-    </div>`;
-    
-  document.getElementById('mainView').innerHTML = html;
+function renderExercise() {
+  const q = AppState.questions[AppState.currentQIndex];
+  const task = q.tasks[AppState.currentTaskIndex];
   
-  const container = document.getElementById('sentenceContainer');
-  if(container) {
-    container.addEventListener('touchstart', handleTouchStart, { passive: false });
-    container.addEventListener('touchmove', handleTouchMove, { passive: false });
-    container.addEventListener('touchend', handleTouchEnd, { passive: false });
-    touchActive = false; 
-  }
-}
-
-function updateTokenUI() {
-  document.querySelectorAll('#sentenceContainer .token.word').forEach(span => {
-    const idx = parseInt(span.getAttribute('data-index'), 10);
-    span.classList.toggle('selected', AppState.selectedTokens.includes(idx));
-  });
-}
-
-window.toggleToken = function(idx, event) {
-  if (AppState.divideResults[AppState.currentTaskIndex] !== null) return;
-  if (event && event.shiftKey && AppState.lastClickedIdx !== -1) {
-    const from = Math.min(AppState.lastClickedIdx, idx), to = Math.max(AppState.lastClickedIdx, idx);
-    AppState.selectedTokens = [];
-    for (let i = from; i <= to; i++) if (AppState.currentTokens[i]?.isWord) AppState.selectedTokens.push(i);
-  } else {
-    const pos = AppState.selectedTokens.indexOf(idx);
-    if (pos >= 0) AppState.selectedTokens.splice(pos, 1);
-    else AppState.selectedTokens.push(idx);
-  }
-  AppState.lastClickedIdx = idx; updateTokenUI(); 
-};
-
-// 移动端滑动选择
-function getWordIdxAtTouch(touch) {
-  const el = document.elementFromPoint(touch.clientX, touch.clientY);
-  if (el && el.closest('.token.word')) return parseInt(el.closest('.token.word').getAttribute('data-index'), 10);
-  return -1;
-}
-function handleTouchStart(e) {
-  if (AppState.divideResults[AppState.currentTaskIndex] !== null) return;
-  const idx = getWordIdxAtTouch(e.touches[0]);
-  if (idx === -1) return;
-  touchActive = false; touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY }; touchLastIdx = idx;
-}
-function handleTouchMove(e) {
-  if (AppState.divideResults[AppState.currentTaskIndex] !== null) return;
-  const touch = e.touches[0], dx = touch.clientX - touchStartPos.x, dy = touch.clientY - touchStartPos.y;
-  if (!touchActive && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) touchActive = true;
-  if (touchActive && e.cancelable) e.preventDefault(); 
-  if (!touchActive || touchTicking) return; 
-  touchTicking = true;
-  requestAnimationFrame(() => {
-    const idx = getWordIdxAtTouch(touch);
-    if (idx !== -1 && idx !== touchLastIdx) {
-      const from = Math.min(touchLastIdx, idx), to = Math.max(touchLastIdx, idx);
-      for (let i = from; i <= to; i++) if (AppState.currentTokens[i]?.isWord && !AppState.selectedTokens.includes(i)) AppState.selectedTokens.push(i);
-      updateTokenUI(); touchLastIdx = idx;
-    }
-    touchTicking = false; 
-  });
-}
-function handleTouchEnd() { touchActive = false; touchLastIdx = -1; }
-
-window.cancelSelection = function() { AppState.selectedTokens = []; updateTokenUI(); };
-
-window.submitDivide = function(){
-  if(AppState.divideResults[AppState.currentTaskIndex] !== null) return;
-  const q = AppState.questions[AppState.currentIndex], task = q.tasks[AppState.currentTaskIndex];
-  const correct = [...task.indices].filter(i => AppState.currentTokens[i]).sort((a,b)=>a-b);
-  const user = [...AppState.selectedTokens].sort((a,b)=>a-b);
-  const ok = arraysEqual(correct, user);
-
-  if(ok){
-    AppState.divideResults[AppState.currentTaskIndex] = true; AppState.divideFeedback = '✅ 正确！';
-    renderDivide(); setTimeout(()=>{ proceedNextTask(q); }, 800);
-  } else {
-    AppState.divideWrongCounts[AppState.currentTaskIndex]++;
-    const left = 3 - AppState.divideWrongCounts[AppState.currentTaskIndex];
-    if(left <= 0){
-      AppState.divideResults[AppState.currentTaskIndex] = false; AppState.divideFeedback = '❌ 机会用完，答案已标绿。';
-      renderDivide(); setTimeout(()=>{ proceedNextTask(q); }, 1800);
+  // 分词逻辑 (需与生成器一致)
+  const tokens = tokenize(q.sentence);
+  
+  let tokensHtml = '';
+  tokens.forEach((tok, idx) => {
+    if (tok.isWord) {
+      const isSel = AppState.selectedIndices.includes(idx);
+      tokensHtml += `<span class="token ${isSel?'selected':''}" onclick="toggleToken(${idx}, event)">${tok.text}</span>`;
     } else {
-      AppState.divideFeedback = `❌ 不准确，还剩 ${left} 次机会。`;
-      AppState.selectedTokens = []; renderDivide();
+      tokensHtml += tok.text;
     }
-  }
-};
-
-function proceedNextTask(q) {
-  AppState.currentTaskIndex++; AppState.selectedTokens = []; AppState.divideFeedback = '';
-  if(AppState.currentTaskIndex >= q.tasks.length) renderParts(); else renderDivide();
-}
-
-function renderParts(){
-  const q = AppState.questions[AppState.currentIndex], tokens = AppState.currentTokens;
-  let html = `<div class="card" id="partsCard"><h2>🔤 第二阶段：翻译句子成分</h2><div class="sentence-box">${escapeHtml(q.sentence)}</div>`;
-  q.tasks.forEach((task,idx)=>{
-    const englishPart = task.indices.map(i=>tokens[i]?.text || '').join(' ');
-    html += `<div style="margin-bottom:24px;">
-        <label style="font-weight:700; color:#1e3b8a;">${escapeHtml(task.title)}</label>
-        <div style="background:#eef2ff;padding:10px 14px;border-radius:10px;margin:8px 0; font-size: 18px;">${escapeHtml(englishPart)}</div>
-        <textarea id="partInput-${idx}" placeholder="输入该片段的中文翻译">${escapeHtml(AppState.partsUserInput[idx])}</textarea>
-      </div>`;
   });
-  html += `<div class="controls"><button id="btnSubmitParts" onclick="window.submitParts()">提交翻译</button></div><div id="partsFeedback" class="feedback"></div></div>`;
-  document.getElementById('mainView').innerHTML = html;
-  q.tasks.forEach((task,idx)=>{ document.getElementById(`partInput-${idx}`).addEventListener('input', e => { AppState.partsUserInput[idx] = e.target.value; }); });
-}
 
-window.submitParts = async function(){
-  document.getElementById('btnSubmitParts').disabled = true;
-  document.getElementById('partsCard').innerHTML += '<div class="overlay">⏳ 智能评分中...</div>';
-
-  const q = AppState.questions[AppState.currentIndex]; let correctCount = 0; AppState.partsDetail = [];
-  for (let idx = 0; idx < q.tasks.length; idx++) {
-    const user = AppState.partsUserInput[idx].trim(), std = q.tasks[idx].translation;
-    if (!user) { AppState.partsDetail.push(false); continue; }
-    const ok = await currentSimilarity(user, std) >= (aiWorker ? 0.68 : 0.6); 
-    if (ok) correctCount++; AppState.partsDetail.push(ok);
-  }
-  setTimeout(() => { renderFull(); }, 1000);
-};
-
-function renderFull(){
-  const q = AppState.questions[AppState.currentIndex];
-  let html = `<div class="card" id="fullCard"><h2>📝 最终阶段：整句翻译</h2><div class="sentence-box">${escapeHtml(q.sentence)}</div><div style="display:flex;gap:8px;margin-bottom:16px;">`;
-  AppState.partsUserInput.forEach(text => { if(text.trim()) html += `<span class="token" style="background:#dbeafe;cursor:pointer;padding:8px 16px;border-radius:99px;" onclick='window.appendSnippet(${JSON.stringify(text)})'>${escapeHtml(text)}</span>`; });
-  html += `</div><textarea id="fullTranslationInput" placeholder="输入合并润色后的完整翻译...">${escapeHtml(AppState.fullUserInput)}</textarea>
-      <div class="controls"><button id="btnSubmitFull" onclick="window.submitFull()">生成报告</button></div><div id="fullFeedback" class="feedback"></div></div>`;
-  document.getElementById('mainView').innerHTML = html;
-  document.getElementById('fullTranslationInput').addEventListener('input', e => { AppState.fullUserInput = e.target.value; });
-}
-window.appendSnippet = function(text){ document.getElementById('fullTranslationInput').value += text; AppState.fullUserInput = document.getElementById('fullTranslationInput').value; };
-
-window.submitFull = async function(){
-  const q = AppState.questions[AppState.currentIndex], input = AppState.fullUserInput.trim();
-  if(!input){ alert('译文不能为空！'); return; }
-  document.getElementById('btnSubmitFull').disabled = true;
-  document.getElementById('fullCard').innerHTML += '<div class="overlay">⏳ 生成报告中...</div>';
-
-  const fullScore = Math.round(await currentSimilarity(input, q.fullTranslation) * 100);
-  const divideScore = Math.round((AppState.divideResults.filter(x => x === true).length / q.tasks.length) * 100);
-  const partScore = Math.round((AppState.partsDetail.filter(Boolean).length / q.tasks.length) * 100);
-  const finalScore = Math.round(divideScore * 0.4 + partScore * 0.3 + fullScore * 0.3);
-
-  // 成绩上传到 Supabase
-  if(currentUser) {
-    await supabase.from('user_progress').upsert({
-      user_id: currentUser.id, question_id: q.id, score: finalScore
-    }, { onConflict: 'user_id, question_id' });
-  }
-
-  let tableHtml = `<table class="detail-table"><tr><th>结构成分</th><th>划分</th><th>你的翻译</th><th>参考答案</th><th>评价</th></tr>`;
-  q.tasks.forEach((task,idx)=>{ tableHtml += `<tr><td>${escapeHtml(task.title)}</td><td>${AppState.divideResults[idx] ? '✅' : '❌'}</td><td>${escapeHtml(AppState.partsUserInput[idx])}</td><td>${escapeHtml(task.translation)}</td><td>${AppState.partsDetail[idx] ? '✅' : '❌'}</td></tr>`; });
-  tableHtml += '</table>';
-
-  document.getElementById('fullFeedback').innerHTML = `<div class="result">
-      <div class="score">综合得分：${finalScore} 分</div>
-      <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; border-left: 4px solid #10b981;">
-        <div style="margin-bottom:8px;"><strong style="color:#059669;">✅ 参考：</strong>${escapeHtml(q.fullTranslation)}</div>
-        <div><strong style="color:#2563eb;">✍️ 你的：</strong>${escapeHtml(input)}</div>
+  const html = `
+    <button class="secondary" onclick="renderQuestionList()" style="margin-bottom:15px;">← 返回列表</button>
+    <div class="card">
+      <div class="task-prompt">🎯 请点击选出：<strong>${task.title}</strong></div>
+      <div class="sentence-display">${tokensHtml}</div>
+      <div style="display:flex; gap:10px;">
+        <button onclick="checkAnswer()">提交回答</button>
+        <button class="secondary" onclick="clearSelection()">重选</button>
       </div>
-      ${q.grammar ? `<div style="background: #fffbeb; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #fde68a;"><strong style="color:#92400e; display:block; margin-bottom:8px;">💡 语法解析：</strong><div style="color:#78350f; font-size:15px; white-space:pre-wrap;">${escapeHtml(q.grammar)}</div></div>` : ''}
-      <div style="overflow-x:auto;">${tableHtml}</div>
-      <div class="controls" style="margin-top: 24px;"><button onclick="window.renderQuestionList()">返回题库</button></div>
-    </div>`;
-  document.querySelector('.overlay').remove();
-};
+      <div id="feedback" style="margin-top:15px; font-weight:bold;"></div>
+      
+      <div id="grammarSection" class="grammar-box">
+        <div class="translation"><strong>整句翻译：</strong>${q.fullTranslation}</div>
+        <hr style="margin:10px 0; border:0; border-top:1px solid #bbf7d0;">
+        <strong>💡 语法解析：</strong><br>
+        <div style="white-space:pre-wrap;">${q.grammar || '暂无详细解析'}</div>
+        <button onclick="nextTaskOrFinish()" style="margin-top:15px; width:100%;">下一关</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('mainView').innerHTML = html;
+}
 
-// ==========================================
-// 6. AI Semantic Worker 和通用工具函数
-// ==========================================
-const workerBlobCode = `
-import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
-let embedder = null;
-env.allowLocalModels = false;
-const MIRROR_HOSTS = ['https://hf-mirror.com', 'https://huggingface.co'];
-self.onmessage = async (e) => {
-  const { type, textA, textB } = e.data;
-  if (type === 'init') {
-    let success = false;
-    for (let i = 0; i < MIRROR_HOSTS.length; i++) {
-      try {
-        env.remoteHost = MIRROR_HOSTS[i];
-        embedder = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2', {
-          progress_callback: (p) => {
-            if (p.status === 'progress' && p.progress !== undefined) self.postMessage({ type: 'progress', progress: p.progress });
-            else if (p.status === 'done') self.postMessage({ type: 'done' });
-          }
-        });
-        success = true; break; 
-      } catch (err) {}
-    }
-    if (!success) self.postMessage({ type: 'error' });
-  }
-  if (type === 'compare') {
-    if (!embedder) { self.postMessage({ type: 'res', similarity: 0 }); return; }
-    try {
-      const [embA, embB] = await Promise.all([embedder(textA, { pooling: 'mean', normalize: true }), embedder(textB, { pooling: 'mean', normalize: true })]);
-      let dot = 0; for (let i = 0; i < embA.data.length; i++) dot += embA.data[i] * embB.data[i];
-      self.postMessage({ type: 'res', similarity: dot });
-    } catch (err) { self.postMessage({ type: 'res', similarity: 0 }); }
-  }
-};
-`;
-
-function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-function tokenize(sentence){
-  const regex = /([A-Za-z]+(?:[-'][A-Za-z]+)*|\d+|[.,!?;:()—-])|(\s+)/g;
-  const tokens = []; let match;
+// --- 交互逻辑 ---
+function tokenize(sentence) {
+  const regex = /([A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*|[.,!?;:()—-])|(\s+)/g;
+  const arr = [];
+  let match;
   while((match = regex.exec(sentence)) !== null){
-    if(match[1]) tokens.push({ text:match[1], isWord:true, index:tokens.length });
-    else if(match[2]) tokens.push({ text:match[2], isWord:false, index:tokens.length });
+    if(match[1]) arr.push({ text:match[1], isWord:true, index:arr.length });
+    else if(match[2]) arr.push({ text:match[2], isWord:false, index:arr.length });
   }
-  return tokens;
-}
-function arraysEqual(a,b){ return JSON.stringify(a) === JSON.stringify(b); }
-function levenshteinRatio(a, b) {
-  if (!a || !b) return 0; if (a === b) return 1; if (a.length < b.length) [a, b] = [b, a]; 
-  let prevRow = Array.from({ length: b.length + 1 }, (_, i) => i);
-  let currRow = new Array(b.length + 1).fill(0);
-  for (let i = 1; i <= a.length; i++) {
-    currRow[0] = i;
-    for (let j = 1; j <= b.length; j++) currRow[j] = Math.min(currRow[j - 1] + 1, prevRow[j] + 1, prevRow[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    [prevRow, currRow] = [currRow, prevRow]; 
-  }
-  return 1 - (prevRow[b.length] / Math.max(a.length, b.length)); 
-}
-function basicSimilarity(a, b) { return levenshteinRatio(a.replace(/[，。！？、“”‘’：；\s]/g,''), b.replace(/[，。！？、“”‘’：；\s]/g,'')); }
-
-let currentSimilarity = basicSimilarity;
-async function aiSimilarity(a, b) {
-  const cleanA = a.replace(/[，。！？、“”‘’：；\s]/g,''), cleanB = b.replace(/[，。！？、“”‘’：；\s]/g,'');
-  if (!aiWorker) return basicSimilarity(cleanA, cleanB);
-  const seqSim = levenshteinRatio(cleanA, cleanB), avgLen = (cleanA.length + cleanB.length) / 2;
-  aiWorker.postMessage({ type: 'compare', textA: a, textB: b });
-  return new Promise((resolve) => {
-    workerCallbacks.compare = (semanticSim) => resolve((semanticSim * (avgLen <= 5 ? 0.9 : 0.8)) + (seqSim * (1 - (avgLen <= 5 ? 0.9 : 0.8))));
-  });
+  return arr;
 }
 
-function initWorker() {
-  if (aiWorker) return;
-  const blob = new Blob([workerBlobCode], { type: 'text/javascript' });
-  aiWorker = new Worker(URL.createObjectURL(blob), { type: 'module' });
-  aiWorker.onmessage = (e) => {
-    const label = document.querySelector('label[for="modeToggle"]');
-    if (e.data.type === 'progress') label.textContent = `⏳ 正在下载 AI 模型... ${Math.floor(e.data.progress)}%`;
-    else if (e.data.type === 'done') { label.textContent = '🧠 AI 语义评分 (已启用)'; if (workerCallbacks.init) workerCallbacks.init(true); }
-    else if (e.data.type === 'error') { label.textContent = '❌ 加载失败，已切换为基础评分'; if (workerCallbacks.init) workerCallbacks.init(false); }
-    else if (e.data.type === 'res') { if (workerCallbacks.compare) workerCallbacks.compare(e.data.similarity); }
-  };
-}
-
-document.getElementById('modeToggle').addEventListener('change', async (e) => {
-  if (e.target.checked) {
-    e.target.disabled = true; initWorker();
-    document.querySelector('label[for="modeToggle"]').textContent = '⏳ 正在连接节点 (首次需下载约125MB)...';
-    aiWorker.postMessage({ type: 'init' });
-    const success = await new Promise(res => workerCallbacks.init = res);
-    e.target.disabled = false;
-    if (!success) { e.target.checked = false; currentSimilarity = basicSimilarity; } else currentSimilarity = aiSimilarity;
+function toggleToken(idx, event) {
+  const pos = AppState.selectedIndices.indexOf(idx);
+  if (event.shiftKey && AppState.lastClickedIdx !== -1) {
+    const from = Math.min(AppState.lastClickedIdx, idx);
+    const to = Math.max(AppState.lastClickedIdx, idx);
+    for (let i = from; i <= to; i++) {
+      if (!AppState.selectedIndices.includes(i)) AppState.selectedIndices.push(i);
+    }
   } else {
-    currentSimilarity = basicSimilarity; document.querySelector('label[for="modeToggle"]').textContent = '🧠 AI 语义评分 (需在线下载模型)';
+    if (pos >= 0) AppState.selectedIndices.splice(pos, 1);
+    else AppState.selectedIndices.push(idx);
   }
-});
-window.clearAICache = async function() {
-  try { if ('caches' in window && await caches.delete('transformers-cache')) { alert('🧼 AI 模型缓存清理成功！'); location.reload(); } } catch (err) {}
-};
+  AppState.lastClickedIdx = idx;
+  renderExercise();
+}
 
-// 页面加载入口点
-window.onload = checkUser;
+function clearSelection() {
+  AppState.selectedIndices = [];
+  renderExercise();
+}
+
+// --- 核心判断逻辑 ---
+async function checkAnswer() {
+  const q = AppState.questions[AppState.currentQIndex];
+  const task = q.tasks[AppState.currentTaskIndex];
+  const feedback = document.getElementById('feedback');
+  
+  // 排序并转为字符串比对
+  const userAns = [...AppState.selectedIndices].sort((a,b)=>a-b).join(',');
+  const correctAns = [...task.indices].sort((a,b)=>a-b).join(',');
+
+  if (userAns === correctAns) {
+    feedback.innerHTML = `<span style="color:var(--success)">✅ 正确！</span>`;
+    AppState.score += 10;
+    document.getElementById('grammarSection').style.display = 'block';
+  } else {
+    feedback.innerHTML = `<span style="color:#dc2626">❌ 选错啦，请再试一次。</span>`;
+  }
+}
+
+async function nextTaskOrFinish() {
+  const q = AppState.questions[AppState.currentQIndex];
+  if (AppState.currentTaskIndex < q.tasks.length - 1) {
+    AppState.currentTaskIndex++;
+    AppState.selectedIndices = [];
+    renderExercise();
+  } else {
+    // 完成题目，尝试保存成绩
+    await saveScore();
+    alert(`恭喜！你已完成本题挑战。得分：${AppState.score}`);
+    renderQuestionList();
+  }
+}
+
+async function saveScore() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return; // 没登录就不存
+
+  try {
+    await supabaseClient.from('user_progress').upsert({
+      user_id: user.id,
+      question_id: AppState.questions[AppState.currentQIndex].id,
+      score: AppState.score
+    });
+  } catch (err) { console.error("成绩保存失败", err); }
+}
+
+// --- 基础认证函数 (示例) ---
+async function login() {
+  const email = prompt("请输入邮箱:");
+  const password = prompt("请输入密码:");
+  if(!email || !password) return;
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) alert(error.message);
+  else location.reload();
+}
+async function logout() {
+  await supabaseClient.auth.signOut();
+  location.reload();
+}
 </script>
 </body>
 </html>
