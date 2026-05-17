@@ -480,6 +480,15 @@ window.submitFull = async function(){
         <div style="margin-bottom:8px;"><strong style="color:#059669;">参考译文：</strong>${escapeHtml(q.fullTranslation)}</div>
         <div><strong style="color:#2563eb;">你的译文：</strong>${escapeHtml(input)}</div>
       </div>
+
+
+      ${q.grammar ? `
+    <div style="background: #fffbeb; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #fde68a;">
+        <strong style="color:#92400e; display:block; margin-bottom:8px;">💡 语法知识点解析：</strong>
+        <div style="color:#78350f; font-size:15px; line-height:1.6; white-space:pre-wrap;">${escapeHtml(q.grammar)}</div>
+    </div>
+    ` : ''}
+
       <div style="overflow-x:auto;">${tableHtml}</div>
       <div class="controls" style="margin-top: 24px;">
         <button onclick="window.renderQuestionList()">返回题库列表</button>
