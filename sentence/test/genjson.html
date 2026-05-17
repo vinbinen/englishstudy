@@ -222,7 +222,8 @@ window.saveToQuestionBank = function() {
     id: questionBank.length + 1,
     sentence,
     tasks: parts.map(p => ({ title: p.title, indices: p.indices, translation: p.translation })),
-    fullTranslation
+    fullTranslation,
+   grammar: grammar // 将语法点保存进 JSON 对象
   };
 
   questionBank.push(newQuestion);
