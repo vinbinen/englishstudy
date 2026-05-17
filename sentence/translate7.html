@@ -3,144 +3,146 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>英语长难句结构分析专家 - 增强版</title>
+<title>英语长难句结构专家 - 最终全量版</title>
 <style>
-:root {
-  --primary: #16345f;
-  --accent: #2563eb;
-  --bg: #f3f6fb;
-  --card-bg: #ffffff;
-  --success: #10b981;
-  --fail: #ef4444;
-  --warning: #f59e0b;
-}
-
+/* 继承 translate6.html 的所有 UI 样式 */
 *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 body{
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: var(--bg); padding: 20px; display: flex; justify-content: center;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:#f3f6fb; padding:20px; display:flex; justify-content:center;
 }
+.app{
+  width:100%; max-width:850px; background:#fff; border-radius:24px;
+  padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+h1{ font-size:28px; margin-bottom:16px; color:#16345f; text-align:center;}
+.card{ background:#f8fbff; border-radius:20px; padding:24px; margin-bottom:20px; position: relative;}
 
-.app { width: 100%; max-width: 850px; background: #fff; border-radius: 24px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,.08); }
-
-h1 { font-size: 28px; margin-bottom: 16px; color: var(--primary); display: flex; align-items: center; gap: 10px; }
-
-/* AI 状态栏 */
+/* AI 状态栏样式 */
 .ai-status-bar {
-  background: #f8fbff; border: 1px solid #d9e3f2; border-radius: 16px;
-  padding: 12px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; font-size: 14px;
+  background: #f1f5f9; border-radius: 16px; padding: 12px 18px;
+  margin-bottom: 20px; display: flex; align-items: center; gap: 12px;
 }
 .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #ccc; }
-.status-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
+.status-dot.active { background: #10b981; box-shadow: 0 0 8px #10b981; }
 
-/* 通用卡片 */
-.card { background: #f8fbff; border-radius: 20px; padding: 24px; margin-bottom: 20px; position: relative; animation: fadeIn 0.3s ease; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-/* 列表项 */
-.list-item {
-  background: white; border: 1px solid #d9e3f2; border-radius: 16px;
-  padding: 18px; margin-bottom: 14px; cursor: pointer; transition: .2s;
+.list-item{
+  background:white; border:1px solid #d9e3f2; border-radius:16px;
+  padding:18px; margin-bottom:14px; cursor:pointer; transition:.2s;
   display: flex; justify-content: space-between; align-items: center;
 }
-.list-item:hover { border-color: var(--accent); transform: translateY(-2px); }
-
-/* 句子交互区 */
-.sentence-container {
-  background: #fff; border: 1px solid #d9e3f2; border-radius: 16px;
-  padding: 20px; line-height: 2.2; font-size: 20px; margin: 15px 0;
-  user-select: none; touch-action: manipulation;
+.list-item:hover{ border-color:#2563eb; background:#f8fbff; }
+.sentence-box{
+  background:white; border-left:5px solid #2563eb; border-radius:14px;
+  padding:18px; line-height:2.4; font-size:20px; color:#0f2744; margin:16px 0;
+  touch-action: pan-y pinch-zoom; 
 }
-.word { display: inline-block; padding: 0 5px; cursor: pointer; border-radius: 6px; margin: 2px 1px; transition: .1s; }
-.word.selected { background: var(--warning); color: #fff; }
-.word.correct-hint { background: var(--success); color: #fff; }
-
-/* 按钮 */
-button {
-  padding: 12px 24px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
-  cursor: pointer; transition: .2s; display: inline-flex; align-items: center; gap: 6px;
+.word { 
+  display:inline-block; cursor:pointer; transition:.15s; 
+  padding:4px 8px; border-radius:6px; margin: 2px 1px;
 }
-.btn-primary { background: var(--accent); color: #fff; }
-.btn-primary:hover { opacity: 0.9; }
-.btn-outline { background: #fff; border: 1px solid #d9e3f2; color: var(--primary); }
-
-/* 结果表格 */
-.detail-table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; border-radius: 12px; overflow: hidden; }
-.detail-table th, .detail-table td { padding: 12px; border: 1px solid #eee; text-align: left; font-size: 14px; }
-.detail-table th { background: #f1f5f9; }
-.pass { color: var(--success); font-weight: bold; }
-.fail { color: var(--fail); font-weight: bold; }
+.selected{ background:#ffd966; border-bottom:3px solid #d97706; }
+.correct-highlight{ background:#bbf7d0; border-bottom:3px solid #059669; }
 
 /* 语法解析框 */
 .insight-box {
-  background: #fffbeb; border-left: 4px solid var(--warning); padding: 15px;
-  border-radius: 8px; margin-top: 15px; display: none; font-size: 14px;
+  background: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px;
+  border-radius: 8px; margin: 15px 0; display: none; font-size: 14px;
 }
 
-textarea {
-  width: 100%; min-height: 100px; border: 1px solid #d9e3f2; border-radius: 12px;
-  padding: 15px; font-size: 16px; margin-top: 10px; resize: vertical;
+button{
+  border:none; border-radius:999px; padding:12px 24px;
+  background:#1f3f72; color:white; font-weight:700; cursor:pointer;
+  transition:.2s; font-size:15px;
 }
+button:disabled { background:#94a3b8; }
+button.secondary{ background:white; color:#1f3f72; border:2px solid #1f3f72; }
 
-.speaker-btn { cursor: pointer; color: var(--accent); padding: 4px; }
+textarea{
+  width:100%; min-height:100px; border:1px solid #cfd9ea;
+  border-radius:14px; padding:14px; font-size:16px; margin-top:8px;
+}
+.detail-table{ width:100%; border-collapse:collapse; margin-top:16px; font-size:14px; }
+.detail-table th,.detail-table td{ border:1px solid #d1d5db; padding:10px; text-align:left; }
+.pass{ color:#10b981; font-weight:bold; }
+.fail{ color:#ef4444; font-weight:bold; }
+
+@media(max-width:640px){
+  body{ padding:10px; }
+  .sentence-box{ font-size:19px; line-height: 2.8; }
+  .word { padding: 6px 4px; }
+}
 </style>
 </head>
 <body>
 
 <div class="app">
-  <h1>📘 高考英语长难句专家</h1>
-
+  <h1>📘 高考英语结构专家</h1>
+  
   <div class="ai-status-bar">
     <div id="aiDot" class="status-dot"></div>
-    <span id="aiLabel" style="flex:1">基础匹配模式 (AI 离线)</span>
-    <input type="checkbox" id="aiToggle" style="width:18px; height:18px;">
-    <label for="aiToggle">开启 AI 语义评分</label>
+    <label style="flex:1; font-weight:700;">AI 语义分析模式</label>
+    <input type="checkbox" id="modeToggle" style="width:20px; height:20px;">
   </div>
 
-  <div id="contentView"></div>
+  <div id="mainView">
+    <div style="text-align:center; padding:40px;">正在载入题库...</div>
+  </div>
 </div>
 
 <script type="module">
-// --- 配置与 Worker 代码 ---
-const workerCode = `
+// --- 1. 完全保留 translate6.html 的 Web Worker 代码（含镜像切换） ---
+const workerBlobCode = `
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+let embedder = null;
 env.allowLocalModels = false;
-env.remoteHost = 'https://hf-mirror.com';
-let model;
+const MIRROR_HOSTS = ['https://hf-mirror.com', 'https://huggingface.co'];
+
 self.onmessage = async (e) => {
-  if (e.data.type === 'init') {
-    model = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2');
-    self.postMessage({type: 'ready'});
-  } else if (e.data.type === 'compare') {
-    const [out1, out2] = await Promise.all([
-      model(e.data.t1, { pooling: 'mean', normalize: true }),
-      model(e.data.t2, { pooling: 'mean', normalize: true })
+  const { type, textA, textB } = e.data;
+  if (type === 'init') {
+    for (const host of MIRROR_HOSTS) {
+      try {
+        env.remoteHost = host;
+        embedder = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2', {
+          progress_callback: (p) => { if(p.status === 'progress') self.postMessage({ type: 'progress', progress: p.progress }); }
+        });
+        self.postMessage({ type: 'done' }); return;
+      } catch (err) {}
+    }
+    self.postMessage({ type: 'error' });
+  }
+  if (type === 'compare') {
+    const [embA, embB] = await Promise.all([
+      embedder(textA, { pooling: 'mean', normalize: true }),
+      embedder(textB, { pooling: 'mean', normalize: true }),
     ]);
-    let sim = 0;
-    for (let i = 0; i < out1.data.length; i++) sim += out1.data[i] * out2.data[i];
-    self.postMessage({type: 'res', score: sim, id: e.data.id});
+    let dot = 0;
+    for (let i = 0; i < embA.data.length; i++) dot += embA.data[i] * embB.data[i];
+    self.postMessage({ type: 'res', similarity: dot });
   }
 };`;
 
-// --- 全局状态 ---
+// --- 2. 状态管理 (加入历史进度) ---
 const AppState = {
   questions: [],
-  currentIndex: 0,
+  currentIndex: -1,
   currentTaskIndex: 0,
-  selectedIndices: [],
-  divideResults: [],    // 记录每步划分是否正确
-  partsUserInput: [],   // 记录每步用户的翻译
-  partsDetail: [],      // 记录每步翻译是否匹配
-  wrongAttempts: 0,
-  history: JSON.parse(localStorage.getItem('edu_history') || '{}'),
-  worker: null,
-  isAIReady: false
+  selectedTokens: [],
+  divideResults: [],
+  divideWrongCounts: [],
+  partsUserInput: [],
+  partsDetail: [],
+  fullUserInput: '',
+  currentTokens: [],
+  history: JSON.parse(localStorage.getItem('eng_expert_progress') || '{}'),
+  aiWorker: null,
+  isAIReady: false,
+  aiCallback: null
 };
 
-const view = document.getElementById('contentView');
-
-// --- 工具函数 ---
-function escapeHtml(str) {
+// --- 3. 核心工具 (包含你原本的 Levenshtein 性能优化版) ---
+function escapeHtml(str){
   return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
@@ -149,317 +151,290 @@ function speak(text) {
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'en-US';
-  u.rate = 0.8;
+  u.rate = 0.85;
   window.speechSynthesis.speak(u);
 }
 
-// 单词切分（保留空格和标点）
-function getTokens(text) {
+function tokenize(sentence){
   const regex = /([A-Za-z]+(?:[-'][A-Za-z]+)*|\d+|[.,!?;:()—-])|(\s+)/g;
-  let tokens = [], m;
-  while ((m = regex.exec(text)) !== null) {
-    tokens.push({ text: m[1] || m[2], isWord: !!m[1], id: tokens.length });
+  const tokens = [];
+  let match;
+  while((match = regex.exec(sentence)) !== null){
+    tokens.push({ text: match[1] || match[2], isWord: !!match[1], index: tokens.length });
   }
   return tokens;
 }
 
-// --- AI 逻辑 ---
-function initAI() {
-  if (AppState.worker) return;
-  const blob = new Blob([workerCode], {type: 'text/javascript'});
-  AppState.worker = new Worker(URL.createObjectURL(blob), {type: 'module'});
-  document.getElementById('aiLabel').textContent = 'AI 模型加载中...';
-  AppState.worker.postMessage({type: 'init'});
-  AppState.worker.onmessage = (e) => {
-    if (e.data.type === 'ready') {
-      AppState.isAIReady = true;
-      document.getElementById('aiDot').classList.add('active');
-      document.getElementById('aiLabel').textContent = 'AI 语义模式已就绪';
-    } else if (e.data.type === 'res' && AppState.aiCallback) {
-      AppState.aiCallback(e.data.score);
+// 保留你原本的高性能 Levenshtein
+function levenshteinRatio(a, b) {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  if (a.length < b.length) [a, b] = [b, a];
+  let prevRow = Array.from({ length: b.length + 1 }, (_, i) => i);
+  let currRow = new Array(b.length + 1).fill(0);
+  for (let i = 1; i <= a.length; i++) {
+    currRow[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      currRow[j] = Math.min(currRow[j - 1] + 1, prevRow[j] + 1, prevRow[j - 1] + cost);
     }
-  };
+    [prevRow, currRow] = [currRow, prevRow];
+  }
+  return 1 - (prevRow[b.length] / Math.max(a.length, b.length));
 }
 
-async function checkSimilarity(s1, s2) {
-  if (!AppState.isAIReady || !document.getElementById('aiToggle').checked) {
-    const clean = s => s.replace(/[^\u4e00-\u9fa5]/g, '');
-    const c1 = clean(s1), c2 = clean(s2);
-    if (!c1 || !c2) return 0;
-    let match = 0;
-    for (let char of c1) if (c2.includes(char)) match++;
-    return match / Math.max(c1.length, c2.length);
+// --- 4. AI 逻辑 ---
+function initAI() {
+  if (AppState.aiWorker) return;
+  const blob = new Blob([workerBlobCode], { type: 'text/javascript' });
+  AppState.aiWorker = new Worker(URL.createObjectURL(blob), { type: 'module' });
+  AppState.aiWorker.onmessage = (e) => {
+    const dot = document.getElementById('aiDot');
+    if (e.data.type === 'done') {
+      AppState.isAIReady = true;
+      dot.classList.add('active');
+    } else if (e.data.type === 'res' && AppState.aiCallback) {
+      AppState.aiCallback(e.data.similarity);
+    }
+  };
+  AppState.aiWorker.postMessage({ type: 'init' });
+}
+
+async function getSimilarity(a, b) {
+  const s1 = a.replace(/[^\u4e00-\u9fa5]/g,''), s2 = b.replace(/[^\u4e00-\u9fa5]/g,'');
+  if (!document.getElementById('modeToggle').checked || !AppState.isAIReady) {
+    return levenshteinRatio(s1, s2);
   }
-  AppState.worker.postMessage({type: 'compare', t1: s1, t2: s2});
+  AppState.aiWorker.postMessage({ type: 'compare', textA: a, textB: b });
   return new Promise(res => AppState.aiCallback = res);
 }
 
-// --- 视图渲染 ---
+// --- 5. 完全保留 translate6.html 的滑动选择吸附逻辑 ---
+let touchActive = false, touchLastIdx = -1;
 
-// 1. 列表页
-window.renderQuestionList = () => {
-  let html = `<div class="card"><h2>选择练习句子</h2><div style="margin-top:15px;">`;
-  AppState.questions.forEach((q, i) => {
-    const record = AppState.history[q.id || i];
-    html += `
-      <div class="list-item" onclick="startQuestion(${i})">
-        <div>
-          <div style="font-weight:600; color:var(--primary);">${escapeHtml(q.sentence)}</div>
-          <div style="font-size:12px; color:#999; margin-top:4px;">结构点：${q.tasks.length}个</div>
-        </div>
-        ${record ? `<div style="font-weight:800; color:var(--accent);">${record.score}%</div>` : '<div style="color:#ccc;">未完成</div>'}
-      </div>`;
+function getWordIndexAtPoint(x, y) {
+  const el = document.elementFromPoint(x, y);
+  if (el && el.closest('.word')) return parseInt(el.closest('.word').dataset.index);
+  
+  // 吸附逻辑
+  let closestIdx = -1, minDist = Infinity;
+  document.querySelectorAll('.word').forEach(wordEl => {
+    const rect = wordEl.getBoundingClientRect();
+    const dist = Math.hypot(x - (rect.left + rect.width/2), y - (rect.top + rect.height/2));
+    if (dist < 40 && dist < minDist) { minDist = dist; closestIdx = parseInt(wordEl.dataset.index); }
   });
-  html += `</div></div>`;
-  view.innerHTML = html;
-};
-
-// 2. 划分练习页
-window.startQuestion = (idx) => {
-  AppState.currentIndex = idx;
-  AppState.currentTaskIndex = 0;
-  AppState.selectedIndices = [];
-  AppState.divideResults = [];
-  AppState.partsUserInput = [];
-  AppState.partsDetail = [];
-  AppState.wrongAttempts = 0;
-  renderDivideStep();
-};
-
-function renderDivideStep() {
-  const q = AppState.questions[AppState.currentIndex];
-  const task = q.tasks[AppState.currentTaskIndex];
-  const tokens = getTokens(q.sentence);
-
-  let html = `
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="font-size:14px; color:#666;">句子结构划分 (${AppState.currentTaskIndex + 1}/${q.tasks.length})</span>
-        <span style="font-size:14px; color:var(--fail);">错误机会: ${3 - AppState.wrongAttempts}</span>
-      </div>
-      <h3 style="margin:15px 0; color:var(--accent);">请点击选出：${escapeHtml(task.title)}</h3>
-      <div class="sentence-container">`;
-
-  tokens.forEach(t => {
-    if (t.isWord) {
-      const isSel = AppState.selectedIndices.includes(t.id);
-      const isHint = (AppState.wrongAttempts >= 3 && task.indices.includes(t.id));
-      html += `<span class="word ${isSel?'selected':''} ${isHint?'correct-hint':''}" onclick="toggleWord(${t.id})">${escapeHtml(t.text)}</span>`;
-    } else {
-      html += escapeHtml(t.text);
-    }
-  });
-
-  html += `</div>
-      <div id="insight" class="insight-box"><strong>解析：</strong>${escapeHtml(task.explanation || '该部分在句中承担核心语义或修饰功能。')}</div>
-      <div style="margin-top:20px; display:flex; gap:10px;">
-        <button class="btn-primary" id="subBtn" onclick="submitDivide()">确认划分</button>
-        <button class="btn-outline" onclick="AppState.selectedIndices=[];renderDivideStep()">重置</button>
-      </div>
-    </div>`;
-  view.innerHTML = html;
+  return closestIdx;
 }
 
-window.toggleWord = (id) => {
-  const i = AppState.selectedIndices.indexOf(id);
-  if (i > -1) AppState.selectedIndices.splice(i, 1);
-  else AppState.selectedIndices.push(id);
-  renderDivideStep();
+window.handleTouchStart = (e) => {
+  const idx = getWordIndexAtPoint(e.touches[0].clientX, e.touches[0].clientY);
+  if (idx !== -1) { touchActive = true; touchLastIdx = idx; }
 };
 
-window.submitDivide = async () => {
-  const q = AppState.questions[AppState.currentIndex];
-  const task = q.tasks[AppState.currentTaskIndex];
-  const user = [...AppState.selectedIndices].sort((a,b)=>a-b);
-  const target = [...task.indices].sort((a,b)=>a-b);
-  const isCorrect = JSON.stringify(user) === JSON.stringify(target);
-
-  if (isCorrect || AppState.wrongAttempts >= 2) {
-    AppState.divideResults.push(isCorrect);
-    document.getElementById('subBtn').disabled = true;
-    document.getElementById('insight').style.display = 'block';
-    
-    // 正确时自动朗读选中的块
-    const tokens = getTokens(q.sentence);
-    const chunkText = target.map(i => tokens[i].text).join(' ');
-    speak(chunkText);
-
-    setTimeout(() => {
-      AppState.currentTaskIndex++;
-      AppState.selectedIndices = [];
-      AppState.wrongAttempts = 0;
-      if (AppState.currentTaskIndex < q.tasks.length) renderDivideStep();
-      else renderPartsTranslate();
-    }, 2500);
-  } else {
-    AppState.wrongAttempts++;
-    alert("划分不完全正确，请再试一次");
-    renderDivideStep();
+window.handleTouchMove = (e) => {
+  if (!touchActive) return;
+  if (e.cancelable) e.preventDefault(); 
+  const idx = getWordIndexAtPoint(e.touches[0].clientX, e.touches[0].clientY);
+  if (idx !== -1 && idx !== touchLastIdx) {
+    const from = Math.min(touchLastIdx, idx), to = Math.max(touchLastIdx, idx);
+    for (let i = from; i <= to; i++) {
+      if (AppState.currentTokens[i].isWord && !AppState.selectedTokens.includes(i)) AppState.selectedTokens.push(i);
+    }
+    touchLastIdx = idx;
+    updateSelectionUI();
   }
 };
 
-// 3. 成分翻译页
-function renderPartsTranslate() {
-  const q = AppState.questions[AppState.currentIndex];
-  const tokens = getTokens(q.sentence);
+function updateSelectionUI() {
+  document.querySelectorAll('.word').forEach(el => {
+    el.classList.toggle('selected', AppState.selectedTokens.includes(parseInt(el.dataset.index)));
+  });
+}
 
-  let html = `<div class="card"><h2>分步翻译</h2><p style="color:#666; font-size:14px; margin-bottom:15px;">根据刚才的结构划分，请翻译各部分意思：</p>`;
-  
-  q.tasks.forEach((t, i) => {
-    const eng = t.indices.map(idx => tokens[idx].text).join(' ');
+// --- 6. 视图渲染 (包含分项评分表格) ---
+
+window.renderQuestionList = () => {
+  let html = `<div class="card"><h2>题库列表</h2>`;
+  AppState.questions.forEach((q, i) => {
+    const score = AppState.history[q.id || i]?.score;
     html += `
-      <div style="margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:15px;">
-        <div style="font-weight:bold; display:flex; align-items:center; gap:8px;">
-          ${escapeHtml(t.title)} <span class="speaker-btn" onclick="speak('${escapeHtml(eng)}')">🔊</span>
-        </div>
-        <div style="color:var(--accent); font-family:serif; margin:8px 0; font-size:18px;">${escapeHtml(eng)}</div>
-        <textarea id="part-${i}" placeholder="输入中文翻译..."></textarea>
+      <div class="list-item" onclick="startQuestion(${i})">
+        <div><strong>${escapeHtml(q.sentence)}</strong></div>
+        <div style="font-weight:bold; color:#2563eb;">${score ? score+'%' : '未练习'}</div>
       </div>`;
   });
+  html += `</div>`;
+  document.getElementById('mainView').innerHTML = html;
+};
 
-  html += `<button class="btn-primary" onclick="submitParts()">下一步：整句润色</button></div>`;
-  view.innerHTML = html;
+window.startQuestion = (idx) => {
+  AppState.currentIndex = idx;
+  AppState.currentTaskIndex = 0;
+  AppState.selectedTokens = [];
+  AppState.divideResults = [];
+  AppState.divideWrongCounts = new Array(AppState.questions[idx].tasks.length).fill(0);
+  AppState.partsUserInput = [];
+  AppState.currentTokens = tokenize(AppState.questions[idx].sentence);
+  renderDivide();
+};
+
+function renderDivide() {
+  const q = AppState.questions[AppState.currentIndex];
+  const task = q.tasks[AppState.currentTaskIndex];
+  const wrong = AppState.divideWrongCounts[AppState.currentTaskIndex];
+  const isDead = wrong >= 3;
+
+  let html = `
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; color:#666; font-size:13px;">
+        <span>任务 ${AppState.currentTaskIndex+1}/${q.tasks.length}</span>
+        <span>机会: ${3-wrong}/3</span>
+      </div>
+      <h3 style="margin:15px 0;">请选出：<span style="color:#2563eb;">${escapeHtml(task.title)}</span></h3>
+      <div class="sentence-box" id="sBox">`;
+
+  AppState.currentTokens.forEach((t, i) => {
+    if(t.isWord) {
+      let cls = 'word';
+      if(AppState.selectedTokens.includes(i)) cls += ' selected';
+      if(isDead && task.indices.includes(i)) cls += ' correct-highlight';
+      html += `<span class="${cls}" data-index="${i}" onclick="toggleWord(${i})">${escapeHtml(t.text)}</span>`;
+    } else html += escapeHtml(t.text);
+  });
+
+  html += `</div>
+      <div id="insight" class="insight-box"><strong>解析：</strong>${escapeHtml(task.explanation || '请注意该成分在句中的功能。')}</div>
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button id="btnSub" onclick="submitDivide()">提交划分</button>
+        <button class="secondary" onclick="AppState.selectedTokens=[];updateSelectionUI();">清空</button>
+        <button class="secondary" onclick="renderQuestionList()">退出</button>
+      </div>
+    </div>`;
+
+  document.getElementById('mainView').innerHTML = html;
+  
+  // 绑定拦截事件
+  const box = document.getElementById('sBox');
+  box.addEventListener('touchstart', window.handleTouchStart, {passive:false});
+  box.addEventListener('touchmove', window.handleTouchMove, {passive:false});
+  box.addEventListener('touchend', () => touchActive = false);
+}
+
+window.toggleWord = (idx) => {
+  const p = AppState.selectedTokens.indexOf(idx);
+  if(p > -1) AppState.selectedTokens.splice(p, 1);
+  else AppState.selectedTokens.push(idx);
+  updateSelectionUI();
+};
+
+window.submitDivide = () => {
+  const q = AppState.questions[AppState.currentIndex];
+  const task = q.tasks[AppState.currentTaskIndex];
+  const isOk = JSON.stringify([...AppState.selectedTokens].sort((a,b)=>a-b)) === JSON.stringify([...task.indices].sort((a,b)=>a-b));
+
+  if (isOk || AppState.divideWrongCounts[AppState.currentTaskIndex] >= 2) {
+    AppState.divideResults.push(isOk);
+    document.getElementById('btnSub').disabled = true;
+    document.getElementById('insight').style.display = 'block';
+    speak(task.indices.map(i=>AppState.currentTokens[i].text).join(' ')); // 正确时朗读
+    
+    setTimeout(() => {
+      AppState.currentTaskIndex++;
+      AppState.selectedTokens = [];
+      if(AppState.currentTaskIndex < q.tasks.length) renderDivide();
+      else renderParts();
+    }, 1500);
+  } else {
+    AppState.divideWrongCounts[AppState.currentTaskIndex]++;
+    alert('划分不完全正确，再试一次！');
+    AppState.selectedTokens = []; updateSelectionUI();
+  }
+};
+
+function renderParts() {
+  const q = AppState.questions[AppState.currentIndex];
+  let html = `<div class="card"><h2>成分翻译</h2>`;
+  q.tasks.forEach((t, i) => {
+    const eng = t.indices.map(idx => AppState.currentTokens[idx].text).join(' ');
+    html += `
+      <div style="margin-bottom:20px;">
+        <div style="font-weight:bold;">${escapeHtml(t.title)} <span style="cursor:pointer" onclick="speak('${escapeHtml(eng)}')">🔊</span></div>
+        <div style="color:#2563eb; margin:5px 0;">${escapeHtml(eng)}</div>
+        <textarea id="part-${i}" placeholder="输入翻译..."></textarea>
+      </div>`;
+  });
+  html += `<button onclick="submitParts()">提交并进入整句翻译</button></div>`;
+  document.getElementById('mainView').innerHTML = html;
 }
 
 window.submitParts = () => {
   const q = AppState.questions[AppState.currentIndex];
-  for (let i = 0; i < q.tasks.length; i++) {
-    AppState.partsUserInput.push(document.getElementById(`part-${i}`).value);
-  }
-  renderFullTranslate();
+  for(let i=0; i<q.tasks.length; i++) AppState.partsUserInput.push(document.getElementById(`part-${i}`).value);
+  renderFull();
 };
 
-// 4. 整句翻译页
-function renderFullTranslate() {
+function renderFull() {
   const q = AppState.questions[AppState.currentIndex];
-  let html = `
+  document.getElementById('mainView').innerHTML = `
     <div class="card">
-      <h2>整句润色翻译</h2>
-      <div class="sentence-container" style="font-size:18px;">
-        ${escapeHtml(q.sentence)} <span class="speaker-btn" onclick="speak('${escapeHtml(q.sentence)}')">🔊</span>
-      </div>
-      <div style="margin:10px 0; font-size:14px; font-weight:bold;">参考词块：</div>
-      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px;">
-        ${AppState.partsUserInput.map(p => `<span style="background:#eef2ff; padding:4px 10px; border-radius:15px; font-size:13px; color:var(--accent); border:1px solid #d9e3f2;">${escapeHtml(p)}</span>`).join('')}
-      </div>
-      <textarea id="fullInput" placeholder="结合以上成分，写出流畅的整句中文翻译..."></textarea>
-      <div style="margin-top:20px;">
-        <button class="btn-primary" id="finalBtn" onclick="calculateFinal()">提交并生成评估报告</button>
-      </div>
+      <h2>整句翻译</h2>
+      <div class="sentence-box">${escapeHtml(q.sentence)} <span style="cursor:pointer" onclick="speak('${escapeHtml(q.sentence)}')">🔊</span></div>
+      <div style="margin-bottom:10px; font-size:13px; color:#666;">参考词块：${AppState.partsUserInput.join(' / ')}</div>
+      <textarea id="fullInput" placeholder="写出连贯的整句翻译..."></textarea>
+      <button id="btnFinal" style="margin-top:20px;" onclick="calculateFinal()">查看报告</button>
     </div>`;
-  view.innerHTML = html;
 }
 
-// 5. 结果结算与旧版详细表格功能
 window.calculateFinal = async () => {
-  const btn = document.getElementById('finalBtn');
-  btn.disabled = true;
-  btn.textContent = "AI 分析评分中...";
-
+  document.getElementById('btnFinal').disabled = true;
   const q = AppState.questions[AppState.currentIndex];
-  const fullInput = document.getElementById('fullInput').value;
-
-  // 计算结构得分
-  const divideScore = Math.round((AppState.divideResults.filter(r => r).length / q.tasks.length) * 100);
-
-  // 计算成分得分
-  let partMatchCount = 0;
-  for (let i = 0; i < q.tasks.length; i++) {
-    const sim = await checkSimilarity(AppState.partsUserInput[i], q.tasks[i].translation);
-    const isOk = sim > 0.6;
-    AppState.partsDetail[i] = isOk;
-    if (isOk) partMatchCount++;
-  }
-  const partScore = Math.round((partMatchCount / q.tasks.length) * 100);
-
-  // 计算整句得分
-  const fullSim = await checkSimilarity(fullInput, q.fullTranslation);
-  const fullScore = Math.round(fullSim * 100);
-
-  // 综合得分
-  const finalScore = Math.round(divideScore * 0.3 + partScore * 0.3 + fullScore * 0.4);
+  const fullUser = document.getElementById('fullInput').value;
   
-  let level = "需加油", levelColor = varColor('--fail');
-  if (finalScore >= 90) { level = "优秀"; levelColor = varColor('--success'); }
-  else if (finalScore >= 75) { level = "良好"; levelColor = varColor('--accent'); }
-  else if (finalScore >= 60) { level = "及格"; levelColor = varColor('--warning'); }
+  // 评分逻辑
+  let partPoints = 0;
+  AppState.partsDetail = [];
+  for(let i=0; i<q.tasks.length; i++) {
+    const sim = await getSimilarity(AppState.partsUserInput[i], q.tasks[i].translation);
+    const ok = sim > 0.65;
+    if(ok) partPoints++;
+    AppState.partsDetail.push(ok);
+  }
+  
+  const fullSim = await getSimilarity(fullUser, q.fullTranslation);
+  const divideScore = Math.round((AppState.divideResults.filter(r=>r).length/q.tasks.length)*100);
+  const partScore = Math.round((partPoints/q.tasks.length)*100);
+  const finalScore = Math.round(divideScore*0.3 + partScore*0.3 + fullSim*40);
 
-  function varColor(v) { return getComputedStyle(document.documentElement).getPropertyValue(v); }
+  // 记录进度
+  AppState.history[q.id || AppState.currentIndex] = { score: finalScore };
+  localStorage.setItem('eng_expert_progress', JSON.stringify(AppState.history));
 
-  // 保存记录
-  AppState.history[q.id || AppState.currentIndex] = { score: finalScore, date: new Date() };
-  localStorage.setItem('edu_history', JSON.stringify(AppState.history));
-
-  // 构建详细对比表（旧版功能）
-  let tableHtml = `
-    <table class="detail-table">
-      <thead>
-        <tr><th>结构成分</th><th>划分</th><th>你的翻译</th><th>参考</th><th>匹配</th></tr>
-      </thead>
-      <tbody>`;
-  q.tasks.forEach((task, idx) => {
-    tableHtml += `
-      <tr>
-        <td>${escapeHtml(task.title)}</td>
-        <td class="${AppState.divideResults[idx]?'pass':'fail'}">${AppState.divideResults[idx]?'✅':'❌'}</td>
-        <td>${escapeHtml(AppState.partsUserInput[idx])}</td>
-        <td>${escapeHtml(task.translation)}</td>
-        <td class="${AppState.partsDetail[idx]?'pass':'fail'}">${AppState.partsDetail[idx]?'✅':'❌'}</td>
-      </tr>`;
+  // 渲染结果表
+  let tableHtml = `<table class="detail-table"><tr><th>成分</th><th>划分</th><th>翻译</th><th>参考</th></tr>`;
+  q.tasks.forEach((t, i) => {
+    tableHtml += `<tr><td>${t.title}</td><td class="${AppState.divideResults[i]?'pass':'fail'}">${AppState.divideResults[i]?'✅':'❌'}</td><td>${AppState.partsUserInput[i]}</td><td>${t.translation}</td></tr>`;
   });
-  tableHtml += `</tbody></table>`;
+  tableHtml += `</table>`;
 
-  view.innerHTML = `
+  document.getElementById('mainView').innerHTML = `
     <div class="card">
       <div style="text-align:center; margin-bottom:20px;">
-        <div style="font-size:48px; font-weight:900; color:${levelColor}">${finalScore}</div>
-        <div style="font-weight:bold; color:${levelColor}">评价：${level}</div>
+        <div style="font-size:48px; font-weight:bold; color:#2563eb;">${finalScore}%</div>
       </div>
-      
-      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:20px; text-align:center;">
-        <div style="background:#fff; padding:10px; border-radius:10px; border:1px solid #eee;">
-          <div style="font-size:12px; color:#666;">结构划分</div>
-          <div style="font-weight:bold;">${divideScore}%</div>
-        </div>
-        <div style="background:#fff; padding:10px; border-radius:10px; border:1px solid #eee;">
-          <div style="font-size:12px; color:#666;">成分翻译</div>
-          <div style="font-weight:bold;">${partScore}%</div>
-        </div>
-        <div style="background:#fff; padding:10px; border-radius:10px; border:1px solid #eee;">
-          <div style="font-size:12px; color:#666;">整句翻译</div>
-          <div style="font-weight:bold;">${fullScore}%</div>
-        </div>
+      <div style="background:#f1f5f9; padding:15px; border-radius:10px; margin-bottom:15px;">
+        <strong>标准答案：</strong><br>${q.fullTranslation}
       </div>
-
-      <div style="margin-bottom:15px; font-size:14px;">
-        <strong>标准译文：</strong><br><p style="color:#444; margin-top:5px;">${escapeHtml(q.fullTranslation)}</p>
-      </div>
-
-      <div style="overflow-x:auto;">${tableHtml}</div>
-
-      <div style="margin-top:25px; display:flex; gap:10px;">
-        <button class="btn-primary" onclick="renderQuestionList()">返回题库</button>
-        <button class="btn-outline" onclick="startQuestion(${AppState.currentIndex})">重新练习</button>
-      </div>
+      ${tableHtml}
+      <button style="margin-top:20px;" onclick="renderQuestionList()">返回列表</button>
     </div>`;
 };
 
-// --- 初始化驱动 ---
-async function initApp() {
-  try {
-    const res = await fetch('./questions.json');
-    AppState.questions = await res.json();
-    renderQuestionList();
-    // 监听 AI 切换
-    document.getElementById('aiToggle').addEventListener('change', (e) => {
-      if (e.target.checked) initAI();
-    });
-  } catch (err) {
-    view.innerHTML = `<div class="card" style="color:var(--fail);">加载失败，请检查 questions.json 是否正确</div>`;
-  }
-}
-
-initApp();
+// --- 7. 初始化 ---
+fetch('./questions.json').then(r => r.json()).then(data => {
+  AppState.questions = data;
+  renderQuestionList();
+  document.getElementById('modeToggle').addEventListener('change', (e) => { if(e.target.checked) initAI(); });
+});
 </script>
 </body>
 </html>
