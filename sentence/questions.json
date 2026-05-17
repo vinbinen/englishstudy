@@ -75,5 +75,73 @@
       }
     ],
     "fullTranslation": "成千上万人可能会在周五冲进51区。"
+  },
+  {
+    "id": 3,
+    "sentence": "Studies have found that across a range of different languages, positive words are used more frequently than negative words.",
+    "tasks": [
+      {
+        "title": "主语",
+        "indices": [
+          0
+        ],
+        "translation": "研究"
+      },
+      {
+        "title": "谓语",
+        "indices": [
+          2,
+          4
+        ],
+        "translation": "发现"
+      },
+      {
+        "title": "宾从主语",
+        "indices": [
+          21,
+          23
+        ],
+        "translation": "积极词汇"
+      },
+      {
+        "title": "宾从谓语",
+        "indices": [
+          25,
+          27
+        ],
+        "translation": "使用"
+      },
+      {
+        "title": "范围状语",
+        "indices": [
+          8,
+          10,
+          12,
+          14,
+          16,
+          18
+        ],
+        "translation": "在多种不同的语言中"
+      },
+      {
+        "title": "频率状语",
+        "indices": [
+          29,
+          31
+        ],
+        "translation": "频率更高"
+      },
+      {
+        "title": "比较状语",
+        "indices": [
+          33,
+          35,
+          37
+        ],
+        "translation": "比消极词汇"
+      }
+    ],
+    "fullTranslation": "研究发现，在多种不同的语言中，积极词汇的使用频率高于消极词汇。"
   }
+  
 ]
