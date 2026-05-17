@@ -214,6 +214,7 @@ window.editPart = function(index){
 window.saveToQuestionBank = function() {
   const sentence = document.getElementById('sentenceInput').value.trim();
   const fullTranslation = document.getElementById('fullTranslationInput').value.trim();
+ const grammar = document.getElementById('grammarInput').value.trim(); // 新增这行
   
   if(!sentence || !fullTranslation) { alert('请输入英文句子和整句中文翻译'); return; }
   if(parts.length === 0) { alert('请至少添加一个句子成分'); return; }
