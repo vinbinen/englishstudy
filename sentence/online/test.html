@@ -296,10 +296,28 @@ document.getElementById('modeToggle').addEventListener('change', async (e) => {
 
 async function loadQuestions(){
   try {
-    const resp = await fetch('./questions.json');
+    // 修改前的代码：
+// const resp = await fetch('./questions.json');
+// AppState.questions = await resp.json();
+
+// 修改后的代码（接入 Supabase 后）：
+async function loadQuestionsFromSupabase() {
+  const { data, error } = await supabase
+    .from('questions')
+    .select('*')
+    .order('id', { ascending: true }); // 按 ID 排序
+
+  if (error) {
+    console.error("加载题库失败:", error);
+    return;
+  }
+  AppState.questions = data;
+  renderQuestionList();
+}
+    
     if (!resp.ok) throw new Error('数据加载失败');
-    AppState.questions = await resp.json();
-    renderQuestionList();
+    
+   
   } catch(err) {
     document.getElementById('mainView').innerHTML = `
       <div class="card">
