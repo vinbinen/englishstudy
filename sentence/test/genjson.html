@@ -262,6 +262,8 @@ window.clearCurrentEditor = function(){
   document.getElementById('fullTranslationInput').value = '';
   document.getElementById('tokenBox').innerHTML = '请先输入句子并点击“生成词块”';
   document.getElementById('partsContainer').innerHTML = '';
+  document.getElementById('grammarInput').value = ''; // 也要清空这个框
+
 };
 
 window.generateJSON = function(){
