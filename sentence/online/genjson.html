@@ -33,6 +33,7 @@
   .badge { background: #2563eb; color: white; padding: 2px 8px; border-radius: 99px; font-size: 12px; }
   .question-list { border-left: 3px solid #10b981; padding-left: 16px; margin-bottom: 20px;}
 </style>
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -67,6 +68,7 @@
         <button onclick="generateTokens()">1. 生成词块</button>
         <button class="secondary" onclick="addPart()">2. 将选中词块添加为成分</button>
         <button class="secondary" style="border-color: #10b981; color: #10b981;" onclick="saveToQuestionBank()">3. 完成单题并加入题库</button>
+        <button style="background:#059669;" onclick="syncToSupabase()">🚀 一键同步到 Supabase</button>
         <button class="danger" onclick="clearCurrentEditor()">清空当前编辑区</button>
       </div>
     </div>
@@ -282,6 +284,46 @@ window.copyJSON = async function(){
     setTimeout(() => { info.innerHTML = ''; }, 3000);
   } catch(err){ alert('复制失败'); }
 };
+ 
+/ --- Supabase 配置 (请替换为你自己的) ---
+const SUPABASE_URL = 'https://你的项目ID.supabase.co';
+const SUPABASE_KEY = '你的ANON_KEY';
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ... 保留之前的变量 (tokens, parts, questionBank 等) ...
+
+// 核心功能：同步数据到云端
+window.syncToSupabase = async function() {
+  if (questionBank.length === 0) {
+    alert("临时列表为空，请先添加题目！");
+    return;
+  }
+
+  const btn = event.target;
+  const originalText = btn.textContent;
+  btn.textContent = "⏳ 正在同步...";
+  btn.disabled = true;
+
+  try {
+    // 使用 upsert，如果 ID 已存在则更新，不存在则插入
+    const { data, error } = await supabase
+      .from('questions')
+      .upsert(questionBank, { onConflict: 'id' });
+
+    if (error) throw error;
+
+    alert(`✅ 成功！已将 ${questionBank.length} 道题目同步到 Supabase。`);
+    // 同步成功后可以选择清空本地临时列表
+    // questionBank = []; renderQuestionBank();
+  } catch (err) {
+    console.error(err);
+    alert("❌ 同步失败：" + err.message);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+};
+ 
 </script>
 </body>
 </html>
