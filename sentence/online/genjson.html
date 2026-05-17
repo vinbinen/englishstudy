@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>句子成分 JSON 索引生成器 (云端版)</title>
+<title>句子成分 JSON 索引生成器 (安全配置版)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *{ margin:0; padding:0; box-sizing:border-box; }
@@ -12,7 +12,7 @@
   h1{ font-size:32px; margin-bottom:24px; }
   .card{ background:white; border-radius:20px; padding:24px; margin-bottom:24px; box-shadow:0 10px 30px rgba(0,0,0,.06); }
   label{ display:block; font-weight:700; margin-bottom:10px; }
-  textarea,input{ width:100%; border:1px solid #d8e2f0; border-radius:14px; padding:14px; font-size:16px; margin-bottom:18px; font-family:inherit;}
+  input[type="text"], input[type="password"], textarea { width:100%; border:1px solid #d8e2f0; border-radius:14px; padding:14px; font-size:16px; margin-bottom:18px; font-family:inherit; }
   textarea{ min-height:100px; resize:vertical; }
   button{ border:none; background:#1f3f72; color:white; padding:12px 22px; border-radius:999px; cursor:pointer; font-size:15px; font-weight:700; transition:.2s; }
   button:hover:not(:disabled){ background:#17315a; }
@@ -33,17 +33,31 @@
   .part-item{ background:white; border:1px solid #d9e3f2; border-radius:12px; padding:12px; margin-bottom:12px; }
   .part-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
   .part-actions{ display:flex; gap:8px; }
-  @media(max-width:700px){ .token-box{ font-size:17px; } h1{ font-size:24px; } }
+  .config-box { background:#f8fafc; border:1px solid #cbd5e1; border-radius:16px; padding:20px; margin-bottom:24px; }
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:700px){ .token-box{ font-size:17px; } h1{ font-size:24px; } .config-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
 <div class="container">
-  <h1>📘 句子成分在线索引生成器</h1>
+  <h1>📘 句子成分在线生成器 (安全同步版)</h1>
 
-  <div class="card" style="background:#fffbeb; border:1px solid #fde68a;">
-    <h3 style="color:#92400e;">⚠️ 第一步：配置云端密钥</h3>
-    <p style="color:#78350f; font-size: 14px;">在代码最下方的 SUPABASE_URL 和 SUPABASE_KEY 填入你的项目密钥，即可连接数据库。</p>
+  <div class="config-box">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="color:#0f172a;">⚙️ 数据库连接配置 (仅保存在本地)</h3>
+      <span id="configStatus" style="font-size:13px; color:#64748b;">未配置</span>
+    </div>
+    <div class="config-grid">
+      <div>
+        <label style="font-size:14px;">Supabase URL</label>
+        <input type="text" id="dbUrl" placeholder="https://xxx.supabase.co" style="margin-bottom:0;" onchange="saveConfig()">
+      </div>
+      <div>
+        <label style="font-size:14px;">Supabase Anon Key</label>
+        <input type="password" id="dbKey" placeholder="eyJhbGci..." style="margin-bottom:0;" onchange="saveConfig()">
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -90,12 +104,48 @@
 
 <script>
 // ==========================================
-// ⚠️ 数据库配置区
+// ✨ 数据库动态配置逻辑
 // ==========================================
-const SUPABASE_URL = 'https://vbxjqgbwrlxlpafdiogj.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieGpxZ2J3cmx4bHBhZmRpb2dqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMTM5MTksImV4cCI6MjA5NDU4OTkxOX0.SVlWH2Pd5dlfO9jo39t6HmZYNKvU_14zO4Hzx-NcRUw';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+function saveConfig() {
+  const url = document.getElementById('dbUrl').value.trim();
+  const key = document.getElementById('dbKey').value.trim();
+  localStorage.setItem('sb_url', url);
+  localStorage.setItem('sb_key', key);
+  updateConfigStatus();
+}
 
+function loadConfig() {
+  const url = localStorage.getItem('sb_url') || '';
+  const key = localStorage.getItem('sb_key') || '';
+  document.getElementById('dbUrl').value = url;
+  document.getElementById('dbKey').value = key;
+  updateConfigStatus();
+}
+
+function updateConfigStatus() {
+  const url = document.getElementById('dbUrl').value.trim();
+  const key = document.getElementById('dbKey').value.trim();
+  const status = document.getElementById('configStatus');
+  if (url && key) {
+    status.innerHTML = '✅ <span style="color:#10b981;">已配置</span>';
+  } else {
+    status.innerHTML = '⚠️ <span style="color:#f59e0b;">缺少配置</span>';
+  }
+}
+
+// 提取动态创建 Supabase 实例的函数
+function getSupabaseClient() {
+  const url = document.getElementById('dbUrl').value.trim();
+  const key = document.getElementById('dbKey').value.trim();
+  if (!url || !key) {
+    throw new Error('请先在顶部配置 Supabase URL 和 Key！');
+  }
+  return supabase.createClient(url, key);
+}
+
+// ==========================================
+// 业务逻辑区
+// ==========================================
 let tokens = [];
 let selectedIndices = [];
 let parts = [];
@@ -103,6 +153,7 @@ let questionBank = [];
 let lastClickedIdx = -1;
 
 window.onload = () => {
+  loadConfig(); // 加载配置
   const saved = localStorage.getItem('sentenceBuilderBank');
   if (saved) { questionBank = JSON.parse(saved); document.getElementById('qCount').textContent = questionBank.length; }
 };
@@ -200,10 +251,10 @@ window.saveToQuestionBank = function() {
   if(parts.length === 0) { alert('请至少添加一个句子成分'); return; }
 
   const newQuestion = {
-    id: Date.now(), // 防止ID冲突
+    id: Date.now(), 
     sentence: sentence,
     tasks: parts.map(p => ({ title: p.title, indices: p.indices, translation: p.translation })),
-    full_translation: fullTranslation, // 匹配数据库下划线
+    full_translation: fullTranslation, 
     grammar: grammar
   };
 
@@ -237,24 +288,32 @@ window.copyJSON = async function(){
 };
 
 // ==========================================
-// 🚀 一键同步逻辑
+// 🚀 一键同步逻辑 (使用动态 Client)
 // ==========================================
 window.syncToSupabase = async function() {
   if (questionBank.length === 0) { alert("列表为空，请先添加题目！"); return; }
+  
+  let sbClient;
+  try {
+    sbClient = getSupabaseClient(); // 尝试获取连接
+  } catch(e) {
+    alert(e.message); return;
+  }
+
   const btn = document.getElementById('syncBtn');
   btn.textContent = "⏳ 正在同步..."; btn.disabled = true;
 
   try {
-    if(SUPABASE_URL === 'YOUR_SUPABASE_URL') throw new Error("请先在代码底部替换 URL 和 KEY！");
-    
-    const { data, error } = await supabaseClient.from('questions').upsert(questionBank, { onConflict: 'id' });
+    const { data, error } = await sbClient.from('questions').upsert(questionBank, { onConflict: 'id' });
     if (error) throw error;
 
     alert(`✅ 成功！已将 ${questionBank.length} 道题目同步到云端数据库。`);
-    // 成功后自动清空本地列表
     questionBank = []; saveBankLocally();
-  } catch (err) { alert("❌ 同步失败：" + err.message); } 
-  finally { btn.textContent = "🚀 一键同步到 Supabase 数据库"; btn.disabled = false; }
+  } catch (err) { 
+    alert("❌ 同步失败：" + err.message); 
+  } finally { 
+    btn.textContent = "🚀 一键同步到 Supabase 数据库"; btn.disabled = false; 
+  }
 };
 </script>
 </body>
