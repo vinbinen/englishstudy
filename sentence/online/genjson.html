@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>句子成分在线索引生成器 (修复版)</title>
+<title>句子成分 JSON 索引生成器 (云端增强版)</title>
 <style>
-  /* 样式保持不变，优化了部分交互感 */
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#f3f6fb; padding:20px; color:#16345f; }
   .container { max-width:1200px; margin:auto; }
@@ -13,283 +12,131 @@
   .card { background:white; border-radius:20px; padding:24px; margin-bottom:24px; box-shadow:0 10px 30px rgba(0,0,0,.06); }
   label { display:block; font-weight:700; margin-bottom:10px; }
   textarea, input { width:100%; border:1px solid #d8e2f0; border-radius:14px; padding:14px; font-size:16px; margin-bottom:18px; font-family: inherit; }
-  textarea { min-height:100px; resize:vertical; }
+  textarea { min-height:80px; resize:vertical; }
   button { border:none; background:#1f3f72; color:white; padding:12px 22px; border-radius:999px; cursor:pointer; font-size:15px; font-weight:700; transition:.2s; }
   button:hover { background:#17315a; transform: translateY(-1px); }
-  button:disabled { background: #94a3b8; cursor: not-allowed; }
   button.secondary { background:white; color:#1f3f72; border:2px solid #1f3f72; }
   button.danger { background:white; color:#dc2626; border:2px solid #dc2626; }
-  button.danger:hover { background:#fef2f2; }
-  .controls { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
-  .token-box { background:#f8fbff; border-radius:16px; padding:20px; line-height:2.2; font-size:20px; border-left:5px solid #2563eb; min-height: 80px; }
+  .token-box { background:#f8fbff; border-radius:16px; padding:20px; line-height:2.2; font-size:20px; border-left:5px solid #2563eb; min-height: 80px; margin-bottom: 20px; }
   .token { display:inline-block; padding:4px 8px; border-radius:8px; transition:.15s; user-select: none; }
   .word { cursor:pointer; }
-  .word:hover { background:#e0ebff; }
   .selected { background:#ffd966; border-bottom:3px solid #d97706; }
-  .preview { background:#eef5ff; border-radius:10px; padding:10px 14px; margin-top:10px; color:#334155; line-height:1.8; }
-  .output { background:#0f172a; color:#d1fae5; padding:20px; border-radius:16px; overflow:auto; font-family:Consolas,monospace; white-space:pre-wrap; line-height:1.7; max-height: 400px; }
-  .small { font-size:14px; color:#64748b; }
-  .part-list { margin-top:18px; }
-  .part-item { background:white; border:1px solid #d9e3f2; border-radius:12px; padding:12px; margin-bottom:12px; }
-  .part-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
-  .badge { background: #2563eb; color: white; padding: 2px 8px; border-radius: 99px; font-size: 12px; }
-  .question-list { border-left: 3px solid #10b981; padding-left: 16px; margin-bottom: 20px;}
+  .output { background:#0f172a; color:#d1fae5; padding:20px; border-radius:16px; overflow:auto; font-family:Consolas,monospace; white-space:pre-wrap; font-size: 14px; max-height: 400px; }
+  .part-item { background:#fff; border:1px solid #d9e3f2; border-radius:12px; padding:12px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;}
 </style>
- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-
 <div class="container">
-  <h1>📘 句子成分在线索引生成器 (修复版)</h1>
+  <h1>📘 题目生成与云端同步</h1>
 
   <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
-      <h2>📦 待同步列表 (<span id="qCount">0</span> 题)</h2>
-      <button class="danger" onclick="clearQuestionBank()">清空列表</button>
-    </div>
-    <div id="questionBankList" class="question-list small">暂无待同步题目。</div>
-    <button onclick="generateJSON()">生成完整 JSON 预览</button>
-    <button class="secondary" onclick="copyJSON()">复制 JSON 内容</button>
-    <div id="copyInfo" style="color:#10b981; font-weight:bold; margin-top:12px;"></div>
-    <div id="jsonOutput" class="output" style="margin-top:18px;">等待生成...</div>
+    <label>1. 输入句子并生成词块</label>
+    <textarea id="sentenceInput" placeholder="Enter the English sentence here..."></textarea>
+    <button onclick="generateTokens()">生成词块</button>
+    <div id="tokenBox" class="token-box" style="margin-top:15px;">等待生成...</div>
+    
+    <label>2. 划分成分</label>
+    <div id="partsContainer"></div>
+    <button class="secondary" onclick="addPart()">添加选中为成分</button>
   </div>
 
   <div class="card">
-    <h2>✍️ 编辑当前题目</h2>
-    <div style="margin-top: 16px;">
-      <label>英文句子</label>
-      <textarea id="sentenceInput" placeholder="请输入英文句子..."></textarea>
-      <label>整句中文翻译</label>
-      <textarea id="fullTranslationInput" placeholder="请输入整句翻译..."></textarea>
-      <label>语法知识点讲解</label>
-      <textarea id="grammarInput" placeholder="请输入本句涉及的重点语法、词汇解析..."></textarea>
-      
-      <div class="controls">
-        <button onclick="generateTokens()">1. 生成词块</button>
-        <button class="secondary" onclick="addPart()">2. 将选中词块添加为成分</button>
-        <button class="secondary" style="border-color: #10b981; color: #10b981;" onclick="saveToQuestionBank()">3. 完成并加入本地列表</button>
-        <button id="syncBtn" style="background:#059669;" onclick="syncToSupabase()">🚀 一键同步到 Supabase</button>
-        <button class="danger" onclick="clearCurrentEditor()">清空当前编辑区</button>
-      </div>
+    <label>3. 翻译与解析</label>
+    <textarea id="fullTranslationInput" placeholder="输入整句中文翻译..."></textarea>
+    <textarea id="grammarInput" placeholder="输入语法解析内容..."></textarea>
+    <div style="display:flex; gap:10px;">
+      <button style="background:#10b981;" onclick="saveToBank()">加入本地列表</button>
+      <button id="syncBtn" style="background:#2563eb;" onclick="syncToSupabase()">🚀 同步到云端题库</button>
+      <button class="danger" onclick="clearBank()">清空列表</button>
     </div>
   </div>
 
   <div class="card">
-    <label>点击单词选择成分 (支持 Shift 连选)</label>
-    <div id="tokenBox" class="token-box">请先输入句子并点击“生成词块”</div>
+    <label>JSON 预览 (待同步题目: <span id="qCount">0</span>)</label>
+    <div id="jsonOutput" class="output">[]</div>
   </div>
-
-  <div class="card">
-    <label>当前句子的成分列表</label>
-    <div id="partsContainer" class="part-list"></div>
-  </div>
-
 </div>
 
 <script>
-// --- 配置区 ---
 const SUPABASE_URL = 'https://vbxjqgbwrlxlpafdiogj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieGpxZ2J3cmx4bHBhZmRpb2dqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMTM5MTksImV4cCI6MjA5NDU4OTkxOX0.SVlWH2Pd5dlfO9jo39t6HmZYNKvU_14zO4Hzx-NcRUw';
-
-// 核心修复 1：将变量名从 supabase 改为 supabaseClient，避免冲突
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let tokens = [];
-let selectedIndices = [];
-let parts = [];
-let questionBank = [];
-let lastClickedIdx = -1;
+let tokens = [], selectedIndices = [], parts = [], questionBank = [];
 
 window.onload = () => {
   const saved = localStorage.getItem('sentenceBuilderBank');
-  if (saved) {
-    questionBank = JSON.parse(saved);
-    renderQuestionBank();
-  }
+  if (saved) { questionBank = JSON.parse(saved); updateUI(); }
 };
 
-function saveBankLocally() {
-  localStorage.setItem('sentenceBuilderBank', JSON.stringify(questionBank));
-}
-
-function tokenize(sentence){
+function generateTokens() {
+  const s = document.getElementById('sentenceInput').value.trim();
   const regex = /([A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*|[.,!?;:()—-])|(\s+)/g;
-  const arr = [];
-  let match;
-  while((match = regex.exec(sentence)) !== null){
-    if(match[1]) arr.push({ text:match[1], isWord:true, index:arr.length });
-    else if(match[2]) arr.push({ text:match[2], isWord:false, index:arr.length });
+  tokens = []; let match;
+  while((match = regex.exec(s)) !== null) {
+    if(match[1]) tokens.push({ text:match[1], isWord:true, index:tokens.length });
+    else if(match[2]) tokens.push({ text:match[2], isWord:false, index:tokens.length });
   }
-  return arr;
-}
-
-function generateTokens(){
-  const sentence = document.getElementById('sentenceInput').value.trim();
-  if(!sentence) { alert('请输入英文句子'); return; }
-  tokens = tokenize(sentence);
-  selectedIndices = [];
-  lastClickedIdx = -1;
   renderTokens();
 }
 
-function renderTokens(){
-  let html = '';
-  tokens.forEach((tok,idx)=>{
-    if(tok.isWord){
-      let cls = 'token word';
-      if(selectedIndices.includes(idx)) cls += ' selected';
-      html += `<span class="${cls}" onclick="toggleToken(${idx}, event)">${tok.text}</span>`;
-    } else {
-      html += tok.text;
-    }
-  });
-  document.getElementById('tokenBox').innerHTML = html || '等待生成...';
+function renderTokens() {
+  const box = document.getElementById('tokenBox');
+  box.innerHTML = tokens.map((t, i) => t.isWord ? 
+    `<span class="token word ${selectedIndices.includes(i)?'selected':''}" onclick="toggle(${i})">${t.text}</span>` : t.text).join('');
 }
 
-window.toggleToken = function(idx, event){
-  if (event && event.shiftKey && lastClickedIdx !== -1) {
-    const from = Math.min(lastClickedIdx, idx);
-    const to = Math.max(lastClickedIdx, idx);
-    for (let i = from; i <= to; i++) {
-      if (tokens[i]?.isWord && !selectedIndices.includes(i)) selectedIndices.push(i);
-    }
-  } else {
-    const pos = selectedIndices.indexOf(idx);
-    if(pos >= 0) selectedIndices.splice(pos,1);
-    else selectedIndices.push(idx);
-  }
-  lastClickedIdx = idx;
+function toggle(i) {
+  const p = selectedIndices.indexOf(i);
+  if(p >= 0) selectedIndices.splice(p,1); else selectedIndices.push(i);
   renderTokens();
-};
+}
 
-window.addPart = function(){
-  if(selectedIndices.length === 0){ alert('请先选择单词'); return; }
-  const title = prompt('请输入成分名称（例如：主语 / 谓语）');
+function addPart() {
+  if(selectedIndices.length === 0) return;
+  const title = prompt("成分名称 (如: 主语)");
+  const trans = prompt("该成分翻译");
   if(!title) return;
-  const translation = prompt('请输入该成分的中文翻译');
-  const sorted = [...selectedIndices].sort((a,b)=>a-b);
-  const englishText = sorted.map(i=>tokens[i]?.text || '').join(' ');
-  
-  parts.push({ title, indices:sorted, translation:translation || '', text:englishText });
-  selectedIndices = [];
-  renderTokens();
-  renderParts();
-};
-
-function renderParts(){
-  const container = document.getElementById('partsContainer');
-  if(parts.length === 0){ container.innerHTML = '<div class="small">暂无成分</div>'; return; }
-  let html = '';
-  parts.forEach((part,index)=>{
-    html += `
-      <div class="part-item">
-        <div class="part-head">
-          <div style="font-weight:700;">${part.title} <span class="badge">索引: ${part.indices.join(',')}</span></div>
-          <div>
-            <button class="danger" onclick="deletePart(${index})" style="padding:4px 8px; font-size:12px;">删除</button>
-          </div>
-        </div>
-        <div class="preview"><strong>${part.text}</strong>：${part.translation}</div>
-      </div>`;
-  });
-  container.innerHTML = html;
+  parts.push({ title, indices: [...selectedIndices].sort((a,b)=>a-b), translation: trans || "" });
+  selectedIndices = []; renderTokens(); renderParts();
 }
 
-window.deletePart = function(index){ parts.splice(index,1); renderParts(); };
+function renderParts() {
+  document.getElementById('partsContainer').innerHTML = parts.map((p, i) => 
+    `<div class="part-item"><span><b>${p.title}</b>: ${p.indices.join(',')}</span><button class="danger" onclick="parts.splice(${i},1);renderParts()">删除</button></div>`).join('');
+}
 
-window.saveToQuestionBank = function() {
-  const sentence = document.getElementById('sentenceInput').value.trim();
-  const fullTranslation = document.getElementById('fullTranslationInput').value.trim();
-  const grammar = document.getElementById('grammarInput').value.trim();
-  
-  if(!sentence || !fullTranslation) { alert('请输入英文句子和整句翻译'); return; }
-  if(parts.length === 0) { alert('请至少添加一个成分'); return; }
-
-  // 核心修复 2：字段名必须与数据库 full_translation 完全一致
-  // 核心修复 3：ID 使用时间戳，避免覆盖旧题目
-  const newQuestion = {
-    id: Date.now(), 
-    sentence: sentence,
-    tasks: parts.map(p => ({ title: p.title, indices: p.indices, translation: p.translation })),
-    full_translation: fullTranslation, 
-    grammar: grammar
+function saveToBank() {
+  const q = {
+    id: Date.now(),
+    sentence: document.getElementById('sentenceInput').value,
+    full_translation: document.getElementById('fullTranslationInput').value,
+    grammar: document.getElementById('grammarInput').value,
+    tasks: parts
   };
-
-  questionBank.push(newQuestion);
-  saveBankLocally();
-  renderQuestionBank();
-  
-  // 清理 UI，但不提示确认（为了录题速度）
-  tokens = []; selectedIndices = []; parts = []; 
-  document.getElementById('sentenceInput').value = '';
-  document.getElementById('fullTranslationInput').value = '';
-  document.getElementById('grammarInput').value = '';
-  document.getElementById('tokenBox').innerHTML = '请先输入句子并点击“生成词块”';
-  document.getElementById('partsContainer').innerHTML = '';
-  
-  console.log("已存入列表:", newQuestion);
-};
-
-function renderQuestionBank() {
-  document.getElementById('qCount').textContent = questionBank.length;
-  const list = document.getElementById('questionBankList');
-  if (questionBank.length === 0) {
-    list.innerHTML = '暂无待同步题目。';
-    return;
-  }
-  list.innerHTML = questionBank.map(q => `<div>• ${q.sentence.substring(0, 50)}...</div>`).join('');
+  questionBank.push(q);
+  localStorage.setItem('sentenceBuilderBank', JSON.stringify(questionBank));
+  parts = []; renderParts(); updateUI();
+  alert("已存入本地列表");
 }
 
-window.clearQuestionBank = function() {
-  if(!confirm('确定清空本地待同步列表吗？已上传到云端的不会被删除。')) return;
-  questionBank = [];
-  saveBankLocally();
-  renderQuestionBank();
-};
-
-window.clearCurrentEditor = function(){
-  if(!confirm('清空当前正在编辑的内容？')) return;
-  location.reload();
-};
-
-window.generateJSON = function(){
+function updateUI() {
+  document.getElementById('qCount').textContent = questionBank.length;
   document.getElementById('jsonOutput').textContent = JSON.stringify(questionBank, null, 2);
-};
+}
 
-window.copyJSON = async function(){
-  const text = document.getElementById('jsonOutput').textContent;
-  if(!text || text === '等待生成...'){ alert('请先生成 JSON'); return; }
-  await navigator.clipboard.writeText(text);
-  document.getElementById('copyInfo').textContent = '✅ 已复制！';
-  setTimeout(() => { document.getElementById('copyInfo').textContent = ''; }, 2000);
-};
-
-// 核心修复 4：同步逻辑
-window.syncToSupabase = async function() {
-  if (questionBank.length === 0) { alert("列表为空！"); return; }
-
+async function syncToSupabase() {
+  if(!questionBank.length) return;
   const btn = document.getElementById('syncBtn');
-  btn.textContent = "⏳ 正在同步...";
-  btn.disabled = true;
+  btn.textContent = "⏳ 同步中...";
+  const { error } = await supabaseClient.from('questions').upsert(questionBank);
+  if(error) alert("失败: " + error.message);
+  else alert("🚀 同步成功！");
+  btn.textContent = "🚀 同步到云端题库";
+}
 
-  try {
-    const { data, error } = await supabaseClient
-      .from('questions')
-      .upsert(questionBank, { onConflict: 'id' });
-
-    if (error) throw error;
-
-    alert(`🚀 同步成功！已更新 ${questionBank.length} 道题目。`);
-    // 同步成功后建议清空本地，防止重复同步
-    // questionBank = []; saveBankLocally(); renderQuestionBank();
-  } catch (err) {
-    console.error("Supabase Error:", err);
-    alert("❌ 同步失败：" + err.message);
-  } finally {
-    btn.textContent = "🚀 一键同步到 Supabase";
-    btn.disabled = false;
-  }
-};
+function clearBank() { if(confirm("清空？")) { questionBank = []; updateUI(); localStorage.removeItem('sentenceBuilderBank'); } }
 </script>
 </body>
 </html>
