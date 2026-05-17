@@ -104,5 +104,57 @@
       }
     ],
     "fullTranslation": "研究发现，在多种不同的语言中，积极词汇的使用频率高于消极词汇。"
+  },
+  {
+    "id": 4,
+    "sentence": "Children, like adults, worked up appetites because they used to eat only at meals.",
+    "tasks": [
+      {
+        "title": "主语",
+        "indices": [
+          0
+        ],
+        "translation": "孩子"
+      },
+      {
+        "title": "谓语",
+        "indices": [
+          8,
+          10
+        ],
+        "translation": "产生"
+      },
+      {
+        "title": "宾语",
+        "indices": [
+          12
+        ],
+        "translation": "胃口"
+      },
+      {
+        "title": "插入语",
+        "indices": [
+          3,
+          5
+        ],
+        "translation": "像成年人一样"
+      },
+      {
+        "title": "原因状从",
+        "indices": [
+          14,
+          16,
+          18,
+          20,
+          22,
+          24,
+          26,
+          28
+        ],
+        "translation": "因为他们只吃正餐"
+      }
+    ],
+    "fullTranslation": "孩子们过去和成年人一样，之所以胃口好，是因为他们只吃正餐。",
+    "grammar": "work up 激发，唤起"
   }
 ]
