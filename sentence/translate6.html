@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>句子结构划分与翻译</title>
+<style>
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:#f3f6fb; padding:20px; display:flex; justify-content:center;
+}
+.app{
+  width:100%; max-width:850px; background:#fff; border-radius:24px;
+  padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+h1{ font-size:30px; margin-bottom:16px; color:#16345f; }
+.card{ background:#f8fbff; border-radius:20px; padding:24px; margin-bottom:20px; position: relative;}
+.list-item{
+  background:white; border:1px solid #d9e3f2; border-radius:16px;
+  padding:18px; margin-bottom:14px; cursor:pointer; transition:.2s;
+}
+.list-item:hover{ border-color:#2563eb; background:#f8fbff; }
+.list-title{ font-size:17px; line-height:1.8; color:#16345f; }
+.list-sub{ margin-top:8px; color:#64748b; font-size:14px; }
+.task-title{ font-size:20px; font-weight:700; color:#173860; margin-bottom:16px; }
+.sentence-box{
+  background:white; border-left:5px solid #2563eb; border-radius:14px;
+  padding:18px; line-height:2; font-size:20px; color:#0f2744; margin:16px 0;
+  /* 优化10：放宽触摸限制，允许双指缩放和上下平移，由 JS 拦截 */
+  touch-action: pan-y pinch-zoom; 
+}
+.token{ display:inline-block; border-radius:8px; }
+.word{ 
+  cursor:pointer; transition:.15s; 
+  /* 优化9：增大移动端触摸热区 */
+  padding:6px 10px; min-height:36px;
+}
+.word:hover{ background:#e8f0ff; }
+.selected{ background:#ffd966; border-bottom:3px solid #d97706; }
+.correct-highlight{ background:#bbf7d0; border-bottom:3px solid #059669; }
+.feedback{ margin-top:16px; min-height:28px; font-weight:700; color:#1e3b6b; }
+.controls{ display:flex; flex-wrap:wrap; gap:12px; margin-top:18px; }
+button{
+  border:none; border-radius:999px; padding:12px 24px;
+  background:#1f3f72; color:white; font-weight:700; cursor:pointer;
+  transition:.2s; font-size:15px;
+}
+button:hover:not(:disabled){ background:#17315b; }
+button:disabled { background:#94a3b8; cursor:not-allowed; }
+button.secondary{ background:white; color:#1f3f72; border:2px solid #1f3f72; }
+button.secondary:hover:not(:disabled){ background:#eef3ff; }
+textarea{
+  width:100%; min-height:90px; resize:vertical; border:1px solid #cfd9ea;
+  border-radius:14px; padding:14px; font-size:16px; margin-top:8px;
+}
+textarea:focus{ outline:none; border-color:#2563eb; }
+textarea:disabled { background: #f1f5f9; cursor: not-allowed; }
+.result{
+  background:#f6fffb; border:1px solid #d1fae5; border-radius:16px;
+  padding:20px; margin-top:20px;
+}
+.score{ font-size:26px; font-weight:800; margin-bottom:14px; }
+.detail-table{ width:100%; border-collapse:collapse; margin-top:16px; font-size:15px; }
+.detail-table th,.detail-table td{ border:1px solid #d1d5db; padding:10px; text-align:left; }
+.detail-table th{ background:#eef2ff; }
+.pass{ color:#10b981; font-weight:bold; }
+.fail{ color:#ef4444; font-weight:bold; }
+
+.mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px 18px;
+  background: #f1f5f9;
+  border-radius: 16px;
+}
+.mode-switch label { font-weight: 700; color: #1e3b6b; cursor: pointer; flex: 1; }
+.mode-switch input { width: 20px; height: 20px; cursor: pointer; }
+.loading-container { text-align: center; padding: 40px; }
+.overlay {
+  position: absolute; top:0; left:0; width:100%; height:100%; 
+  background:rgba(255,255,255,0.7); z-index:10; 
+  display:flex; justify-content:center; align-items:center; 
+  border-radius:20px; font-weight:bold; color:#1f3f72;
+}
+
+@media(max-width:640px){
+  body{ padding:10px; background: #f3f6fb; }
+  .app{ padding:16px; border-radius: 16px; }
+  h1{ font-size:22px; text-align: center; margin-bottom: 12px; }
+  .sentence-box{ 
+    font-size:19px; line-height: 2.6; padding: 14px; margin: 12px 0;
+  }
+  .token.word { 
+    margin: 2px 2px; border-radius: 6px;
+    background: rgba(37, 99, 235, 0.04);
+  }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .controls button.secondary:last-child { grid-column: span 2; }
+  button { padding: 14px 18px; font-size: 16px; width: 100%; text-align: center; }
+  textarea { font-size: 16px; padding: 12px; }
+  .detail-table { display: block; overflow-x: auto; white-space: nowrap; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>📘 句子结构划分与翻译</h1>
+  <div class="mode-switch">
+    <input type="checkbox" id="modeToggle">
+    <label for="modeToggle">🧠 AI 语义评分（更准确，需在线下载模型）</label>
+    <button class="secondary" style="padding: 6px 12px; font-size: 12px; width: auto;" onclick="clearAICache()">清理缓存</button>
+  </div>
+  <div id="mainView">
+    <div class="loading-container">
+      <div>📝 基础模式已就绪，正在加载题目数据...</div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// ========== Web Worker 独立线程代码 ==========
+const workerBlobCode = `
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+let embedder = null;
+
+env.allowLocalModels = false;
+const MIRROR_HOSTS = [
+  'https://hf-mirror.com',
+  'https://huggingface.co'
+];
+
+self.onmessage = async (e) => {
+  const { type, textA, textB } = e.data;
+  if (type === 'init') {
+    let success = false;
+    let lastError = null;
+    for (let i = 0; i < MIRROR_HOSTS.length; i++) {
+      const host = MIRROR_HOSTS[i];
+      try {
+        env.remoteHost = host;
+        embedder = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2', {
+          progress_callback: (p) => {
+            if (p.status === 'progress' && p.progress !== undefined) {
+              self.postMessage({ type: 'progress', progress: p.progress });
+            } else if (p.status === 'done') {
+              self.postMessage({ type: 'done' });
+            }
+          }
+        });
+        success = true;
+        break; 
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    if (!success) {
+      self.postMessage({ type: 'error', error: lastError?.message || '所有镜像节点均加载失败' });
+    }
+  }
+
+  if (type === 'compare') {
+    if (!embedder) {
+      self.postMessage({ type: 'res', similarity: 0 });
+      return;
+    }
+    try {
+      const [embA, embB] = await Promise.all([
+        embedder(textA, { pooling: 'mean', normalize: true }),
+        embedder(textB, { pooling: 'mean', normalize: true }),
+      ]);
+      let dot = 0;
+      for (let i = 0; i < embA.data.length; i++) {
+        dot += embA.data[i] * embB.data[i];
+      }
+      self.postMessage({ type: 'res', similarity: dot });
+    } catch (err) {
+      self.postMessage({ type: 'res', similarity: 0 });
+    }
+  }
+};
+`;
+
+// ✅ 状态集中管理
+const AppState = {
+  questions: [],
+  currentIndex: -1,
+  currentTaskIndex: 0,
+  selectedTokens: [],
+  divideResults: [],
+  divideWrongCounts: [],
+  partsUserInput: [],
+  partsDetail: [],
+  fullUserInput: '',
+  divideFeedback: '',
+  currentTokens: [],
+  lastClickedIdx: -1,
+  timeoutId: null, // 优化4：保存定时器 ID 防止状态错乱
+  isAILoading: false
+};
+
+// 拖动选择辅助
+let touchActive = false;
+let touchStartPos = { x: 0, y: 0 };
+let touchLastIdx = -1;
+let touchTicking = false;
+
+let aiWorker = null;
+let workerCallbacks = {}; 
+
+// 优化4：清理全局定时器
+function clearAppTimeout() {
+  if (AppState.timeoutId) {
+    clearTimeout(AppState.timeoutId);
+    AppState.timeoutId = null;
+  }
+}
+
+async function clearAICache() {
+  try {
+    if ('caches' in window) {
+      const deleted = await caches.delete('transformers-cache');
+      if (deleted) {
+        alert('🧼 AI 模型缓存清理成功！');
+        location.reload(); 
+      } else alert('ℹ️ 未检测到本地 AI 模型缓存，无需清理。');
+    }
+  } catch (err) {
+    alert('❌ 清理失败，请尝试手动清除浏览器缓存。');
+  }
+}
+
+// 优化10：更安全的 HTML 转义（包含单双引号）
+function escapeHtml(str){
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+// 优化3：分词逻辑增强（加入越界防御）
+function tokenize(sentence){
+  const regex = /([A-Za-z]+(?:[-'][A-Za-z]+)*|\d+|[.,!?;:()—-])|(\s+)/g;
+  const tokens = [];
+  let match;
+  while((match = regex.exec(sentence)) !== null){
+    if(match[1]){
+      tokens.push({ text:match[1], isWord:true, index:tokens.length });
+    } else if(match[2]){
+      tokens.push({ text:match[2], isWord:false, index:tokens.length });
+    }
+  }
+  return tokens;
+}
+
+function arraysEqual(a,b){
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+// 优化8：性能升级版 Levenshtein (降维一维数组节省内存)
+function levenshteinRatio(a, b) {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  if (a.length < b.length) [a, b] = [b, a]; 
+  
+  let prevRow = Array.from({ length: b.length + 1 }, (_, i) => i);
+  let currRow = new Array(b.length + 1).fill(0);
+  
+  for (let i = 1; i <= a.length; i++) {
+    currRow[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      currRow[j] = Math.min(
+        currRow[j - 1] + 1,       
+        prevRow[j] + 1,       
+        prevRow[j - 1] + cost 
+      );
+    }
+    [prevRow, currRow] = [currRow, prevRow]; 
+  }
+  const maxLen = Math.max(a.length, b.length);
+  return 1 - (prevRow[b.length] / maxLen); 
+}
+
+function basicSimilarity(a, b) {
+  const cleanA = a.replace(/[，。！？、“”‘’：；\s]/g,'');
+  const cleanB = b.replace(/[，。！？、“”‘’：；\s]/g,'');
+  return levenshteinRatio(cleanA, cleanB);
+}
+
+async function aiSimilarity(a, b) {
+  const cleanA = a.replace(/[，。！？、“”‘’：；\s]/g,'');
+  const cleanB = b.replace(/[，。！？、“”‘’：；\s]/g,'');
+  if (!aiWorker) return basicSimilarity(cleanA, cleanB);
+
+  const seqSim = levenshteinRatio(cleanA, cleanB);
+  const avgLen = (cleanA.length + cleanB.length) / 2;
+
+  aiWorker.postMessage({ type: 'compare', textA: a, textB: b });
+
+  return new Promise((resolve) => {
+    workerCallbacks.compare = (semanticSim) => {
+      let semanticWeight = avgLen <= 5 ? 0.9 : (avgLen <= 12 ? 0.8 : 0.6);
+      let seqWeight = 1 - semanticWeight;
+      resolve((semanticSim * semanticWeight) + (seqSim * seqWeight));
+    };
+  });
+}
+
+function initWorker() {
+  if (aiWorker) return;
+  const blob = new Blob([workerBlobCode], { type: 'text/javascript' });
+  aiWorker = new Worker(URL.createObjectURL(blob), { type: 'module' });
+  
+  aiWorker.onmessage = (e) => {
+    const label = document.querySelector('label[for="modeToggle"]');
+    if (e.data.type === 'progress') {
+      label.textContent = `⏳ 正在下载 AI 模型... ${Math.floor(e.data.progress)}%`;
+    } else if (e.data.type === 'done') {
+      label.textContent = '🧠 AI 语义评分 (已启用)';
+      if (workerCallbacks.init) workerCallbacks.init(true);
+    } else if (e.data.type === 'error') {
+      label.textContent = '❌ 加载失败，已切换为基础评分';
+      if (workerCallbacks.init) workerCallbacks.init(false);
+    } else if (e.data.type === 'res') {
+      if (workerCallbacks.compare) workerCallbacks.compare(e.data.similarity);
+    }
+  };
+}
+
+let currentSimilarity = basicSimilarity;
+const modeToggle = document.getElementById('modeToggle');
+
+// 优化2：解决 AI 模式切换的状态竞态
+modeToggle.addEventListener('change', async () => {
+  if (modeToggle.checked) {
+    AppState.isAILoading = true;
+    modeToggle.disabled = true; // 锁定选择框
+    initWorker();
+    
+    const label = document.querySelector('label[for="modeToggle"]');
+    label.textContent = '⏳ 正在连接节点 (首次需下载约125MB)...';
+    aiWorker.postMessage({ type: 'init' });
+    
+    const success = await new Promise(res => workerCallbacks.init = res);
+    
+    AppState.isAILoading = false;
+    modeToggle.disabled = false;
+    
+    if (!success) {
+      modeToggle.checked = false;
+      currentSimilarity = basicSimilarity;
+    } else {
+      currentSimilarity = aiSimilarity;
+    }
+  } else {
+    currentSimilarity = basicSimilarity;
+    document.querySelector('label[for="modeToggle"]').textContent = '📝 基础字符评分 (已启用)';
+  }
+});
+
+// 优化6：加入重试逻辑
+async function loadQuestions(){
+  try {
+    const resp = await fetch('./questions.json');
+    if (!resp.ok) throw new Error('数据加载失败');
+    AppState.questions = await resp.json();
+    renderQuestionList();
+  } catch(err) {
+    document.getElementById('mainView').innerHTML = `
+      <div class="card">
+        <div style="color:red;font-weight:bold;margin-bottom:12px;">❌ 未找到题目数据 (questions.json)</div>
+        <button onclick="loadQuestions()">重新加载</button>
+      </div>`;
+  }
+}
+
+function renderQuestionList(){
+  clearAppTimeout(); // 优化4：清理可能存在的定时器
+  let html = '';
+  AppState.questions.forEach((q,i)=>{
+    html += `
+      <div class="list-item" onclick="window.startQuestion(${i})">
+        <div class="list-title">${escapeHtml(q.sentence)}</div>
+        <div class="list-sub">共 ${q.tasks.length} 个结构成分</div>
+      </div>`;
+  });
+  document.getElementById('mainView').innerHTML = html;
+}
+
+window.startQuestion = function(index){
+  clearAppTimeout(); // 优化4：重置状态前先清除定时器
+  AppState.currentIndex = index;
+  AppState.currentTaskIndex = 0;
+  AppState.selectedTokens = [];
+  AppState.divideResults = new Array(AppState.questions[index].tasks.length).fill(null);
+  AppState.divideWrongCounts = new Array(AppState.questions[index].tasks.length).fill(0);
+  AppState.partsUserInput = new Array(AppState.questions[index].tasks.length).fill('');
+  AppState.partsDetail = [];
+  AppState.fullUserInput = '';
+  AppState.divideFeedback = '';
+  AppState.currentTokens = tokenize(AppState.questions[index].sentence);
+  AppState.lastClickedIdx = -1;
+  renderDivide();
+};
+
+function renderDivide(){
+  const q = AppState.questions[AppState.currentIndex];
+  const task = q.tasks[AppState.currentTaskIndex];
+  const tokens = AppState.currentTokens;
+  const wrongCount = AppState.divideWrongCounts[AppState.currentTaskIndex];
+  const remaining = Math.max(0, 3 - wrongCount);
+  const showCorrect = AppState.divideResults[AppState.currentTaskIndex] === false && remaining === 0;
+
+  // 优化1：移除 HTML 内联的 ontouch 事件绑定
+  let html = `
+    <div class="card">
+      <div class="task-title">第 ${AppState.currentTaskIndex + 1} 题：请选择【${task.title}】</div>
+      <div>剩余机会：${remaining} / 3</div>
+      <div class="sentence-box" id="sentenceContainer">`;
+
+  tokens.forEach((tok,idx)=>{
+    if(tok.isWord){
+      let cls = 'token word';
+      if(showCorrect && task.indices.includes(idx)) cls += ' correct-highlight';
+      else if(AppState.selectedTokens.includes(idx)) cls += ' selected';
+      html += `<span class="${cls}" data-index="${idx}"
+                    onclick="window.toggleToken(${idx}, event)">${escapeHtml(tok.text)}</span>`;
+    } else {
+      html += escapeHtml(tok.text); // 使用转义保护原文本
+    }
+  });
+
+  const disableSubmit = AppState.divideResults[AppState.currentTaskIndex] !== null || AppState.isAILoading;
+
+  html += `
+      </div>
+      <div>进度：${AppState.currentTaskIndex + 1} / ${q.tasks.length}</div>
+      <div class="controls">
+        <button class="secondary" onclick="window.cancelSelection()">取消</button>
+        <button onclick="window.submitDivide()" ${disableSubmit ? 'disabled' : ''}>提交答案</button>
+        <button class="secondary" onclick="window.renderQuestionList()">返回列表</button>
+      </div>
+      <div class="feedback" id="divideFeedbackBox">${AppState.divideFeedback}</div>
+    </div>`;
+    
+  document.getElementById('mainView').innerHTML = html;
+  
+  // 优化1 & 7：重新渲染后通过 JS 安全绑定触控事件，使用 passive: false 允许拦截滚动
+  const container = document.getElementById('sentenceContainer');
+  if (container) {
+    container.addEventListener('touchstart', window.handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', window.handleTouchMove, { passive: false });
+    container.addEventListener('touchend', window.handleTouchEnd, { passive: false });
+    container.addEventListener('touchcancel', window.handleTouchEnd, { passive: false });
+    touchActive = false; // 确保重绘后重置滑动状态
+  }
+}
+
+function updateTokenSelectionUI() {
+  const container = document.getElementById('sentenceContainer');
+  if (!container) return;
+  const spans = container.querySelectorAll('.token.word');
+  spans.forEach(span => {
+    const idx = parseInt(span.getAttribute('data-index'), 10);
+    if (AppState.selectedTokens.includes(idx)) {
+      span.classList.add('selected');
+    } else {
+      span.classList.remove('selected');
+    }
+  });
+}
+
+window.toggleToken = function(idx, event) {
+  if (AppState.divideResults[AppState.currentTaskIndex] !== null) return;
+  if (event && event.shiftKey && AppState.lastClickedIdx !== -1) {
+    const from = Math.min(AppState.lastClickedIdx, idx);
+    const to = Math.max(AppState.lastClickedIdx, idx);
+    AppState.selectedTokens = [];
+    for (let i = from; i <= to; i++) {
+      if (AppState.currentTokens[i]?.isWord) AppState.selectedTokens.push(i);
+    }
+    updateTokenSelectionUI(); 
+    AppState.lastClickedIdx = idx;
+    return;
+  }
+  const pos = AppState.selectedTokens.indexOf(idx);
+  if (pos >= 0) AppState.selectedTokens.splice(pos, 1);
+  else AppState.selectedTokens.push(idx);
+  
+  AppState.lastClickedIdx = idx;
+  updateTokenSelectionUI(); 
+};
+
+// 优化5：滑动选择索引获取增强算法
+function getWordIndexAtTouch(touch) {
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  // 首选：准确命中目标
+  if (el && el.closest('.token.word')) {
+    return parseInt(el.closest('.token.word').getAttribute('data-index'), 10);
+  }
+  
+  // 备用：计算距离最近的单词（解决滑动到间隙断触的问题）
+  let closestIdx = -1;
+  let minDist = Infinity;
+  const words = document.querySelectorAll('.token.word');
+  
+  words.forEach(wordEl => {
+    const rect = wordEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    // 简单计算欧氏距离
+    const dist = Math.hypot(touch.clientX - cx, touch.clientY - cy);
+    // 容差距离 40px 内自动吸附
+    if (dist < 40 && dist < minDist) {
+      minDist = dist;
+      closestIdx = parseInt(wordEl.getAttribute('data-index'), 10);
+    }
+  });
+  return closestIdx;
+}
+
+window.handleTouchStart = function(e) {
+  if (AppState.divideResults[AppState.currentTaskIndex] !== null) return;
+  const idx = getWordIndexAtTouch(e.touches[0]);
+  if (idx === -1) return;
+  touchActive = false;
+  touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  touchLastIdx = idx;
+};
+
+// 优化1：更智能地判断意图并阻止默认滚动行为
+window.handleTouchMove = function(e) {
+  if (AppState.divideResults[AppState.currentTaskIndex] !== null) return;
+  const touch = e.touches[0];
+  const dx = touch.clientX - touchStartPos.x;
+  const dy = touch.clientY - touchStartPos.y;
+
+  // 滑动超过 10px 阈值，才判定为“有效滑动选择”意图
+  if (!touchActive && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+    touchActive = true;
+  }
+  
+  if (touchActive) {
+    if (e.cancelable) e.preventDefault(); // 仅在明确开始选择时拦截滚动
+  }
+
+  if (!touchActive || touchTicking) return; 
+  touchTicking = true;
+  requestAnimationFrame(() => {
+    const idx = getWordIndexAtTouch(touch);
+    if (idx !== -1 && idx !== touchLastIdx) {
+      const from = Math.min(touchLastIdx, idx);
+      const to = Math.max(touchLastIdx, idx);
+      let changed = false;
+      for (let i = from; i <= to; i++) {
+        if (AppState.currentTokens[i]?.isWord && !AppState.selectedTokens.includes(i)) {
+          AppState.selectedTokens.push(i);
+          changed = true;
+        }
+      }
+      if (changed) updateTokenSelectionUI(); 
+      touchLastIdx = idx;
+    }
+    touchTicking = false; 
+  });
+};
+
+window.handleTouchEnd = function() { touchActive = false; touchLastIdx = -1; };
+
+window.cancelSelection = function() {
+  AppState.selectedTokens = [];
+  AppState.lastClickedIdx = -1;
+  updateTokenSelectionUI(); 
+};
+
+window.submitDivide = function(){
+  if(AppState.divideResults[AppState.currentTaskIndex] !== null) return;
+  const q = AppState.questions[AppState.currentIndex];
+  const task = q.tasks[AppState.currentTaskIndex];
+  
+  // 优化3：越界防御（过滤掉越界索引）
+  const correct = [...task.indices].filter(i => AppState.currentTokens[i]).sort((a,b)=>a-b);
+  const user = [...AppState.selectedTokens].sort((a,b)=>a-b);
+  const ok = arraysEqual(correct, user);
+
+  if(ok){
+    AppState.divideResults[AppState.currentTaskIndex] = true;
+    AppState.divideFeedback = '✅ 正确';
+    renderDivide(); 
+    // 优化4：记录定时器
+    AppState.timeoutId = setTimeout(()=>{
+      AppState.currentTaskIndex++;
+      AppState.selectedTokens = [];
+      AppState.divideFeedback = '';
+      AppState.lastClickedIdx = -1;
+      if(AppState.currentTaskIndex >= q.tasks.length) renderParts();
+      else renderDivide();
+    }, 800);
+  } else {
+    AppState.divideWrongCounts[AppState.currentTaskIndex]++;
+    const left = 3 - AppState.divideWrongCounts[AppState.currentTaskIndex];
+    if(left <= 0){
+      AppState.divideResults[AppState.currentTaskIndex] = false;
+      AppState.divideFeedback = '❌ 机会已用完，正确答案已标绿';
+      renderDivide();
+      AppState.timeoutId = setTimeout(()=>{
+        AppState.currentTaskIndex++;
+        AppState.selectedTokens = [];
+        AppState.divideFeedback = '';
+        AppState.lastClickedIdx = -1;
+        if(AppState.currentTaskIndex >= q.tasks.length) renderParts();
+        else renderDivide();
+      }, 1800);
+    } else {
+      AppState.divideFeedback = `❌ 错误，还剩 ${left} 次机会`;
+      AppState.selectedTokens = [];
+      AppState.lastClickedIdx = -1;
+      renderDivide();
+    }
+  }
+};
+
+function renderParts(){
+  const q = AppState.questions[AppState.currentIndex];
+  const tokens = AppState.currentTokens;
+  let html = `
+    <div class="card" id="partsCard">
+      <h2 style="margin-bottom:18px;">🔤 请翻译各个成分</h2>
+      <div class="sentence-box">${escapeHtml(q.sentence)}</div>`;
+
+  q.tasks.forEach((task,idx)=>{
+    // 优化3防御：安全获取原文
+    const englishPart = task.indices.map(i=>tokens[i]?.text || '').join(' ');
+    html += `
+      <div style="margin-bottom:24px;">
+        <label style="font-weight:700;">${task.title}</label>
+        <div style="background:#eef2ff;padding:8px 12px;border-radius:10px;margin:8px 0;color:#334155;">
+          ${escapeHtml(englishPart)}
+        </div>
+        <textarea id="partInput-${idx}" placeholder="请输入中文翻译">${escapeHtml(AppState.partsUserInput[idx])}</textarea>
+      </div>`;
+  });
+
+  html += `
+    <div class="controls">
+      <button id="btnSubmitParts" onclick="window.submitParts()">提交成分翻译</button>
+      <button class="secondary" id="btnBackParts" onclick="window.renderQuestionList()">返回列表</button>
+    </div>
+    <div id="partsFeedback" class="feedback"></div>
+  </div>`;
+  document.getElementById('mainView').innerHTML = html;
+
+  q.tasks.forEach((task,idx)=>{
+    document.getElementById(`partInput-${idx}`).addEventListener('input', e => {
+      AppState.partsUserInput[idx] = e.target.value;
+    });
+  });
+}
+
+// 优化6：增加防抖与异步进度 UI
+window.submitParts = async function(){
+  const btn = document.getElementById('btnSubmitParts');
+  const btnBack = document.getElementById('btnBackParts');
+  if (btn.disabled) return; 
+  
+  btn.disabled = true;
+  btnBack.disabled = true;
+  document.querySelectorAll('textarea').forEach(el => el.disabled = true);
+  
+  // 加入遮罩层避免重复操作
+  const card = document.getElementById('partsCard');
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = '⏳ 正在进行智能评分...';
+  card.appendChild(overlay);
+
+  const q = AppState.questions[AppState.currentIndex];
+  let correctCount = 0;
+  AppState.partsDetail = [];
+
+  for (let idx = 0; idx < q.tasks.length; idx++) {
+    const user = AppState.partsUserInput[idx].trim();
+    const std = q.tasks[idx].translation;
+    if (!user) {
+      AppState.partsDetail.push(false);
+      continue;
+    }
+    const sim = await currentSimilarity(user, std);
+    const threshold = aiWorker ? 0.68 : 0.6; // 未来可以提升为动态配置项
+    const ok = sim >= threshold;
+    if (ok) correctCount++;
+    AppState.partsDetail.push(ok);
+  }
+
+  document.getElementById('partsFeedback').innerHTML = 
+    `✅ 分析完成！成分匹配度：${correctCount} / ${q.tasks.length}`;
+    
+  // 优化4：记录定时器
+  AppState.timeoutId = setTimeout(() => {
+    renderFull();
+  }, 1000);
+};
+
+function renderFull(){
+  const q = AppState.questions[AppState.currentIndex];
+  let html = `
+    <div class="card" id="fullCard">
+      <h2 style="margin-bottom:18px;">📝 请翻译整句</h2>
+      <div class="sentence-box">${escapeHtml(q.sentence)}</div>
+      <div style="margin-bottom:12px;">点击下面词块可快速填入：</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">`;
+
+  AppState.partsUserInput.forEach(text => {
+    if(text.trim()){
+      html += `<span class="token" style="background:#dbeafe;cursor:pointer;padding:6px 14px;border-radius:999px;" 
+               onclick='window.appendSnippet(${JSON.stringify(text)})'>${escapeHtml(text)}</span>`;
+    }
+  });
+
+  html += `
+      </div>
+      <textarea id="fullTranslationInput" placeholder="请输入整句翻译">${escapeHtml(AppState.fullUserInput)}</textarea>
+      <div class="controls">
+        <button id="btnSubmitFull" onclick="window.submitFull()">提交整句翻译</button>
+        <button class="secondary" id="btnBackFull" onclick="window.renderQuestionList()">返回列表</button>
+      </div>
+      <div id="fullFeedback" class="feedback"></div>
+    </div>`;
+  document.getElementById('mainView').innerHTML = html;
+  document.getElementById('fullTranslationInput').addEventListener('input', e => {
+    AppState.fullUserInput = e.target.value;
+  });
+}
+
+window.appendSnippet = function(text){
+  const ta = document.getElementById('fullTranslationInput');
+  if(!ta) return;
+  ta.value = ta.value ? ta.value + text : text;
+  AppState.fullUserInput = ta.value;
+};
+
+// 优化6：评分过程加入 UI 锁定与遮罩
+window.submitFull = async function(){
+  const q = AppState.questions[AppState.currentIndex];
+  const input = AppState.fullUserInput.trim();
+  const fb = document.getElementById('fullFeedback');
+
+  if(!input){
+    fb.innerHTML = '⚠️ 译文不能为空，请输入整句翻译后再提交！';
+    return;
+  }
+  
+  document.getElementById('btnSubmitFull').disabled = true;
+  document.getElementById('btnBackFull').disabled = true;
+  document.getElementById('fullTranslationInput').disabled = true;
+
+  const card = document.getElementById('fullCard');
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = '⏳ 综合生成报告中...';
+  card.appendChild(overlay);
+
+  const fullSim = await currentSimilarity(input, q.fullTranslation);
+  const fullScore = Math.round(fullSim * 100);
+
+  const divideCorrect = AppState.divideResults.filter(x => x === true).length;
+  const divideScore = Math.round(divideCorrect / q.tasks.length * 100);
+
+  const partCorrect = AppState.partsDetail.filter(Boolean).length;
+  const partScore = Math.round(partCorrect / q.tasks.length * 100);
+
+  const finalScore = Math.round(divideScore * 0.4 + partScore * 0.3 + fullScore * 0.3);
+
+  let level = '';
+  if(finalScore >= 90) level = '🌟 非常优秀';
+  else if(finalScore >= 80) level = '✅ 良好';
+  else if(finalScore >= 60) level = '⚠️ 基本正确';
+  else level = '❌ 需改进';
+
+  let tableHtml = `
+    <table class="detail-table">
+      <tr><th>成分</th><th>划分</th><th>你的翻译</th><th>参考答案</th><th>匹配</th></tr>`;
+
+  q.tasks.forEach((task,idx)=>{
+    tableHtml += `
+      <tr>
+        <td>${escapeHtml(task.title)}</td>
+        <td class="${AppState.divideResults[idx] ? 'pass' : 'fail'}">${AppState.divideResults[idx] ? '✅' : '❌'}</td>
+        <td>${escapeHtml(AppState.partsUserInput[idx])}</td>
+        <td>${escapeHtml(task.translation)}</td>
+        <td class="${AppState.partsDetail[idx] ? 'pass' : 'fail'}">${AppState.partsDetail[idx] ? '✅' : '❌'}</td>
+      </tr>`;
+  });
+  tableHtml += '</table>';
+
+  fb.innerHTML = `
+    <div class="result">
+      <div class="score">综合得分：${finalScore}% (${level})</div>
+      <div>📘 结构划分：${divideScore}%</div>
+      <div>🔤 成分翻译：${partScore}%</div>
+      <div>📝 整句翻译：${fullScore}%</div>
+      <div style="margin-top:16px;"><strong>标准译文：</strong>${escapeHtml(q.fullTranslation)}</div>
+      <div style="margin-top:8px;"><strong>你的译文：</strong>${escapeHtml(input)}</div>
+      <div style="overflow-x:auto;">${tableHtml}</div>
+      <div class="controls">
+        <button onclick="window.renderQuestionList()">返回题库</button>
+        <button onclick="window.startQuestion(${AppState.currentIndex})">重新练习</button>
+      </div>
+    </div>`;
+    
+  if (overlay) overlay.remove();
+};
+
+window.renderQuestionList = renderQuestionList;
+window.startQuestion = startQuestion;
+window.clearAICache = clearAICache;
+
+// 启动
+loadQuestions();
+</script>
+</body>
+</html>
