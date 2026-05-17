@@ -310,12 +310,20 @@ async function loadQuestions(){
   }
 }
 
-window.renderQuestionList = function() {
-  clearAppTimeout(); 
+window.renderQuestionList = async function() {
+  clearAppTimeout();
+  const progress = await fetchUserProgress(); // 获取云端进度
+  
   let html = '';
-  AppState.questions.forEach((q,i)=>{
-    html += `<div class="list-item" onclick="window.startQuestion(${i})">
-        <div class="list-title">${escapeHtml(q.sentence)}</div>
+  AppState.questions.forEach((q, i) => {
+    // 检查这道题是否已做过
+    const record = progress.find(p => p.question_id === q.id);
+    const scoreTag = record ? `<span style="color:#10b981; font-weight:bold;"> (最高分: ${record.score})</span>` : '';
+    const statusIcon = record ? '✅' : '📝';
+
+    html += `
+      <div class="list-item" onclick="window.startQuestion(${i})">
+        <div class="list-title">${statusIcon} ${escapeHtml(q.sentence)} ${scoreTag}</div>
         <div class="list-sub">包含 ${q.tasks.length} 个结构成分需要划分</div>
       </div>`;
   });
@@ -540,6 +548,21 @@ window.submitFull = async function(){
   const partScore = Math.round((AppState.partsDetail.filter(Boolean).length / q.tasks.length) * 100);
   const finalScore = Math.round(divideScore * 0.4 + partScore * 0.3 + fullScore * 0.3);
 
+  // 在 submitFull 函数内部计算完 finalScore 后加入：
+if (currentUser) {
+  const { error } = await supabase
+    .from('user_progress')
+    .upsert({ 
+      user_id: currentUser.id, 
+      question_id: AppState.questions[AppState.currentIndex].id, 
+      score: finalScore 
+    }, { onConflict: 'user_id, question_id' }); // 如果有旧成绩，则覆盖（更新）
+
+  if (!error) {
+    console.log("成绩已同步到云端");
+  }
+}
+
   let level = '';
   if(finalScore >= 90) level = '🌟 完美掌握'; else if(finalScore >= 80) level = '✅ 良好水平'; else if(finalScore >= 60) level = '⚠️ 基本正确'; else level = '❌ 仍需加强';
 
@@ -574,7 +597,10 @@ window.submitFull = async function(){
   overlay.remove();
 };
 
-window.onload = loadQuestions;
+window.onload =  async () => {
+  await loadQuestions();
+  await checkUser(); // 检查登录状态
+};
 </script>
 </body>
 </html>
