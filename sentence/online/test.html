@@ -2,109 +2,246 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>句子结构练习</title>
+<title>句子结构挑战 - 学习看板</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-  :root { --p: #1e40af; --bg: #f1f5f9; }
-  body { font-family: system-ui; background: var(--bg); padding: 20px; display:flex; justify-content:center; }
-  .app { width:100%; max-width:600px; background:white; padding:25px; border-radius:24px; box-shadow:0 10px 25px rgba(0,0,0,0.05); }
-  .card { border:1px solid #e2e8f0; border-radius:16px; padding:15px; margin-bottom:12px; cursor:pointer; transition:0.2s; }
-  .card:hover { border-color: var(--p); background: #f8fbff; }
-  .token { display:inline-block; padding:4px 8px; cursor:pointer; border-radius:6px; border:1px solid transparent; }
-  .selected { background:#fde047; border-color:#ca8a04; font-weight:bold; }
-  button { width:100%; border:none; background:var(--p); color:white; padding:14px; border-radius:12px; cursor:pointer; font-size:16px; font-weight:600; margin-top:15px; }
-  .grammar-box { background:#f8fafc; border-radius:12px; padding:15px; border-left:4px solid var(--p); white-space: pre-wrap; font-size:14px; margin-top:20px; }
+  :root { --p: #1e3a8a; --bg: #f8fafc; }
+  body { font-family:system-ui; background:var(--bg); padding:20px; color:#1e293b; }
+  .app { max-width:800px; margin:auto; background:white; padding:25px; border-radius:24px; box-shadow:0 10px 25px rgba(0,0,0,0.05); }
+  .user-bar { display:flex; justify-content:space-between; align-items:center; background:#f1f5f9; padding:12px 20px; border-radius:14px; margin-bottom:20px; }
+  .card { border:1px solid #e2e8f0; border-radius:18px; padding:20px; margin-bottom:15px; cursor:pointer; transition:0.2s; }
+  .card:hover { border-color: #3b82f6; background:#f0f7ff; }
+  .sentence-box { font-size:22px; line-height:1.8; margin:20px 0; padding:15px; background:#f8fafc; border-left:4px solid var(--p); border-radius: 8px; }
+  .token { display:inline-block; padding:4px 8px; cursor:pointer; border-radius:6px; user-select: none; }
+  .selected { background:#fde047; box-shadow: 0 2px 0 #ca8a04; }
+  button { border:none; background:var(--p); color:white; padding:12px 24px; border-radius:12px; cursor:pointer; font-weight:600; }
+  button:hover { opacity: 0.9; }
+  input, textarea { width:100%; border:1px solid #cbd5e1; padding:12px; border-radius:10px; margin-top:10px; font-size:16px; box-sizing: border-box; }
+  .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; }
+  .modal-box { background:white; padding:30px; border-radius:20px; width:90%; max-width:600px; }
 </style>
 </head>
 <body>
 <div class="app">
-  <div id="header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-    <h2>📝 句子解析挑战</h2>
-    <div id="userStat"></div>
+  <h1 style="text-align:center; margin-bottom:20px;">📘 句子结构与翻译挑战</h1>
+  <div id="user-area" class="user-bar">加载中...</div>
+  <div id="content"></div>
+</div>
+
+<div id="chartModal" class="modal">
+  <div class="modal-box">
+    <h2>📊 我的成长曲线</h2>
+    <canvas id="myChart" style="margin:20px 0; max-height: 300px;"></canvas>
+    <div style="text-align:right;">
+      <button onclick="document.getElementById('chartModal').style.display='none'">关闭看板</button>
+    </div>
   </div>
-  <div id="main">正在加载题库...</div>
 </div>
 
 <script>
-const SB_URL = "https://vbxjqgbwrlxlpafdiogj.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieGpxZ2J3cmx4bHBhZmRpb2dqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMTM5MTksImV4cCI6MjA5NDU4OTkxOX0.SVlWH2Pd5dlfO9jo39t6HmZYNKvU_14zO4Hzx-NcRUw";
+// ================= 请填入你的 Supabase 信息 =================
+const SB_URL = "https://你的.supabase.co";
+const SB_KEY = "你的KEY";
+// ==========================================================
+
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
-let user = null, questions = [], curIdx = 0;
+let user = null, questions = [], scores = [], curIdx = 0, state = { div:[], trans:[], full:"" };
 
-window.onload = async () => {
+window.onload = checkUser;
+
+async function checkUser() {
   const { data } = await sb.auth.getUser();
   user = data.user;
-  if(!user) {
-    document.getElementById('main').innerHTML = `<button onclick="login()">登录以开始练习</button>`;
+  if(user) {
+    document.getElementById('user-area').innerHTML = `
+      <span>👤 ${user.email}</span> 
+      <div>
+        <button onclick="showChart()" style="background:#10b981; margin-right:5px; padding:8px 15px;">📊 看板</button>
+        <button onclick="logout()" style="background:#ef4444; padding:8px 15px;">退出</button>
+      </div>`;
+    loadData();
   } else {
-    loadQuestions();
+    document.getElementById('user-area').innerHTML = `未登录，进度无法保存 <button onclick="login()">登录 / 注册</button>`;
   }
-};
-
-async function login() {
-  const email = prompt("邮箱:"), password = prompt("密码:");
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  if(error) await sb.auth.signUp({ email, password });
-  location.reload();
 }
 
-async function loadQuestions() {
-  const { data } = await sb.from('questions').select('*').order('created_at');
-  questions = data;
+async function login() {
+  const e = prompt("请输入邮箱:"), p = prompt("请输入密码(至少6位):");
+  if(!e || !p) return;
+  const { error } = await sb.auth.signInWithPassword({email:e, password:p});
+  if(error) {
+      const reg = await sb.auth.signUp({email:e, password:p});
+      if(reg.error) alert(reg.error.message); else location.reload();
+  } else { location.reload(); }
+}
+async function logout() { await sb.auth.signOut(); location.reload(); }
+
+async function loadData() {
+  document.getElementById('content').innerHTML = "加载题库中...";
+  const { data: q } = await sb.from('questions').select('*').order('created_at');
+  const { data: s } = await sb.from('user_progress').select('*').eq('user_id', user.id);
+  questions = q; scores = s;
   renderList();
 }
 
 function renderList() {
-  document.getElementById('main').innerHTML = questions.map((q,i)=>`
-    <div class="card" onclick="startQuestion(${i})">
-      <div style="font-weight:bold; color:var(--p);">挑战 ${i+1}</div>
-      <div style="font-size:14px; color:#64748b;">${q.sentence}</div>
-    </div>
-  `).join('');
+  if(!questions || questions.length === 0) {
+      document.getElementById('content').innerHTML = "<div style='text-align:center; padding:40px; color:#64748b;'>老师还在建设题库中...</div>";
+      return;
+  }
+  document.getElementById('content').innerHTML = questions.map((q,i) => {
+    const s = scores.find(x => x.question_id === q.id);
+    return `<div class="card" onclick="start(${i})">
+      <div style="font-weight:bold; font-size:18px;">挑战 ${i+1} ${s ? `<span style="float:right; color:#10b981;">最高分: ${s.score}</span>` : ''}</div>
+      <div style="color:#64748b; font-size:15px; margin-top:8px;">${q.sentence}</div>
+    </div>`;
+  }).join('');
 }
 
-function startQuestion(idx) {
-  curIdx = idx;
-  const q = questions[idx];
-  const ts = q.sentence.match(/([A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*|[.,!?;:()—-])|(\s+)/g).map(t => ({t, isW:/[a-zA-Z0-9]/.test(t)}));
-  let userSelected = [];
+// --- 恢复完整的三步走练习逻辑 ---
+function start(i) {
+  curIdx = i; state = { div:[], trans:[], full:"" };
+  if(questions[i].tasks.length > 0) goStep1(0);
+  else goStep3(); // 如果这道题没有录入词块，直接跳到全句翻译
+}
 
-  const renderTask = (taskIdx) => {
-    const task = q.tasks[taskIdx];
-    document.getElementById('main').innerHTML = `
-      <p style="color:#64748b;">第 ${taskIdx+1} / ${q.tasks.length} 步</p>
-      <h3>请找出句中的：<span style="color:var(--p);">${task.title}</span></h3>
-      <div style="font-size:20px; line-height:2.5; margin:20px 0;">
-        ${ts.map((t,i) => t.isW ? `<span class="token" id="t-${i}" onclick="tgl(${i})">${t.t}</span>` : t.t).join('')}
-      </div>
-      <button onclick="nextTask(${taskIdx})">下一步</button>
-    `;
-    window.tgl = (i) => {
-      const el = document.getElementById(`t-${i}`);
-      el.classList.toggle('selected');
-      userSelected.includes(i) ? userSelected.splice(userSelected.indexOf(i),1) : userSelected.push(i);
-    };
-  };
-
-  window.nextTask = (tIdx) => {
-    // 这里可以添加逻辑比较 userSelected 和 q.tasks[tIdx].indices 给出即时反馈
-    userSelected = [];
-    if(tIdx < q.tasks.length - 1) renderTask(tIdx + 1);
-    else showResult();
-  };
-
-  const showResult = () => {
-    document.getElementById('main').innerHTML = `
-      <h2 style="text-align:center;">🎉 挑战完成！</h2>
-      <div class="grammar-box">
-        <b>💡 语法干货：</b><br>${q.grammar}
-      </div>
-      <button onclick="renderList()">回到题目列表</button>
+function goStep1(ti) {
+  const q = questions[curIdx], t = q.tasks[ti];
+  const ts = q.sentence.match(/([A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*|[.,!?;:()—-])|(\s+)/g).map(x=>({t:x, isW:/[a-zA-Z0-9]/.test(x)}));
+  let sel = [];
+  
+  const render = () => {
+    document.getElementById('content').innerHTML = `
+      <div style="color:#64748b; margin-bottom:10px;">阶段 1：拆解成分 (${ti+1}/${q.tasks.length})</div>
+      <h3>找出句中的：<span style="color:var(--p)">【${t.title}】</span></h3>
+      <div class="sentence-box">${ts.map((x,idx)=> x.isW ? `<span class="token ${sel.includes(idx)?'selected':''}" onclick="toggleSel(${idx})">${x.t}</span>` : x.t).join('')}</div>
+      <button onclick="saveStep1(${ti})">选好了，下一步</button>
+      <button style="background:transparent; color:#64748b; margin-top:10px;" onclick="renderList()">放弃当前题目</button>
     `;
   };
+  window.toggleSel = (idx) => { sel.includes(idx) ? sel.splice(sel.indexOf(idx),1) : sel.push(idx); render(); };
+  window.saveStep1 = (idx) => { 
+    state.div.push([...sel]); 
+    if(idx < q.tasks.length-1) goStep1(idx+1); else goStep2(0); 
+  };
+  render();
+}
 
-  renderTask(0);
+function goStep2(ti) {
+  const q = questions[curIdx], t = q.tasks[ti];
+  const ts = q.sentence.match(/([A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*|[.,!?;:()—-])|(\s+)/g);
+  const eng = state.div[ti].sort((a,b)=>a-b).map(i=>ts[i]).join('');
+  
+  document.getElementById('content').innerHTML = `
+    <div style="color:#64748b; margin-bottom:10px;">阶段 2：片段翻译 (${ti+1}/${q.tasks.length})</div>
+    <h3>请翻译你刚才选出的【${t.title}】</h3>
+    <div class="sentence-box">"${eng.trim() || '未选择任何词'}"</div>
+    <input type="text" id="pIn" placeholder="输入该片段的中文翻译..." autofocus>
+    <button style="margin-top:20px;" onclick="saveStep2(${ti})">确定，下一个</button>
+  `;
+}
+window.saveStep2 = (ti) => {
+  state.trans.push(document.getElementById('pIn').value);
+  if (ti < questions[curIdx].tasks.length - 1) goStep2(ti+1); else goStep3();
+}
+
+function goStep3() {
+  const q = questions[curIdx];
+  document.getElementById('content').innerHTML = `
+    <div style="color:#64748b; margin-bottom:10px;">阶段 3：全句整合</div>
+    <h3>请翻译整个句子</h3>
+    <div class="sentence-box">${q.sentence}</div>
+    ${state.trans.length > 0 ? `<div style="font-size:13px; color:#64748b; margin-bottom:10px;">参考你刚才的翻译碎片：<br> ${state.trans.map(x => `<span style="background:#e2e8f0; padding:3px 6px; border-radius:4px; margin-right:5px;">${x}</span>`).join('')}</div>` : ''}
+    <textarea id="fIn" rows="3" placeholder="输入全句最通顺的中文翻译..."></textarea>
+    <button style="margin-top:20px; background:#10b981;" onclick="finish()">提交并评分</button>
+  `;
+}
+
+// --- 恢复核心打分算法 (Levenshtein 编辑距离) ---
+function lev(a, b) {
+  if(!a || !b) return 0;
+  const res = Array.from({length:a.length+1},()=>[]);
+  for(let i=0;i<=a.length;i++) res[i][0]=i; for(let j=0;j<=b.length;j++) res[0][j]=j;
+  for(let i=1;i<=a.length;i++) for(let j=1;j<=b.length;j++) res[i][j]=Math.min(res[i-1][j]+1, res[i][j-1]+1, res[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return 1 - res[a.length][b.length] / Math.max(a.length, b.length);
+}
+
+async function finish() {
+  const q = questions[curIdx];
+  state.full = document.getElementById('fIn').value;
+  
+  let dS = 0, tS = 0;
+  if(q.tasks.length > 0) {
+      q.tasks.forEach((t,i) => { if(JSON.stringify(t.indices.sort()) === JSON.stringify(state.div[i].sort())) dS++; });
+      q.tasks.forEach((t,i) => tS += lev(t.translation, state.trans[i]));
+  } else { dS = q.tasks.length; tS = q.tasks.length; } // 兜底
+  
+  const divScore = q.tasks.length ? (dS/q.tasks.length)*100 : 100;
+  const partScore = q.tasks.length ? (tS/q.tasks.length)*100 : 100;
+  const fullScore = lev(q.full_translation, state.full)*100;
+  
+  // 综合得分计算：成分划分40%，片段翻译30%，整句翻译30%
+  const final = Math.round(divScore*0.4 + partScore*0.3 + fullScore*0.3);
+
+  // 保存成绩到数据库
+  await sb.from('user_progress').upsert({user_id:user.id, question_id:q.id, score:final}, {onConflict:'user_id,question_id'});
+  
+  // 刷新本地数据
+  const { data: s } = await sb.from('user_progress').select('*').eq('user_id', user.id);
+  scores = s;
+
+  document.getElementById('content').innerHTML = `
+    <div style="text-align:center; padding:20px 0;">
+      <h2 style="color:#64748b;">你的得分</h2>
+      <h1 style="font-size:60px; color:${final >= 80 ? '#10b981' : '#f59e0b'}; margin:10px 0;">${final} 分</h1>
+      
+      <div class="card" style="text-align:left; background:#fefce8; border-color:#fef08a; margin-top:30px;">
+        <b style="color:#ca8a04;">💡 AI 语法深度解析：</b>
+        <div style="margin-top:10px; line-height:1.6; white-space: pre-wrap;">${q.grammar || '老师暂未生成解析。'}</div>
+      </div>
+      
+      <div class="card" style="text-align:left; margin-top:15px;">
+        <b>🎯 标准翻译：</b><br>${q.full_translation}
+      </div>
+      
+      <button onclick="renderList()" style="margin-top:20px;">返回题库列表</button>
+    </div>
+  `;
+}
+
+// --- 恢复看板功能 (Chart.js) ---
+let myChartInstance = null;
+function showChart() {
+  document.getElementById('chartModal').style.display='flex';
+  const ctx = document.getElementById('myChart').getContext('2d');
+  
+  // 销毁旧图表防止重叠
+  if(myChartInstance) myChartInstance.destroy();
+  
+  const chartData = scores.sort((a,b) => new Date(a.updated_at) - new Date(b.updated_at)).map(s => s.score);
+  const chartLabels = chartData.map((_,i) => `第 ${i+1} 题`);
+
+  myChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: chartLabels,
+      datasets: [{ 
+          label: '学习轨迹得分', 
+          data: chartData, 
+          borderColor: '#3b82f6', 
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 5
+      }]
+    },
+    options: {
+        responsive: true,
+        scales: { y: { min: 0, max: 100 } }
+    }
+  });
 }
 </script>
 </body>
