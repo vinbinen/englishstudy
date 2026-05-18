@@ -388,16 +388,35 @@ function renderParts() {
 }
 
 window.submitParts = async function() {
-  document.getElementById('btnSubmitParts').disabled = true;
+  const q = AppState.questions[AppState.currentIndex]; 
+
+  // 1. 【核心修复】先收集所有输入框的数据，保存到内存中
+  for (let idx = 0; idx < q.tasks.length; idx++) {
+    const inputEl = document.getElementById(`partInput-${idx}`);
+    if (inputEl) {
+      AppState.partsUserInput[idx] = inputEl.value.trim();
+    }
+  }
+
+  // 2. 数据收集完毕后，再禁用按钮和显示遮罩层
+  const btn = document.getElementById('btnSubmitParts');
+  if (btn) btn.disabled = true;
   document.getElementById('partsCard').innerHTML += '<div class="overlay">⏳ AI 语义评分中...</div>';
 
-  const q = AppState.questions[AppState.currentIndex]; 
+  // 3. 清空旧的评分详情，开始新评分
+  AppState.partsDetail = []; 
   for (let idx = 0; idx < q.tasks.length; idx++) {
-    AppState.partsUserInput[idx] = document.getElementById(`partInput-${idx}`).value.trim();
-    if (!AppState.partsUserInput[idx]) { AppState.partsDetail.push(false); continue; }
-    const sim = await currentSimilarity(AppState.partsUserInput[idx], q.tasks[idx].translation);
+    const userInput = AppState.partsUserInput[idx];
+    if (!userInput) { 
+      AppState.partsDetail.push(false); 
+      continue; 
+    }
+    // 进行相似度计算
+    const sim = await currentSimilarity(userInput, q.tasks[idx].translation);
     AppState.partsDetail.push(sim >= 0.65);
   }
+
+  // 4. 进入最终阶段
   setTimeout(renderFull, 500);
 };
 
@@ -408,7 +427,7 @@ function renderFull() {
   let html = `<div class="card" id="fullCard">
     <h2>📝 最终阶段：整句整合</h2>
     <div class="sentence-box">${escapeHtml(q.sentence)}</div>
-    <p style="font-size:13px; color:#64748b; margin-bottom:8px;">点击下方成分可直接填入：</p >
+    <p style="font-size:13px; color:#64748b; margin-bottom:8px;">点击下方成分可直接填入：</p>
     <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">`;  
 
   // 2. 循环生成点击词块
