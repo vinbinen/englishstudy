@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>句子结构划分与翻译 (终极修复版)</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* 样式保持不变，确保美观与兼容性 */
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#f3f6fb; padding:20px; display:flex; justify-content:center; }
+.app{ width:100%; max-width:850px; background:#fff; border-radius:24px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.08); }
+h1{ font-size:30px; margin-bottom:16px; color:#16345f; text-align: center; }
+.card{ background:#f8fbff; border-radius:20px; padding:24px; margin-bottom:20px; position: relative; transition: all 0.3s ease; }
+.list-item{ background:white; border:1px solid #d9e3f2; border-radius:16px; padding:18px; margin-bottom:14px; cursor:pointer; transition:.2s; }
+.list-item:hover{ border-color:#2563eb; background:#f8fbff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37,99,235,0.08); }
+.list-title{ font-size:17px; line-height:1.8; color:#16345f; font-weight: 500; }
+.list-sub{ margin-top:8px; color:#64748b; font-size:14px; }
+.task-title{ font-size:20px; font-weight:700; color:#173860; margin-bottom:16px; }
+.sentence-box{ background:white; border-left:5px solid #2563eb; border-radius:14px; padding:18px; line-height:2; font-size:20px; color:#0f2744; margin:16px 0; touch-action: pan-y pinch-zoom; }
+.token{ display:inline-block; border-radius:8px; }
+.word{ cursor:pointer; transition:.15s; padding:6px 10px; min-height:36px; user-select: none; }
+.word:hover{ background:#e8f0ff; }
+.selected{ background:#ffd966; border-bottom:3px solid #d97706; }
+.correct-highlight{ background:#bbf7d0; border-bottom:3px solid #059669; }
+.feedback{ margin-top:16px; min-height:28px; font-weight:700; color:#1e3b6b; }
+.controls{ display:flex; flex-wrap:wrap; gap:12px; margin-top:18px; }
+button{ border:none; border-radius:999px; padding:12px 24px; background:#1f3f72; color:white; font-weight:700; cursor:pointer; transition:.2s; font-size:15px; }
+button:hover:not(:disabled){ background:#17315b; }
+button:disabled { background:#94a3b8; cursor:not-allowed; }
+button.secondary{ background:white; color:#1f3f72; border:2px solid #1f3f72; }
+button.secondary:hover:not(:disabled){ background:#eef3ff; }
+textarea{ width:100%; min-height:90px; resize:vertical; border:1px solid #cfd9ea; border-radius:14px; padding:14px; font-size:16px; margin-top:8px; font-family: inherit; }
+textarea:focus{ outline:none; border-color:#2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:10; display:flex; justify-content:center; align-items:center; border-radius:20px; font-weight:bold; color:#1f3f72; backdrop-filter: blur(2px); }
+.audio-btn { background: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; border-radius: 50%; width: 42px; height: 42px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 18px; }
+.snippet-tag { background:#dbeafe; color:#1e40af; cursor:pointer; padding:8px 16px; border-radius:99px; font-size: 14px; transition: 0.2s; font-weight: 500; }
+.snippet-tag:hover { background: #bfdbfe; transform: translateY(-1px); }
+
+@media(max-width:640px){
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .controls button.secondary:last-child { grid-column: span 2; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>📘 句子结构划分与翻译</h1>
+  <div id="user-area"></div>
+  <div id="mainView">
+    <div style="text-align:center; padding:40px; color:#64748b;">⏳ 正在初始化云端数据...</div>
+  </div>
+</div>
+
+<script type="module">
+const SB_URL = 'https://vbxjqgbwrlxlpafdiogj.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieGpxZ2J3cmx4bHBhZmRpb2dqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMTM5MTksImV4cCI6MjA5NDU4OTkxOX0.SVlWH2Pd5dlfO9jo39t6HmZYNKvU_14zO4Hzx-NcRUw';
+window.supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+const AppState = {
+  questions: [], progressData: [], currentIndex: -1, currentTaskIndex: 0,
+  selectedTokens: [], divideResults: [], divideWrongCounts: [],
+  partsUserInput: [], currentTokens: [], fullUserInput: ''
+};
+
+let currentUser = null;
+
+// ==========================================
+// 1. 分词与工具函数
+// ==========================================
+function tokenize(sentence) {
+  const regex = /([A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*|[.,!?;:()—-])|(\s+)/g;
+  const matches = sentence.match(regex) || [];
+  return matches.map(text => ({
+    text: text,
+    isWord: /[a-zA-Z0-9]/.test(text)
+  }));
+}
+
+function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// ==========================================
+// 2. 账号体系
+// ==========================================
+async function checkUser() {
+  const { data: { user } } = await window.supabaseClient.auth.getUser();
+  currentUser = user;
+  renderUserUI();
+  if (user) loadQuestions(); else renderLoginPrompt();
+}
+
+function renderUserUI() {
+  const area = document.getElementById('user-area');
+  area.style = 'margin-bottom:20px; padding:12px; background:#eef2ff; border-radius:12px; display:flex; justify-content:space-between; align-items:center; font-size:14px;';
+  area.innerHTML = currentUser 
+    ? `<span>👤 <b>${currentUser.email}</b></span><button onclick="handleLogout()" style="padding:6px 14px; font-size:13px; background:#ef4444; border-radius:999px; color:white; border:none; cursor:pointer;">注销</button>`
+    : `<span>🔒 请先登录</span><button onclick="handleAuth()" style="padding:6px 14px; font-size:13px; background:#1f3f72; border-radius:999px; color:white; border:none; cursor:pointer;">登录 / 注册</button>`;
+}
+
+window.handleAuth = async () => {
+  const email = prompt("📧 邮箱:"); if (!email) return;
+  const password = prompt("🔑 密码:"); if(!password) return;
+  const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    if(confirm(`账号不存在，是否以此邮箱注册？`)) {
+      const { error: signUpError } = await window.supabaseClient.auth.signUp({ email, password });
+      if (signUpError) alert("失败: " + signUpError.message); else location.reload(); 
+    }
+  } else location.reload(); 
+};
+window.handleLogout = async () => { await window.supabaseClient.auth.signOut(); location.reload(); };
+
+function renderLoginPrompt() {
+  document.getElementById('mainView').innerHTML = `<div class="card" style="text-align:center; padding:50px 20px;"><h2>请登录以开始练习</h2><button onclick="window.handleAuth()" style="margin-top:20px;">立即登录</button></div>`;
+}
+
+// ==========================================
+// 3. 加载数据
+// ==========================================
+async function loadQuestions() {
+  const [{ data: qs }, { data: pr }] = await Promise.all([
+    window.supabaseClient.from('questions').select('*').order('id', { ascending: true }),
+    window.supabaseClient.from('user_progress').select('question_id, score').eq('user_id', currentUser.id)
+  ]);
+  AppState.questions = qs || [];
+  AppState.progressData = pr || [];
+  renderQuestionList();
+}
+
+function renderQuestionList() {
+  let html = '';
+  AppState.questions.forEach((q, i) => {
+    const record = AppState.progressData.find(p => p.question_id === q.id);
+    html += `<div class="list-item" onclick="window.startQuestion(${i})">
+      <div class="list-title">${record ? '✅' : '📝'} ${escapeHtml(q.sentence)}</div>
+      <div class="list-sub">${record ? `最高得分: ${record.score}` : '未完成'}</div>
+    </div>`;
+  });
+  document.getElementById('mainView').innerHTML = html || '<div class="card">题库暂无题目。</div>';
+}
+
+// ==========================================
+// 4. 划分阶段 (Phase 1)
+// ==========================================
+window.startQuestion = function(idx) {
+  AppState.currentIndex = idx; AppState.currentTaskIndex = 0; AppState.selectedTokens = [];
+  AppState.currentTokens = tokenize(AppState.questions[idx].sentence);
+  AppState.divideResults = new Array(AppState.questions[idx].tasks.length).fill(null);
+  AppState.divideWrongCounts = new Array(AppState.questions[idx].tasks.length).fill(0);
+  AppState.partsUserInput = new Array(AppState.questions[idx].tasks.length).fill('');
+  renderDivide();
+};
+
+function renderDivide() {
+  const q = AppState.questions[AppState.currentIndex], task = q.tasks[AppState.currentTaskIndex];
+  const remaining = Math.max(0, 3 - AppState.divideWrongCounts[AppState.currentTaskIndex]);
+  const isFailed = AppState.divideResults[AppState.currentTaskIndex] === false;
+
+  let html = `<div class="card">
+    <div class="task-title">第 ${AppState.currentTaskIndex + 1} 步：圈出【${escapeHtml(task.title)}】</div>
+    <div style="color: #64748b; margin-bottom:10px;">剩余尝试：${remaining}</div>
+    <div class="sentence-box" id="sentenceContainer">`;
+
+  AppState.currentTokens.forEach((tok, idx) => {
+    if(tok.isWord) {
+      let cls = 'token word';
+      if (isFailed && task.indices.includes(idx)) cls += ' correct-highlight';
+      else if (AppState.selectedTokens.includes(idx)) cls += ' selected';
+      html += `<span class="${cls}" onclick="window.toggleToken(${idx})">${escapeHtml(tok.text)}</span>`;
+    } else html += escapeHtml(tok.text);
+  });
+
+  html += `</div>
+    <div class="controls">
+      <button class="secondary" onclick="window.cancelSelection()">清除选择</button>
+      <button onclick="window.submitDivide()">提交划分</button>
+    </div>
+    <div id="divideFeedback" class="feedback"></div>
+  </div>`;
+  document.getElementById('mainView').innerHTML = html;
+}
+
+window.toggleToken = function(idx) {
+  const pos = AppState.selectedTokens.indexOf(idx);
+  if (pos >= 0) AppState.selectedTokens.splice(pos, 1);
+  else AppState.selectedTokens.push(idx);
+  document.querySelectorAll('#sentenceContainer .token.word').forEach((span, i) => {
+    // 逻辑索引映射
+    const dataIdx = AppState.currentTokens.map((t, index) => t.isWord ? index : -1).filter(v => v !== -1)[i];
+    span.classList.toggle('selected', AppState.selectedTokens.includes(dataIdx));
+  });
+};
+
+window.cancelSelection = function() { AppState.selectedTokens = []; renderDivide(); };
+
+window.submitDivide = function() {
+  const task = AppState.questions[AppState.currentIndex].tasks[AppState.currentTaskIndex];
+  const isCorrect = JSON.stringify([...task.indices].sort()) === JSON.stringify([...AppState.selectedTokens].sort());
+  const fb = document.getElementById('divideFeedback');
+
+  if(isCorrect) {
+    AppState.divideResults[AppState.currentTaskIndex] = true;
+    fb.innerHTML = '<span class="pass">✅ 正确！</span>';
+    setTimeout(() => { AppState.currentTaskIndex++; AppState.selectedTokens = []; proceed(); }, 800);
+  } else {
+    AppState.divideWrongCounts[AppState.currentTaskIndex]++;
+    if(AppState.divideWrongCounts[AppState.currentTaskIndex] >= 3) {
+      AppState.divideResults[AppState.currentTaskIndex] = false;
+      fb.innerHTML = '<span class="fail">❌ 机会用完，正确答案已标绿。</span>';
+      setTimeout(() => { AppState.currentTaskIndex++; AppState.selectedTokens = []; proceed(); }, 2000);
+    } else {
+      fb.innerHTML = '<span class="fail">❌ 划分不准确，请再试一次。</span>';
+    }
+  }
+};
+
+function proceed() {
+  if(AppState.currentTaskIndex < AppState.questions[AppState.currentIndex].tasks.length) renderDivide();
+  else renderParts();
+}
+
+// ==========================================
+// 5. 成分翻译阶段 (Phase 2) - 修复空格问题
+// ==========================================
+function renderParts() {
+  const q = AppState.questions[AppState.currentIndex], tokens = AppState.currentTokens;
+  let html = `<div class="card" id="partsCard"><h2>🔤 翻译句子成分</h2><div class="sentence-box">${escapeHtml(q.sentence)}</div>`;
+  
+  q.tasks.forEach((task, idx) => {
+    // 【核心修复 1】：使用 join(' ') 并处理标点符号空格，确保词块阅读正常
+    const englishPart = task.indices
+      .map(i => tokens[i]?.text || '')
+      .join(' ')
+      .replace(/\s+([.,!?;:])/g, '$1') // 去掉标点前的空格
+      .trim();
+
+    html += `<div style="margin-bottom:20px;">
+      <label style="font-weight:700; color:#1e3b8a;">${escapeHtml(task.title)}</label>
+      <div style="background:#eef2ff;padding:10px;border-radius:10px;margin:8px 0; font-size:18px;">${escapeHtml(englishPart)}</div>
+      <textarea id="partInput-${idx}" placeholder="输入中文翻译..." oninput="AppState.partsUserInput[${idx}]=this.value"></textarea>
+    </div>`;
+  });
+  
+  html += `<div class="controls"><button onclick="window.renderFull()">下一步：整句润色</button></div></div>`;
+  document.getElementById('mainView').innerHTML = html;
+}
+
+// ==========================================
+// 6. 整句翻译阶段 (Phase 3) - 修复快速填入
+// ==========================================
+window.renderFull = function() {
+  const q = AppState.questions[AppState.currentIndex];
+  let html = `<div class="card" id="fullCard">
+    <h2>📝 最终阶段：整句整合</h2>
+    <div class="sentence-box">${escapeHtml(q.sentence)}</div>
+    <p style="font-size:13px; color:#64748b; margin-bottom:8px;">点击下方成分可直接填入：</p>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">`;
+
+  // 【核心修复 2】：确保点击标签能正确把翻译文字填入文本框
+  AppState.partsUserInput.forEach((text) => { 
+    if(text && text.trim()) {
+      html += `<span class="snippet-tag" data-text="${escapeHtml(text)}" onclick="window.appendSnippet(this)">${escapeHtml(text)}</span>`; 
+    }
+  });
+
+  html += `</div>
+    <textarea id="fullTranslationInput" placeholder="在此输入完整的中文字幕..." oninput="AppState.fullUserInput=this.value"></textarea>
+    <div class="controls">
+      <button id="btnSubmitFull" onclick="window.submitFull()">完成并生成报告</button>
+    </div>
+  </div>`;
+  document.getElementById('mainView').innerHTML = html;
+  // 恢复之前可能输入的内容
+  if(AppState.fullUserInput) document.getElementById('fullTranslationInput').value = AppState.fullUserInput;
+};
+
+window.appendSnippet = function(el) { 
+  const text = el.getAttribute('data-text');
+  const input = document.getElementById('fullTranslationInput');
+  if (input) {
+    input.value += text; 
+    AppState.fullUserInput = input.value; // 同步状态
+    input.focus();
+  }
+};
+
+// ==========================================
+// 7. 提交与报告
+// ==========================================
+window.submitFull = async function() {
+  const q = AppState.questions[AppState.currentIndex];
+  const input = AppState.fullUserInput.trim();
+  if(!input) { alert('请输入最终翻译'); return; }
+
+  const card = document.getElementById('fullCard');
+  card.innerHTML += '<div class="overlay">⏳ 正在同步云端进度...</div>';
+
+  const divideScore = Math.round((AppState.divideResults.filter(x => x === true).length / q.tasks.length) * 100);
+  // 这里简化评分，实际可接入 AI 语义评分
+  const finalScore = divideScore; 
+
+  if(currentUser) {
+    await window.supabaseClient.from('user_progress').upsert({
+      user_id: currentUser.id, question_id: q.id, score: finalScore
+    }, { onConflict: 'user_id, question_id' });
+  }
+
+  document.getElementById('mainView').innerHTML = `<div class="card">
+    <div style="font-size:32px; font-weight:800; color:#1e3b8a; text-align:center; margin-bottom:20px;">得分：${finalScore}</div>
+    <div style="background:#fffbeb; padding:15px; border-radius:12px; margin-bottom:15px; border-left:5px solid #f59e0b;">
+      <strong>✅ 标准答案：</strong><br>${escapeHtml(q.full_translation)}
+    </div>
+    <div style="background:#f0fdf4; padding:15px; border-radius:12px; margin-bottom:20px; border-left:5px solid #22c55e;">
+      <strong>✍️ 你的翻译：</strong><br>${escapeHtml(input)}
+    </div>
+    <button onclick="window.loadQuestions()" style="width:100%;">返回列表</button>
+  </div>`;
+};
+
+window.onload = checkUser;
+</script>
+</body>
+</html>
