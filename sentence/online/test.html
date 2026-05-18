@@ -401,41 +401,64 @@ window.submitParts = async function() {
   setTimeout(renderFull, 500);
 };
 
-function renderFull() {
-  const q = AppState.questions[AppState.currentIndex];
-  let html = `<div class="card" id="fullCard"><h2>📝 最终阶段：整句整合</h2><div class="sentence-box">${escapeHtml(q.sentence)}</div><div style="display:flex;gap:8px;margin-bottom:16px;">`;
-  AppState.partsUserInput.forEach(text => { 
-    if(text.trim()) {
-    // 替换为使用 data-text 属性的方式，这样更稳健
-    html += `<span class="token" 
-      style="background:#dbeafe;cursor:pointer;padding:8px 16px;border-radius:99px;margin-right:8px;" 
-      data-text="${escapeHtml(text)}" 
-      onclick="window.appendSnippet(this)">${escapeHtml(text)}</span>`; 
-  }
-});
-  html += `</div><textarea id="fullTranslationInput" placeholder="请输入合并并润色后的完整翻译..."></textarea>
-      <div class="controls"><button id="btnSubmitFull" onclick="window.submitFull()">生成学习报告</button></div></div>`;
+function renderFull() {  
+  const q = AppState.questions[AppState.currentIndex];  
+  
+  // 1. 开始构建 HTML
+  let html = `<div class="card" id="fullCard">
+    <h2>📝 最终阶段：整句整合</h2>
+    <div class="sentence-box">${escapeHtml(q.sentence)}</div>
+    <p style="font-size:13px; color:#64748b; margin-bottom:8px;">点击下方成分可直接填入：</p >
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">`;  
+
+  // 2. 循环生成点击词块
+  AppState.partsUserInput.forEach(text => {     
+    if(text && text.trim()) {    
+      html += `<span class="token" 
+        style="background:#dbeafe;cursor:pointer;padding:8px 16px;border-radius:99px;margin-right:8px;display:inline-block;" 
+        data-text="${escapeHtml(text)}" 
+        onclick="window.appendSnippet(this)">${escapeHtml(text)}</span>`;   
+    }
+  }); 
+
+  // 3. 【关键：补全缺失的部分】添加输入框、按钮和收尾标签
+  html += `</div>
+    <textarea id="fullTranslationInput" placeholder="点击上方词块或在此输入完整翻译..." oninput="AppState.fullUserInput=this.value"></textarea>
+    <div class="controls">
+      <button id="btnSubmitFull" onclick="window.submitFull()">完成并生成报告</button>
+    </div>
+  </div>`;
+
+  // 4. 【关键：执行渲染】将构建好的 HTML 插入到页面中
   document.getElementById('mainView').innerHTML = html;
+
+  // 5. 恢复之前可能输入的内容（防止页面刷新丢失）
+  if(AppState.fullUserInput) {
+    document.getElementById('fullTranslationInput').value = AppState.fullUserInput;
+  }
 }
 
 window.appendSnippet = function(el) { 
-  const text = el.getAttribute('data-text'); // 从点击的元素获取翻译文本
-  const input = document.getElementById('fullTranslationInput');
+  const text = el.getAttribute('data-text'); // 从 data-text 属性获取文字内容
+  const input = document.getElementById('fullTranslationInput'); // 获取上面 html 里的 textarea
+  
   if (input) {
     const startPos = input.selectionStart;
     const endPos = input.selectionEnd;
     const currentVal = input.value;
 
-    // 在光标位置插入，或者直接追加
+    // 在光标所在位置插入文本，如果没有光标则追加到最后
     input.value = currentVal.substring(0, startPos) + text + currentVal.substring(endPos);
     
-    // 同步到状态机，确保提交时数据最新
+    // 更新全局变量，确保提交时数据正确
     AppState.fullUserInput = input.value; 
     
-    // 重新聚焦并把光标移到插入词后面
+    // 重新聚焦输入框，方便用户继续编辑
     input.focus();
     const newPos = startPos + text.length;
     input.setSelectionRange(newPos, newPos);
+  } else {
+    console.error("找不到 ID 为 fullTranslationInput 的输入框，请检查 renderFull 是否正确执行。");
   }
 };
 
