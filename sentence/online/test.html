@@ -371,7 +371,11 @@ function renderParts() {
   const q = AppState.questions[AppState.currentIndex], tokens = AppState.currentTokens;
   let html = `<div class="card" id="partsCard"><h2>🔤 第二阶段：翻译成分</h2><div class="sentence-box">${escapeHtml(q.sentence)}</div>`;
   q.tasks.forEach((task, idx) => {
-    const englishPart = task.indices.map(i => tokens[i]?.text || '').join(''); // 直接拼接即可，原字符串已含空格
+    const englishPart = task.indices
+  .map(i => tokens[i]?.text || '')
+  .join(' ') // 先用空格连接
+  .replace(/\s+([.,!?;:])/g, '$1') // 移除标点符号（如逗号、句号）前面的多余空格
+  .trim();
     html += `
       <div style="margin-bottom:24px;">
         <label style="font-weight:700; color:#1e3b8a;">${escapeHtml(task.title)}</label>
