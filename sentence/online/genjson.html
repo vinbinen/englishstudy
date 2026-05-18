@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<title>管理员后台 - 句子解析挑战</title>
+<title>题库系统管理后台 (完整版)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root { --primary: #2563eb; --accent: #8b5cf6; --bg: #f8fafc; }
@@ -19,14 +19,16 @@
   .btn-primary { background: var(--primary); color: white; }
   .btn-ai { background: linear-gradient(135deg, #8b5cf6, #d946ef); color: white; }
   .btn-outline { background: white; border: 1px solid #e2e8f0; color: #475569; }
+  .btn-danger { background: #ef4444; color: white; }
   button:hover { opacity: 0.9; transform: translateY(-1px); }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   .token-box { background: #f1f5f9; border-radius: 12px; padding: 15px; min-height: 50px; line-height: 2.2; }
-  .token { display: inline-block; padding: 2px 8px; border-radius: 6px; cursor: pointer; background: white; border: 1px solid #e2e8f0; margin-right: 4px; }
+  .token { display: inline-block; padding: 2px 8px; border-radius: 6px; cursor: pointer; background: white; border: 1px solid #e2e8f0; margin-right: 4px; user-select: none; }
   .token.selected { background: #fde047; border-color: #ca8a04; font-weight: bold; }
   #authStatus { font-size: 13px; color: #64748b; }
   table { width: 100%; border-collapse: collapse; margin-top: 20px; }
   th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e2e8f0; }
+  .part-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
 </style>
 </head>
 <body>
@@ -38,41 +40,42 @@
 
   <div id="loginPanel" class="card" style="display:none; text-align:center;">
     <h3>请以管理员身份登录</h3>
-    <p style="margin:10px 0; color:#64748b;">仅限 3100925625@qq.com 操作</p>
+    <p style="margin:10px 0; color:#64748b;">仅限管理员邮箱操作</p>
     <button class="btn-primary" onclick="login()">立即登录</button>
   </div>
 
   <div id="mainEditor" style="display:none;">
     <div class="card" style="background:#eff6ff; border:1px solid #bfdbfe;">
       <h2>⚙️ API 配置</h2>
-      <label>Cloudflare Worker URL (必填)</label>
-      <input type="text" id="cfUrl" placeholder="https://your-worker.name.workers.dev" />
+      <label>Cloudflare Worker URL</label>
+      <input type="text" id="cfUrl" placeholder="https://your-worker-name.workers.dev" />
     </div>
 
     <div class="card">
       <h2>✍️ 题目编辑器</h2>
       <label>1. 英文原句</label>
-      <textarea id="sInput" placeholder="输入英文句子，例如: I love coding."></textarea>
+      <textarea id="sInput" placeholder="输入英文句子..."></textarea>
       
       <label>2. 全句中文翻译</label>
       <input type="text" id="tInput" placeholder="输入全句中文翻译...">
 
-      <label>3. 语法深度解析</label>
+      <label>3. 语法深度解析 (AI 赋能)</label>
       <button class="btn-ai" id="aiBtn" onclick="generateAI()">✨ AI 自动生成解析</button>
-      <textarea id="gInput" rows="5" placeholder="AI 将基于以上内容自动生成语法点分析..." style="margin-top:10px;"></textarea>
+      <textarea id="gInput" rows="5" placeholder="AI 解析结果将出现在这里..." style="margin-top:10px;"></textarea>
 
       <div class="btn-group">
         <button class="btn-primary" onclick="makeTokens()">第一步：生成词块</button>
-        <button class="btn-outline" onclick="addPart()">第二步：划定选中的为成分</button>
+        <button class="btn-outline" onclick="addPart()">第二步：划定选中部分</button>
         <button class="btn-primary" style="background:#10b981;" onclick="saveToCloud()">💾 第三步：同步到云端</button>
         <button class="btn-outline" onclick="resetForm()">重置清空</button>
       </div>
     </div>
 
     <div class="card">
-      <label>点击词块进行划分 (支持连选):</label>
+      <label>点击词块进行划分 (支持 Shift 键连选):</label>
       <div id="tBox" class="token-box"></div>
-      <div id="pBox" style="margin-top:15px;"></div>
+      <label style="margin-top:15px;">已划定的句子成分:</label>
+      <div id="pBox"></div>
     </div>
 
     <div class="card">
@@ -86,22 +89,29 @@
 </div>
 
 <script>
-// --- 配置信息 (请填入你的 Supabase 信息) ---
+// ================= 请填入你的 Supabase 信息 =================
 const SB_URL = "https://vbxjqgbwrlxlpafdiogj.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieGpxZ2J3cmx4bHBhZmRpb2dqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMTM5MTksImV4cCI6MjA5NDU4OTkxOX0.SVlWH2Pd5dlfO9jo39t6HmZYNKvU_14zO4Hzx-NcRUw";
+// ==========================================================
+
 const sb = supabase.createClient(SB_URL, SB_KEY);
 const ADMIN_EMAIL = "3100925625@qq.com";
 
-let user = null, curId = null, tokens = [], selected = [], parts = [];
+let user = null, curId = null, tokens = [], selected = [], parts = [], lastIdx = -1;
 
-// 1. 权限验证
+// 1. 权限控制
 async function checkUser() {
   const { data } = await sb.auth.getUser();
   if (data.user && data.user.email === ADMIN_EMAIL) {
     user = data.user;
-    document.getElementById('authStatus').innerHTML = `✅ 已登录: ${user.email} <a href="#" onclick="logout()" style="margin-left:10px; color:red;">退出</a>`;
+    document.getElementById('authStatus').innerHTML = `✅ 已登录: ${user.email} <button onclick="logout()" style="margin-left:10px; padding:4px 8px; font-size:12px;">退出</button>`;
     document.getElementById('mainEditor').style.display = 'block';
     document.getElementById('loginPanel').style.display = 'none';
+    
+    // 恢复上次填写的 Worker URL
+    const savedUrl = localStorage.getItem('cfWorkerUrl');
+    if(savedUrl) document.getElementById('cfUrl').value = savedUrl;
+    
     loadList();
   } else {
     document.getElementById('mainEditor').style.display = 'none';
@@ -117,55 +127,62 @@ async function login() {
   if(error) alert("登录失败: " + error.message);
   else location.reload();
 }
-
 async function logout() { await sb.auth.signOut(); location.reload(); }
 
-// 2. AI 调用逻辑 (修复超时问题)
+// 2. AI 调用逻辑
 async function generateAI() {
   let url = document.getElementById('cfUrl').value.trim();
   const s = document.getElementById('sInput').value.trim();
   const t = document.getElementById('tInput').value.trim();
   
   if(!url || !s) return alert("请填写 Worker URL 和英文句子");
+  
+  localStorage.setItem('cfWorkerUrl', url); // 记住配置
   if(!url.startsWith('http')) url = 'https://' + url;
   url = url.replace(/\/$/, ""); 
 
   const btn = document.getElementById('aiBtn');
-  btn.disabled = true; btn.innerText = "⏳ 正在请求 Cloudflare AI...";
+  btn.disabled = true; btn.innerText = "⏳ 正在连接 AI...";
 
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: `请分析这个句子的语法和词汇点。英文: "${s}"，中文翻译: "${t}"`,
-        adminEmail: ADMIN_EMAIL
-      })
+      body: JSON.stringify({ prompt: `分析语法点: "${s}" (翻译: "${t}")`, adminEmail: ADMIN_EMAIL })
     });
-    
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     document.getElementById('gInput').value = data.response || "生成失败";
   } catch (err) {
-    alert("AI 调用失败: " + err.message + "\n请确保 ReqBin 手动测试能通且 URL 无误。");
+    alert("AI 调用失败: " + err.message);
   } finally {
     btn.disabled = false; btn.innerText = "✨ AI 自动生成解析";
   }
 }
 
-// 3. 业务逻辑 (分词与划线)
+// 3. 词块划分与编辑 (恢复 Shift 连选和修改功能)
 function makeTokens() {
   const s = document.getElementById('sInput').value;
   tokens = s.match(/([A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*|[.,!?;:()—-])|(\s+)/g).map(t => ({t, isW:/[a-zA-Z0-9]/.test(t)}));
-  selected = []; renderTokens();
+  selected = []; lastIdx = -1; renderTokens();
 }
 
 function renderTokens() {
-  document.getElementById('tBox').innerHTML = tokens.map((t,i) => t.isW ? `<span class="token ${selected.includes(i)?'selected':''}" onclick="tgl(${i})">${t.t}</span>` : t.t).join('');
+  document.getElementById('tBox').innerHTML = tokens.map((t,i) => 
+    t.isW ? `<span class="token ${selected.includes(i)?'selected':''}" onclick="tgl(${i}, event)">${t.t}</span>` : t.t
+  ).join('');
 }
 
-function tgl(i) {
-  selected.includes(i) ? selected.splice(selected.indexOf(i),1) : selected.push(i);
+function tgl(i, event) {
+  if (event.shiftKey && lastIdx !== -1) {
+    let start = Math.min(i, lastIdx), end = Math.max(i, lastIdx);
+    for (let j = start; j <= end; j++) {
+      if (tokens[j].isW && !selected.includes(j)) selected.push(j);
+    }
+  } else {
+    selected.includes(i) ? selected.splice(selected.indexOf(i),1) : selected.push(i);
+  }
+  lastIdx = i;
   renderTokens();
 }
 
@@ -174,14 +191,33 @@ function addPart() {
   if(!title) return;
   const s = [...selected].sort((a,b)=>a-b);
   parts.push({ title, translation: trans, indices: s, text: s.map(i=>tokens[i].t).join(' ') });
-  selected = []; renderTokens(); renderParts();
+  selected = []; lastIdx = -1; renderTokens(); renderParts();
 }
+
+// 恢复：编辑已存在的成分
+window.editPart = (idx) => {
+  const p = parts[idx];
+  const newTitle = prompt("修改成分名称:", p.title);
+  if(newTitle !== null) p.title = newTitle;
+  const newTrans = prompt("修改对应的中文:", p.translation);
+  if(newTrans !== null) p.translation = newTrans;
+  renderParts();
+}
+
+window.deletePart = (idx) => { parts.splice(idx, 1); renderParts(); }
 
 function renderParts() {
-  document.getElementById('pBox').innerHTML = parts.map((p,i)=>`<div style="font-size:13px; margin-bottom:5px;">✅ <b>${p.title}</b>: ${p.text} <button onclick="parts.splice(${i},1);renderParts()" style="padding:2px 5px; font-size:10px;">删</button></div>`).join('');
+  document.getElementById('pBox').innerHTML = parts.map((p,i)=>`
+    <div class="part-item">
+      <div>✅ <b>${p.title}</b>: ${p.text} <br><span style="color:#64748b;font-size:13px;">译: ${p.translation}</span></div>
+      <div>
+        <button class="btn-outline" style="padding:4px 8px; font-size:12px;" onclick="editPart(${i})">编辑</button>
+        <button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="deletePart(${i})">删除</button>
+      </div>
+    </div>`).join('');
 }
 
-// 4. 云端操作
+// 4. 云端操作 (恢复删除题目功能)
 async function saveToCloud() {
   const data = {
     id: curId || Date.now(),
@@ -197,14 +233,27 @@ async function saveToCloud() {
 
 async function loadList() {
   const { data } = await sb.from('questions').select('id, sentence').order('created_at', {ascending:false});
-  document.querySelector('#qTable tbody').innerHTML = data.map(q => `<tr><td>${q.id}</td><td>${q.sentence.slice(0,30)}...</td><td><button onclick='loadQuestion(${JSON.stringify(q)})'>编辑</button></td></tr>`).join('');
+  document.querySelector('#qTable tbody').innerHTML = data.map(q => `
+    <tr>
+      <td>${q.id}</td><td>${q.sentence.slice(0,30)}...</td>
+      <td>
+        <button class="btn-outline" style="padding:6px 10px;" onclick='loadQuestion(${q.id})'>编辑</button>
+        <button class="btn-danger" style="padding:6px 10px;" onclick='delQuestion(${q.id})'>删除</button>
+      </td>
+    </tr>`).join('');
 }
 
-window.loadQuestion = async (qShort) => {
-  const { data: q } = await sb.from('questions').select('*').eq('id', qShort.id).single();
+window.loadQuestion = async (id) => {
+  const { data: q } = await sb.from('questions').select('*').eq('id', id).single();
   curId = q.id; document.getElementById('sInput').value = q.sentence; document.getElementById('tInput').value = q.full_translation;
   document.getElementById('gInput').value = q.grammar; parts = q.tasks; makeTokens(); renderParts();
 };
+
+window.delQuestion = async (id) => {
+  if(!confirm("确定要删除这道题吗？")) return;
+  await sb.from('questions').delete().eq('id', id);
+  loadList();
+}
 
 function resetForm() { curId=null; document.getElementById('sInput').value=''; document.getElementById('tInput').value=''; document.getElementById('gInput').value=''; parts=[]; document.getElementById('tBox').innerHTML=''; renderParts(); }
 
