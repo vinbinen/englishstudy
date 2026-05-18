@@ -405,16 +405,38 @@ function renderFull() {
   const q = AppState.questions[AppState.currentIndex];
   let html = `<div class="card" id="fullCard"><h2>📝 最终阶段：整句整合</h2><div class="sentence-box">${escapeHtml(q.sentence)}</div><div style="display:flex;gap:8px;margin-bottom:16px;">`;
   AppState.partsUserInput.forEach(text => { 
-    if(text) html += `<span class="token" style="background:#dbeafe;cursor:pointer;padding:8px 16px;border-radius:99px;" onclick='window.appendSnippet(${JSON.stringify(text)})'>${escapeHtml(text)}</span>`; 
-  });
+    if(text.trim()) {
+    // 替换为使用 data-text 属性的方式，这样更稳健
+    html += `<span class="token" 
+      style="background:#dbeafe;cursor:pointer;padding:8px 16px;border-radius:99px;margin-right:8px;" 
+      data-text="${escapeHtml(text)}" 
+      onclick="window.appendSnippet(this)">${escapeHtml(text)}</span>`; 
+  }
+});
   html += `</div><textarea id="fullTranslationInput" placeholder="请输入合并并润色后的完整翻译..."></textarea>
       <div class="controls"><button id="btnSubmitFull" onclick="window.submitFull()">生成学习报告</button></div></div>`;
   document.getElementById('mainView').innerHTML = html;
 }
 
-window.appendSnippet = function(text) { 
-  const el = document.getElementById('fullTranslationInput');
-  el.value += text; AppState.fullUserInput = el.value; 
+window.appendSnippet = function(el) { 
+  const text = el.getAttribute('data-text'); // 从点击的元素获取翻译文本
+  const input = document.getElementById('fullTranslationInput');
+  if (input) {
+    const startPos = input.selectionStart;
+    const endPos = input.selectionEnd;
+    const currentVal = input.value;
+
+    // 在光标位置插入，或者直接追加
+    input.value = currentVal.substring(0, startPos) + text + currentVal.substring(endPos);
+    
+    // 同步到状态机，确保提交时数据最新
+    AppState.fullUserInput = input.value; 
+    
+    // 重新聚焦并把光标移到插入词后面
+    input.focus();
+    const newPos = startPos + text.length;
+    input.setSelectionRange(newPos, newPos);
+  }
 };
 
 window.submitFull = async function() {
