@@ -2,75 +2,83 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<title>题库管理后台 (AI & 安全加固版)</title>
+<title>管理员后台 - 句子解析挑战</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  *{ margin:0; padding:0; box-sizing:border-box; }
-  body{ font-family:system-ui; background:#f1f5f9; padding:20px; color:#1e293b; }
-  .container{ max-width:1000px; margin:auto; }
-  .card{ background:white; border-radius:16px; padding:24px; margin-bottom:20px; box-shadow:0 4px 6px rgba(0,0,0,.05); }
-  label{ display:block; font-weight:bold; margin:15px 0 8px; }
-  input, textarea { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:12px; font-size:15px; }
-  button{ border:none; background:#2563eb; color:white; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:600; margin-right:10px; }
-  button:hover{ opacity:0.9; }
-  .ai-btn { background: linear-gradient(135deg, #8b5cf6, #d946ef); }
-  .danger { background:#ef4444; }
-  .secondary { background:white; color:#2563eb; border:1px solid #2563eb; }
-  .token-box{ background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; min-height:60px; line-height:2; }
-  .token{ display:inline-block; padding:2px 6px; border-radius:4px; cursor:pointer; }
-  .selected{ background:#fde047; border-bottom:2px solid #ca8a04; }
-  table { width:100%; border-collapse:collapse; margin-top:20px; }
-  th, td { border:1px solid #e2e8f0; padding:12px; text-align:left; font-size:14px; }
+  :root { --primary: #2563eb; --accent: #8b5cf6; --bg: #f8fafc; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: system-ui; background: var(--bg); color: #1e293b; padding: 20px; }
+  .container { max-width: 900px; margin: auto; }
+  .card { background: white; border-radius: 16px; padding: 24px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+  h2 { margin-bottom: 16px; color: #0f172a; display: flex; align-items: center; gap: 8px; }
+  label { display: block; font-weight: 600; margin: 15px 0 8px; font-size: 14px; }
+  textarea, input { width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; font-size: 15px; transition: border 0.2s; }
+  textarea:focus, input:focus { outline: none; border-color: var(--primary); }
+  .btn-group { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  button { border: none; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-ai { background: linear-gradient(135deg, #8b5cf6, #d946ef); color: white; }
+  .btn-outline { background: white; border: 1px solid #e2e8f0; color: #475569; }
+  button:hover { opacity: 0.9; transform: translateY(-1px); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .token-box { background: #f1f5f9; border-radius: 12px; padding: 15px; min-height: 50px; line-height: 2.2; }
+  .token { display: inline-block; padding: 2px 8px; border-radius: 6px; cursor: pointer; background: white; border: 1px solid #e2e8f0; margin-right: 4px; }
+  .token.selected { background: #fde047; border-color: #ca8a04; font-weight: bold; }
+  #authStatus { font-size: 13px; color: #64748b; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e2e8f0; }
 </style>
 </head>
 <body>
 <div class="container">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-    <h1>👑 题库系统后台</h1>
-    <div id="authStatus">未登录</div>
+    <h1>👑 题库系统管理后台</h1>
+    <div id="authStatus">检查权限中...</div>
   </div>
 
-  <div class="card" style="background:#eef2ff;">
-    <h3>⚙️ 核心接入配置</h3>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:10px;">
-      <input type="text" id="sbUrl" placeholder="Supabase URL">
-      <input type="password" id="sbKey" placeholder="Supabase Anon Key">
-      <input type="text" id="cfWorkerUrl" placeholder="Cloudflare Worker URL (REST API)">
+  <div id="loginPanel" class="card" style="display:none; text-align:center;">
+    <h3>请以管理员身份登录</h3>
+    <p style="margin:10px 0; color:#64748b;">仅限 3100925625@qq.com 操作</p>
+    <button class="btn-primary" onclick="login()">立即登录</button>
+  </div>
+
+  <div id="mainEditor" style="display:none;">
+    <div class="card" style="background:#eff6ff; border:1px solid #bfdbfe;">
+      <h2>⚙️ API 配置</h2>
+      <label>Cloudflare Worker URL (必填)</label>
+      <input type="text" id="cfUrl" placeholder="https://your-worker.name.workers.dev" />
     </div>
-    <button onclick="saveAndInit()" style="margin-top:15px;">保存配置并登录</button>
-  </div>
 
-  <div id="editorArea" style="display:none;">
     <div class="card">
-      <h2 id="editTitle">✍️ 编辑题目</h2>
-      <label>1. 英文句子</label>
-      <textarea id="sInput" placeholder="Enter sentence..."></textarea>
-      <label>2. 全句中文翻译</label>
-      <input type="text" id="tInput" placeholder="输入翻译...">
+      <h2>✍️ 题目编辑器</h2>
+      <label>1. 英文原句</label>
+      <textarea id="sInput" placeholder="输入英文句子，例如: I love coding."></textarea>
       
-      <label>3. 语法解析 (AI 赋能)</label>
-      <button class="ai-btn" id="aiBtn" onclick="askAI()">✨ AI 自动解析</button>
-      <textarea id="gInput" rows="4" placeholder="AI 生成的结果将出现在这里..."></textarea>
+      <label>2. 全句中文翻译</label>
+      <input type="text" id="tInput" placeholder="输入全句中文翻译...">
 
-      <div style="margin-top:20px;">
-        <button onclick="makeTokens()">1. 生成词块</button>
-        <button class="secondary" onclick="addPart()">2. 设置选中的为成分</button>
-        <button style="background:#10b981;" onclick="upload()">3. 💾 保存到云端</button>
-        <button class="secondary" onclick="reset()">清空</button>
+      <label>3. 语法深度解析</label>
+      <button class="btn-ai" id="aiBtn" onclick="generateAI()">✨ AI 自动生成解析</button>
+      <textarea id="gInput" rows="5" placeholder="AI 将基于以上内容自动生成语法点分析..." style="margin-top:10px;"></textarea>
+
+      <div class="btn-group">
+        <button class="btn-primary" onclick="makeTokens()">第一步：生成词块</button>
+        <button class="btn-outline" onclick="addPart()">第二步：划定选中的为成分</button>
+        <button class="btn-primary" style="background:#10b981;" onclick="saveToCloud()">💾 第三步：同步到云端</button>
+        <button class="btn-outline" onclick="resetForm()">重置清空</button>
       </div>
     </div>
 
     <div class="card">
-      <label>点击选择词块 (支持 Shift 连选):</label>
+      <label>点击词块进行划分 (支持连选):</label>
       <div id="tBox" class="token-box"></div>
-      <label>已划定成分:</label>
-      <div id="pBox"></div>
+      <div id="pBox" style="margin-top:15px;"></div>
     </div>
 
     <div class="card">
-      <h3>☁️ 云端题库预览</h3>
+      <h2>☁️ 云端题库状态</h2>
       <table id="qTable">
-        <thead><tr><th>ID</th><th>内容</th><th>操作</th></tr></thead>
+        <thead><tr><th>ID</th><th>句子预览</th><th>操作</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -78,94 +86,129 @@
 </div>
 
 <script>
-let sb = null, curId = null, tokens = [], selected = [], parts = [], lastIdx = -1;
+// --- 配置信息 (请填入你的 Supabase 信息) ---
+const SB_URL = "https://your-project.supabase.co";
+const SB_KEY = "your-anon-key";
+const sb = supabase.createClient(SB_URL, SB_KEY);
+const ADMIN_EMAIL = "3100925625@qq.com";
 
-// 初始化
-function saveAndInit() {
-  const url = document.getElementById('sbUrl').value, key = document.getElementById('sbKey').value;
-  localStorage.setItem('sb_cfg', JSON.stringify({url, key, cf: document.getElementById('cfWorkerUrl').value}));
-  sb = supabase.createClient(url, key);
-  checkAuth();
-}
+let user = null, curId = null, tokens = [], selected = [], parts = [];
 
-async function checkAuth() {
-  const { data: { user } } = await sb.auth.getUser();
-  if (user) {
-    if (user.email !== '3100925625@qq.com') { alert("非管理员账号！"); await sb.auth.signOut(); return; }
-    document.getElementById('authStatus').innerHTML = `管理员: ${user.email} <button class="danger" onclick="sb.auth.signOut().then(()=>location.reload())">退出</button>`;
-    document.getElementById('editorArea').style.display = 'block';
+// 1. 权限验证
+async function checkUser() {
+  const { data } = await sb.auth.getUser();
+  if (data.user && data.user.email === ADMIN_EMAIL) {
+    user = data.user;
+    document.getElementById('authStatus').innerHTML = `✅ 已登录: ${user.email} <a href="#" onclick="logout()" style="margin-left:10px; color:red;">退出</a>`;
+    document.getElementById('mainEditor').style.display = 'block';
+    document.getElementById('loginPanel').style.display = 'none';
     loadList();
   } else {
-    const email = prompt("管理邮箱:"), pass = prompt("密码:");
-    if(email) await sb.auth.signInWithPassword({email, password:pass});
-    checkAuth();
+    document.getElementById('mainEditor').style.display = 'none';
+    document.getElementById('loginPanel').style.display = 'block';
+    document.getElementById('authStatus').innerText = "未授权";
   }
 }
 
-// AI 逻辑
-async function askAI() {
-  const s = document.getElementById('sInput').value, t = document.getElementById('tInput').value;
-  const cfg = JSON.parse(localStorage.getItem('sb_cfg'));
-  if(!s || !cfg.cf) return alert("请先填写句子和配置 Worker URL");
-  
-  const btn = document.getElementById('aiBtn'); btn.disabled = true; btn.innerText = "正在思考...";
-  try {
-    const res = await fetch(cfg.cf, {
-      method: 'POST',
-      body: JSON.stringify({ prompt: `分析语法点: ${s} (翻译: ${t})`, adminEmail: '3100925625@qq.com' })
-    });
-    const data = await res.json();
-    document.getElementById('gInput').value = data.response;
-  } catch(e) { alert("AI 失败: " + e.message); }
-  btn.disabled = false; btn.innerText = "✨ AI 自动解析";
+async function login() {
+  const email = prompt("请输入管理员邮箱:"), password = prompt("请输入密码:");
+  if(email !== ADMIN_EMAIL) return alert("账号错误，拒绝访问");
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error) alert("登录失败: " + error.message);
+  else location.reload();
 }
 
-// 核心业务逻辑 (分词/成分)
+async function logout() { await sb.auth.signOut(); location.reload(); }
+
+// 2. AI 调用逻辑 (修复超时问题)
+async function generateAI() {
+  let url = document.getElementById('cfUrl').value.trim();
+  const s = document.getElementById('sInput').value.trim();
+  const t = document.getElementById('tInput').value.trim();
+  
+  if(!url || !s) return alert("请填写 Worker URL 和英文句子");
+  if(!url.startsWith('http')) url = 'https://' + url;
+  url = url.replace(/\/$/, ""); 
+
+  const btn = document.getElementById('aiBtn');
+  btn.disabled = true; btn.innerText = "⏳ 正在请求 Cloudflare AI...";
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: `请分析这个句子的语法和词汇点。英文: "${s}"，中文翻译: "${t}"`,
+        adminEmail: ADMIN_EMAIL
+      })
+    });
+    
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    document.getElementById('gInput').value = data.response || "生成失败";
+  } catch (err) {
+    alert("AI 调用失败: " + err.message + "\n请确保 ReqBin 手动测试能通且 URL 无误。");
+  } finally {
+    btn.disabled = false; btn.innerText = "✨ AI 自动生成解析";
+  }
+}
+
+// 3. 业务逻辑 (分词与划线)
 function makeTokens() {
   const s = document.getElementById('sInput').value;
-  tokens = s.match(/([A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*|[.,!?;:()—-])|(\s+)/g).map((t,i)=>({t:t, isW:/[a-zA-Z0-9]/.test(t)}));
+  tokens = s.match(/([A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*|[.,!?;:()—-])|(\s+)/g).map(t => ({t, isW:/[a-zA-Z0-9]/.test(t)}));
   selected = []; renderTokens();
 }
+
 function renderTokens() {
-  document.getElementById('tBox').innerHTML = tokens.map((t,i)=> t.isW ? `<span class="token ${selected.includes(i)?'selected':''}" onclick="tgl(${i},event)">${t.t}</span>` : t.t).join('');
+  document.getElementById('tBox').innerHTML = tokens.map((t,i) => t.isW ? `<span class="token ${selected.includes(i)?'selected':''}" onclick="tgl(${i})">${t.t}</span>` : t.t).join('');
 }
-function tgl(i, e) {
-  if (e.shiftKey && lastIdx !== -1) {
-    for (let j=Math.min(i,lastIdx); j<=Math.max(i,lastIdx); j++) if(tokens[j].isW && !selected.includes(j)) selected.push(j);
-  } else {
-    selected.includes(i) ? selected.splice(selected.indexOf(i),1) : selected.push(i);
-  }
-  lastIdx = i; renderTokens();
+
+function tgl(i) {
+  selected.includes(i) ? selected.splice(selected.indexOf(i),1) : selected.push(i);
+  renderTokens();
 }
+
 function addPart() {
-  const title = prompt("成分名(如:主语):"), trans = prompt("该部分中文:");
+  const title = prompt("该成分名称 (如: 主语):"), trans = prompt("该部分对应的中文:");
   if(!title) return;
   const s = [...selected].sort((a,b)=>a-b);
   parts.push({ title, translation: trans, indices: s, text: s.map(i=>tokens[i].t).join(' ') });
   selected = []; renderTokens(); renderParts();
 }
+
 function renderParts() {
-  document.getElementById('pBox').innerHTML = parts.map((p,i)=>`<div style="font-size:13px; margin:5px 0;"><b>${p.title}</b>: ${p.text} <button onclick="parts.splice(${i},1);renderParts()">删</button></div>`).join('');
+  document.getElementById('pBox').innerHTML = parts.map((p,i)=>`<div style="font-size:13px; margin-bottom:5px;">✅ <b>${p.title}</b>: ${p.text} <button onclick="parts.splice(${i},1);renderParts()" style="padding:2px 5px; font-size:10px;">删</button></div>`).join('');
 }
 
-// 云端交互
-async function upload() {
-  const data = { id: curId || Date.now(), sentence: document.getElementById('sInput').value, full_translation: document.getElementById('tInput').value, grammar: document.getElementById('gInput').value, tasks: parts };
+// 4. 云端操作
+async function saveToCloud() {
+  const data = {
+    id: curId || Date.now(),
+    sentence: document.getElementById('sInput').value,
+    full_translation: document.getElementById('tInput').value,
+    grammar: document.getElementById('gInput').value,
+    tasks: parts
+  };
   const { error } = await sb.from('questions').upsert(data);
-  if(error) alert(error.message); else { alert("保存成功！"); reset(); loadList(); }
+  if(error) alert("保存错误: " + error.message);
+  else { alert("🎉 已同步到云端！"); resetForm(); loadList(); }
 }
-async function loadList() {
-  const { data } = await sb.from('questions').select('*').order('created_at', {ascending:false});
-  document.querySelector('#qTable tbody').innerHTML = data.map(q => `<tr><td>${q.id}</td><td>${q.sentence.slice(0,30)}...</td><td><button onclick='edit(${JSON.stringify(q)})'>编</button> <button class="danger" onclick="del(${q.id})">删</button></td></tr>`).join('');
-}
-window.edit = (q) => { curId=q.id; document.getElementById('sInput').value=q.sentence; document.getElementById('tInput').value=q.full_translation; document.getElementById('gInput').value=q.grammar; parts=q.tasks; makeTokens(); renderParts(); };
-window.del = async (id) => { if(confirm("确定？")) { await sb.from('questions').delete().eq('id',id); loadList(); } };
-function reset() { curId=null; document.getElementById('sInput').value=''; document.getElementById('tInput').value=''; document.getElementById('gInput').value=''; parts=[]; document.getElementById('tBox').innerHTML=''; renderParts(); }
 
-window.onload = () => {
-  const cfg = JSON.parse(localStorage.getItem('sb_cfg'));
-  if(cfg) { document.getElementById('sbUrl').value=cfg.url; document.getElementById('sbKey').value=cfg.key; document.getElementById('cfWorkerUrl').value=cfg.cf; }
+async function loadList() {
+  const { data } = await sb.from('questions').select('id, sentence').order('created_at', {ascending:false});
+  document.querySelector('#qTable tbody').innerHTML = data.map(q => `<tr><td>${q.id}</td><td>${q.sentence.slice(0,30)}...</td><td><button onclick='loadQuestion(${JSON.stringify(q)})'>编辑</button></td></tr>`).join('');
+}
+
+window.loadQuestion = async (qShort) => {
+  const { data: q } = await sb.from('questions').select('*').eq('id', qShort.id).single();
+  curId = q.id; document.getElementById('sInput').value = q.sentence; document.getElementById('tInput').value = q.full_translation;
+  document.getElementById('gInput').value = q.grammar; parts = q.tasks; makeTokens(); renderParts();
 };
+
+function resetForm() { curId=null; document.getElementById('sInput').value=''; document.getElementById('tInput').value=''; document.getElementById('gInput').value=''; parts=[]; document.getElementById('tBox').innerHTML=''; renderParts(); }
+
+window.onload = checkUser;
 </script>
 </body>
 </html>
