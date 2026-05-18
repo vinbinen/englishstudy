@@ -148,7 +148,7 @@ async function generateAI() {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: `分析语法点: "${s}" (翻译: "${t}")`, adminEmail: ADMIN_EMAIL })
+      body: JSON.stringify({ prompt: `你是一位专业的英语老师。请使用【纯中文】对以下句子进行深度语法解析：句子：\"${s}\" 翻译：\"${t}\" 请包含：1. 语法要点 2. 核心词汇 3. 结构拆解。`, adminEmail: ADMIN_EMAIL })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
