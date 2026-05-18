@@ -2,319 +2,169 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>题库管理后台 (AI 赋能版)</title>
+<title>题库管理后台 (AI & 安全加固版)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *{ margin:0; padding:0; box-sizing:border-box; }
-  body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#f1f5f9; padding:20px; color:#0f172a; }
-  .container{ max-width:1200px; margin:auto; }
-  h1{ font-size:28px; margin-bottom:20px; color:#1e293b; }
-  .card{ background:white; border-radius:16px; padding:24px; margin-bottom:20px; box-shadow:0 4px 6px -1px rgba(0,0,0,.05); }
-  label{ display:block; font-weight:bold; margin-bottom:8px; color:#334155; }
-  input[type="text"], input[type="password"], textarea { width:100%; border:1px solid #cbd5e1; border-radius:10px; padding:12px; font-size:15px; margin-bottom:16px; }
-  textarea{ min-height:80px; resize:vertical; }
-  button{ border:none; background:#2563eb; color:white; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:600; transition:.2s; }
-  button:hover:not(:disabled){ opacity:0.9; transform:translateY(-1px); }
-  button:disabled { background:#94a3b8; cursor:not-allowed; }
-  button.secondary{ background:white; color:#2563eb; border:1px solid #2563eb; }
-  button.danger { background:#ef4444; color:white; }
-  button.ai-btn { background: linear-gradient(135deg, #8b5cf6, #d946ef); color: white; border: none; }
-  .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .token-box{ background:#f8fafc; border-radius:12px; padding:16px; line-height:2; font-size:18px; border-left:4px solid #3b82f6; min-height:60px;}
-  .token{ display:inline-block; padding:2px 6px; border-radius:6px; cursor:pointer; user-select:none; }
-  .token:hover{ background:#e2e8f0; }
+  body{ font-family:system-ui; background:#f1f5f9; padding:20px; color:#1e293b; }
+  .container{ max-width:1000px; margin:auto; }
+  .card{ background:white; border-radius:16px; padding:24px; margin-bottom:20px; box-shadow:0 4px 6px rgba(0,0,0,.05); }
+  label{ display:block; font-weight:bold; margin:15px 0 8px; }
+  input, textarea { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:12px; font-size:15px; }
+  button{ border:none; background:#2563eb; color:white; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:600; margin-right:10px; }
+  button:hover{ opacity:0.9; }
+  .ai-btn { background: linear-gradient(135deg, #8b5cf6, #d946ef); }
+  .danger { background:#ef4444; }
+  .secondary { background:white; color:#2563eb; border:1px solid #2563eb; }
+  .token-box{ background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; min-height:60px; line-height:2; }
+  .token{ display:inline-block; padding:2px 6px; border-radius:4px; cursor:pointer; }
   .selected{ background:#fde047; border-bottom:2px solid #ca8a04; }
-  table { width:100%; border-collapse: collapse; margin-top:10px; }
+  table { width:100%; border-collapse:collapse; margin-top:20px; }
   th, td { border:1px solid #e2e8f0; padding:12px; text-align:left; font-size:14px; }
-  th { background:#f8fafc; }
 </style>
 </head>
 <body>
-
 <div class="container">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-    <h1>👑 题库管理与生成系统</h1>
-    <div id="authArea"><span>未登录</span></div>
+    <h1>👑 题库系统后台</h1>
+    <div id="authStatus">未登录</div>
   </div>
 
-  <div class="card" style="background:#f8fafc;">
-    <h3>⚙️ 系统配置 (仅保存在本地)</h3>
-    <div class="config-grid" style="margin-top:12px;">
-      <div>
-        <label>Supabase URL</label>
-        <input type="text" id="dbUrl" placeholder="https://xxx.supabase.co" onchange="saveConfig()">
-      </div>
-      <div>
-        <label>Supabase Anon Key</label>
-        <input type="password" id="dbKey" placeholder="eyJhbGci..." onchange="saveConfig()">
-      </div>
-      <div>
-        <label>AI API URL (兼容 OpenAI 格式)</label>
-        <input type="text" id="aiUrl" placeholder="例如: https://api.deepseek.com/v1/chat/completions" onchange="saveConfig()">
-      </div>
-      <div>
-        <label>AI API Key</label>
-        <input type="password" id="aiKey" placeholder="sk-..." onchange="saveConfig()">
-      </div>
+  <div class="card" style="background:#eef2ff;">
+    <h3>⚙️ 核心接入配置</h3>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:10px;">
+      <input type="text" id="sbUrl" placeholder="Supabase URL">
+      <input type="password" id="sbKey" placeholder="Supabase Anon Key">
+      <input type="text" id="cfWorkerUrl" placeholder="Cloudflare Worker URL (REST API)">
     </div>
-    <button onclick="initSystem()">应用配置并连接</button>
+    <button onclick="saveAndInit()" style="margin-top:15px;">保存配置并登录</button>
   </div>
 
-  <div id="mainEditor" style="display:none;">
+  <div id="editorArea" style="display:none;">
     <div class="card">
-      <h2 id="editModeTitle">✍️ 新增题目</h2>
-      <div style="margin-top: 16px;">
-        <label>1. 英文句子</label>
-        <textarea id="sentenceInput" placeholder="请输入英文句子..."></textarea>
-        
-        <label>2. 整句中文翻译</label>
-        <textarea id="fullTranslationInput" placeholder="请输入整句翻译..."></textarea>
-        
-        <label>3. 语法知识点解析</label>
-        <div style="display:flex; gap:10px; margin-bottom:10px;">
-          <button class="ai-btn" id="aiGenBtn" onclick="generateGrammarWithAI()">✨ AI 自动生成解析</button>
-        </div>
-        <textarea id="grammarInput" placeholder="可手动输入，或点击上方按钮让 AI 生成..." style="min-height: 120px;"></textarea>
-        
-        <div style="display:flex; gap:10px; margin-top:20px;">
-          <button onclick="generateTokens()">生成下方词块</button>
-          <button class="secondary" onclick="addPart()">将选中词块设为成分</button>
-          <button style="background:#10b981;" onclick="saveToCloud()">💾 直接保存到云端题库</button>
-          <button class="secondary" onclick="resetEditor()">清空/取消</button>
-        </div>
-      </div>
-    </div>
+      <h2 id="editTitle">✍️ 编辑题目</h2>
+      <label>1. 英文句子</label>
+      <textarea id="sInput" placeholder="Enter sentence..."></textarea>
+      <label>2. 全句中文翻译</label>
+      <input type="text" id="tInput" placeholder="输入翻译...">
+      
+      <label>3. 语法解析 (AI 赋能)</label>
+      <button class="ai-btn" id="aiBtn" onclick="askAI()">✨ AI 自动解析</button>
+      <textarea id="gInput" rows="4" placeholder="AI 生成的结果将出现在这里..."></textarea>
 
-    <div class="config-grid">
-      <div class="card">
-        <label>点击词块选择 (支持 Shift 多选)</label>
-        <div id="tokenBox" class="token-box">等待生成...</div>
-      </div>
-      <div class="card">
-        <label>已划分成分</label>
-        <div id="partsContainer">暂无成分</div>
+      <div style="margin-top:20px;">
+        <button onclick="makeTokens()">1. 生成词块</button>
+        <button class="secondary" onclick="addPart()">2. 设置选中的为成分</button>
+        <button style="background:#10b981;" onclick="upload()">3. 💾 保存到云端</button>
+        <button class="secondary" onclick="reset()">清空</button>
       </div>
     </div>
 
     <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h2>☁️ 云端题库管理</h2>
-        <button class="secondary" onclick="loadCloudQuestions()">🔄 刷新列表</button>
-      </div>
-      <table id="cloudTable">
-        <thead><tr><th>ID</th><th>句子</th><th>成分数</th><th>操作</th></tr></thead>
-        <tbody><tr><td colspan="4">请刷新获取数据...</td></tr></tbody>
+      <label>点击选择词块 (支持 Shift 连选):</label>
+      <div id="tBox" class="token-box"></div>
+      <label>已划定成分:</label>
+      <div id="pBox"></div>
+    </div>
+
+    <div class="card">
+      <h3>☁️ 云端题库预览</h3>
+      <table id="qTable">
+        <thead><tr><th>ID</th><th>内容</th><th>操作</th></tr></thead>
+        <tbody></tbody>
       </table>
     </div>
   </div>
 </div>
 
 <script>
-let supabaseClient = null;
-let currentUser = null;
-let currentEditingId = null; // 用于判断是新增还是修改
+let sb = null, curId = null, tokens = [], selected = [], parts = [], lastIdx = -1;
 
-// --- 数据结构 ---
-let tokens = [], selectedIndices = [], parts = [];
-let lastClickedIdx = -1;
-
-window.onload = () => { loadConfig(); };
-
-// --- 配置管理 ---
-function saveConfig() {
-  localStorage.setItem('sb_url', document.getElementById('dbUrl').value.trim());
-  localStorage.setItem('sb_key', document.getElementById('dbKey').value.trim());
-  localStorage.setItem('ai_url', document.getElementById('aiUrl').value.trim());
-  localStorage.setItem('ai_key', document.getElementById('aiKey').value.trim());
+// 初始化
+function saveAndInit() {
+  const url = document.getElementById('sbUrl').value, key = document.getElementById('sbKey').value;
+  localStorage.setItem('sb_cfg', JSON.stringify({url, key, cf: document.getElementById('cfWorkerUrl').value}));
+  sb = supabase.createClient(url, key);
+  checkAuth();
 }
 
-function loadConfig() {
-  document.getElementById('dbUrl').value = localStorage.getItem('sb_url') || '';
-  document.getElementById('dbKey').value = localStorage.getItem('sb_key') || '';
-  document.getElementById('aiUrl').value = localStorage.getItem('ai_url') || '';
-  document.getElementById('aiKey').value = localStorage.getItem('ai_key') || '';
-}
-
-async function initSystem() {
-  const url = document.getElementById('dbUrl').value.trim();
-  const key = document.getElementById('dbKey').value.trim();
-  if(!url || !key) { alert('必须填写 Supabase 配置'); return; }
-  
-  supabaseClient = supabase.createClient(url, key);
-  
-  // 检查登录
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  if(user) {
-    currentUser = user;
-    document.getElementById('authArea').innerHTML = `<b>${user.email}</b> <button class="danger" onclick="logout()" style="padding:4px 8px;">退出</button>`;
-    document.getElementById('mainEditor').style.display = 'block';
-    loadCloudQuestions();
+async function checkAuth() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (user) {
+    if (user.email !== '3100925625@qq.com') { alert("非管理员账号！"); await sb.auth.signOut(); return; }
+    document.getElementById('authStatus').innerHTML = `管理员: ${user.email} <button class="danger" onclick="sb.auth.signOut().then(()=>location.reload())">退出</button>`;
+    document.getElementById('editorArea').style.display = 'block';
+    loadList();
   } else {
-    login();
+    const email = prompt("管理邮箱:"), pass = prompt("密码:");
+    if(email) await sb.auth.signInWithPassword({email, password:pass});
+    checkAuth();
   }
 }
 
-async function login() {
-  const email = prompt("管理员邮箱:"); const password = prompt("管理员密码:");
-  if(!email || !password) return;
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if(error) alert("登录失败: " + error.message); else initSystem();
-}
-async function logout() { await supabaseClient.auth.signOut(); location.reload(); }
-
-// --- AI 自动生成语法解析 ---
-async function generateGrammarWithAI() {
-  const sentence = document.getElementById('sentenceInput').value.trim();
-  const translation = document.getElementById('fullTranslationInput').value.trim();
-  const aiUrl = document.getElementById('aiUrl').value.trim();
-  const aiKey = document.getElementById('aiKey').value.trim();
-
-  if(!sentence || !translation) { alert("请先填写英文句子和中文翻译，AI需要这些上下文！"); return; }
-  if(!aiUrl || !aiKey) { alert("请在上方配置 AI API URL 和 Key"); return; }
-
-  const btn = document.getElementById('aiGenBtn');
-  btn.textContent = "⏳ AI 思考中..."; btn.disabled = true;
-
-  const promptText = `你是一个专业的英语语法老师。请分析以下句子的核心语法和重点词汇。
-英文句子: "${sentence}"
-中文翻译: "${translation}"
-要求：1. 语言简练易懂；2. 提取出1-3个核心语法点或固定搭配；3. 使用 Markdown 列表格式输出。`;
-
+// AI 逻辑
+async function askAI() {
+  const s = document.getElementById('sInput').value, t = document.getElementById('tInput').value;
+  const cfg = JSON.parse(localStorage.getItem('sb_cfg'));
+  if(!s || !cfg.cf) return alert("请先填写句子和配置 Worker URL");
+  
+  const btn = document.getElementById('aiBtn'); btn.disabled = true; btn.innerText = "正在思考...";
   try {
-    const response = await fetch(aiUrl, {
+    const res = await fetch(cfg.cf, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiKey}` },
-      body: JSON.stringify({
-        model: "deepseek-chat", // 可根据你用的 API 供应商替换模型名 (如 gpt-3.5-turbo)
-        messages: [{ role: "user", content: promptText }]
-      })
+      body: JSON.stringify({ prompt: `分析语法点: ${s} (翻译: ${t})`, adminEmail: '3100925625@qq.com' })
     });
-    
-    const data = await response.json();
-    if(data.choices && data.choices[0]) {
-      document.getElementById('grammarInput').value = data.choices[0].message.content;
-    } else {
-      throw new Error(JSON.stringify(data));
-    }
-  } catch (err) {
-    alert("AI 生成失败: " + err.message);
-  } finally {
-    btn.textContent = "✨ AI 自动生成解析"; btn.disabled = false;
-  }
+    const data = await res.json();
+    document.getElementById('gInput').value = data.response;
+  } catch(e) { alert("AI 失败: " + e.message); }
+  btn.disabled = false; btn.innerText = "✨ AI 自动解析";
 }
 
-// --- 分词与成分交互 ---
-function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function tokenize(sentence){
-  return sentence.match(/([A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*|[.,!?;:()—-])|(\s+)/g).map((t,i)=>({text:t, isWord: /[a-zA-Z0-9]/.test(t), index:i}));
+// 核心业务逻辑 (分词/成分)
+function makeTokens() {
+  const s = document.getElementById('sInput').value;
+  tokens = s.match(/([A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*|[.,!?;:()—-])|(\s+)/g).map((t,i)=>({t:t, isW:/[a-zA-Z0-9]/.test(t)}));
+  selected = []; renderTokens();
 }
-
-function generateTokens(){
-  const s = document.getElementById('sentenceInput').value.trim();
-  if(!s) return;
-  tokens = tokenize(s); selectedIndices = []; lastClickedIdx = -1; renderTokens();
+function renderTokens() {
+  document.getElementById('tBox').innerHTML = tokens.map((t,i)=> t.isW ? `<span class="token ${selected.includes(i)?'selected':''}" onclick="tgl(${i},event)">${t.t}</span>` : t.t).join('');
 }
-
-function renderTokens(){
-  document.getElementById('tokenBox').innerHTML = tokens.map((t,i) => t.isWord ? 
-    `<span class="token word ${selectedIndices.includes(i)?'selected':''}" onclick="toggleToken(${i}, event)">${escapeHtml(t.text)}</span>` : escapeHtml(t.text)).join('');
-}
-
-window.toggleToken = function(idx, event){
-  if (event && event.shiftKey && lastClickedIdx !== -1) {
-    const from = Math.min(lastClickedIdx, idx), to = Math.max(lastClickedIdx, idx);
-    for (let i = from; i <= to; i++) if (tokens[i]?.isWord && !selectedIndices.includes(i)) selectedIndices.push(i);
+function tgl(i, e) {
+  if (e.shiftKey && lastIdx !== -1) {
+    for (let j=Math.min(i,lastIdx); j<=Math.max(i,lastIdx); j++) if(tokens[j].isW && !selected.includes(j)) selected.push(j);
   } else {
-    const pos = selectedIndices.indexOf(idx);
-    if(pos >= 0) selectedIndices.splice(pos,1); else selectedIndices.push(idx);
+    selected.includes(i) ? selected.splice(selected.indexOf(i),1) : selected.push(i);
   }
-  lastClickedIdx = idx; renderTokens();
-};
-
-window.addPart = function(){
-  if(selectedIndices.length === 0) return;
-  const title = prompt('成分名称（如：主语）'); if(!title) return;
-  const translation = prompt('该成分中文翻译');
-  const sorted = [...selectedIndices].sort((a,b)=>a-b);
-  parts.push({ title, indices:sorted, translation:translation||'', text:sorted.map(i=>tokens[i].text).join(' ') });
-  selectedIndices = []; renderTokens(); renderParts();
-};
-
-function renderParts(){
-  const c = document.getElementById('partsContainer');
-  if(parts.length===0) { c.innerHTML='暂无'; return; }
-  c.innerHTML = parts.map((p,i) => `
-    <div style="background:#fff; border:1px solid #e2e8f0; padding:8px; margin-bottom:8px; border-radius:8px; display:flex; justify-content:space-between;">
-      <div><b>${escapeHtml(p.title)}</b>: ${escapeHtml(p.text)} <br><small>${escapeHtml(p.translation)}</small></div>
-      <button class="danger" style="padding:4px 8px; font-size:12px;" onclick="parts.splice(${i},1);renderParts()">删</button>
-    </div>`).join('');
+  lastIdx = i; renderTokens();
+}
+function addPart() {
+  const title = prompt("成分名(如:主语):"), trans = prompt("该部分中文:");
+  if(!title) return;
+  const s = [...selected].sort((a,b)=>a-b);
+  parts.push({ title, translation: trans, indices: s, text: s.map(i=>tokens[i].t).join(' ') });
+  selected = []; renderTokens(); renderParts();
+}
+function renderParts() {
+  document.getElementById('pBox').innerHTML = parts.map((p,i)=>`<div style="font-size:13px; margin:5px 0;"><b>${p.title}</b>: ${p.text} <button onclick="parts.splice(${i},1);renderParts()">删</button></div>`).join('');
 }
 
-// --- 云端管理 (CRUD) ---
-function resetEditor() {
-  currentEditingId = null;
-  document.getElementById('editModeTitle').textContent = "✍️ 新增题目";
-  document.getElementById('sentenceInput').value = '';
-  document.getElementById('fullTranslationInput').value = '';
-  document.getElementById('grammarInput').value = '';
-  tokens = []; parts = []; selectedIndices = [];
-  document.getElementById('tokenBox').innerHTML = '等待生成...';
-  renderParts();
+// 云端交互
+async function upload() {
+  const data = { id: curId || Date.now(), sentence: document.getElementById('sInput').value, full_translation: document.getElementById('tInput').value, grammar: document.getElementById('gInput').value, tasks: parts };
+  const { error } = await sb.from('questions').upsert(data);
+  if(error) alert(error.message); else { alert("保存成功！"); reset(); loadList(); }
 }
-
-async function saveToCloud() {
-  const sentence = document.getElementById('sentenceInput').value.trim();
-  const full_translation = document.getElementById('fullTranslationInput').value.trim();
-  const grammar = document.getElementById('grammarInput').value.trim();
-  
-  if(!sentence || !full_translation) { alert('缺少必填项'); return; }
-
-  const qData = {
-    id: currentEditingId || Date.now(), // 如果正在编辑，保持原ID；否则生成新ID
-    sentence, full_translation, grammar, tasks: parts
-  };
-
-  const { error } = await supabaseClient.from('questions').upsert(qData);
-  if(error) { alert('保存失败: ' + error.message); }
-  else { alert('✅ 成功保存到云端'); resetEditor(); loadCloudQuestions(); }
+async function loadList() {
+  const { data } = await sb.from('questions').select('*').order('created_at', {ascending:false});
+  document.querySelector('#qTable tbody').innerHTML = data.map(q => `<tr><td>${q.id}</td><td>${q.sentence.slice(0,30)}...</td><td><button onclick='edit(${JSON.stringify(q)})'>编</button> <button class="danger" onclick="del(${q.id})">删</button></td></tr>`).join('');
 }
+window.edit = (q) => { curId=q.id; document.getElementById('sInput').value=q.sentence; document.getElementById('tInput').value=q.full_translation; document.getElementById('gInput').value=q.grammar; parts=q.tasks; makeTokens(); renderParts(); };
+window.del = async (id) => { if(confirm("确定？")) { await sb.from('questions').delete().eq('id',id); loadList(); } };
+function reset() { curId=null; document.getElementById('sInput').value=''; document.getElementById('tInput').value=''; document.getElementById('gInput').value=''; parts=[]; document.getElementById('tBox').innerHTML=''; renderParts(); }
 
-async function loadCloudQuestions() {
-  const { data, error } = await supabaseClient.from('questions').select('*').order('created_at', { ascending: false });
-  if(error) return;
-  const tbody = document.querySelector('#cloudTable tbody');
-  if(!data.length) { tbody.innerHTML = '<tr><td colspan="4">云端题库为空</td></tr>'; return; }
-  
-  tbody.innerHTML = data.map(q => `
-    <tr>
-      <td>${q.id}</td>
-      <td>${escapeHtml(q.sentence.substring(0,40))}...</td>
-      <td>${q.tasks.length}</td>
-      <td>
-        <button class="secondary" style="padding:4px 8px; font-size:12px;" onclick='editQuestion(${JSON.stringify(q).replace(/'/g, "&apos;")})'>编辑</button>
-        <button class="danger" style="padding:4px 8px; font-size:12px;" onclick="deleteQuestion(${q.id})">删除</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-window.editQuestion = function(q) {
-  currentEditingId = q.id;
-  document.getElementById('editModeTitle').textContent = `📝 正在编辑题目 ID: ${q.id}`;
-  document.getElementById('sentenceInput').value = q.sentence;
-  document.getElementById('fullTranslationInput').value = q.full_translation;
-  document.getElementById('grammarInput').value = q.grammar || '';
-  parts = q.tasks || [];
-  generateTokens(); // 自动生成词块
-  renderParts();
-  window.scrollTo(0, 0); // 滚动到顶部
-};
-
-window.deleteQuestion = async function(id) {
-  if(!confirm(`确定要永久删除 ID: ${id} 的题目吗？`)) return;
-  const { error } = await supabaseClient.from('questions').delete().eq('id', id);
-  if(error) alert('删除失败: '+error.message); else loadCloudQuestions();
+window.onload = () => {
+  const cfg = JSON.parse(localStorage.getItem('sb_cfg'));
+  if(cfg) { document.getElementById('sbUrl').value=cfg.url; document.getElementById('sbKey').value=cfg.key; document.getElementById('cfWorkerUrl').value=cfg.cf; }
 };
 </script>
 </body>
