@@ -23,7 +23,7 @@
   button:hover { opacity: 0.9; transform: translateY(-1px); }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   .token-box { background: #f1f5f9; border-radius: 12px; padding: 15px; min-height: 50px; line-height: 2.2; }
-  .token { display: inline-block; padding: 2px 8px; border-radius: 6px; cursor: pointer; background: white; border: 1px solid #e2e8f0; margin-right: 4px; user-select: none;  -webkit-user-select: none; /* 禁用系统长按选词 */  touch-action: none;        /* 关键：禁用浏览器触摸默认行为 */ }
+  .token { display: inline-block; padding: 2px 8px; border-radius: 6px; cursor: pointer; background: white; border: 1px solid #e2e8f0; margin-right: 4px; user-select: none; }
   .token.selected { background: #fde047; border-color: #ca8a04; font-weight: bold; }
   #authStatus { font-size: 13px; color: #64748b; }
   table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -97,7 +97,7 @@ const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const sb = supabase.createClient(SB_URL, SB_KEY);
 const ADMIN_EMAIL = "3100925625@qq.com";
 
-let user = null, curId = null, tokens = [], selected = [], parts = [], lastIdx = -1, isDragging = false;
+let user = null, curId = null, tokens = [], selected = [], parts = [], lastIdx = -1;
 
 // 1. 权限控制
 async function checkUser() {
@@ -174,59 +174,27 @@ function makeTokens() {
   selected = []; lastIdx = -1; renderTokens();
 }
 
-// function renderTokens() {
- // document.getElementById('tBox').innerHTML = tokens.map((t,i) => 
- //   t.isW ? `<span class="token ${selected.includes(i)?'selected':''}" onclick="tgl(${i}, event)">${t.t}</span>` : t.t
- // ).join('');
-// }
-
-  // 约第 142 行替换为以下代码
-function renderTokens() {
-  document.getElementById('tBox').innerHTML = tokens.map((t, i) => 
-    t.isW ? `<span class="token ${selected.includes(i)?'selected':''}" 
-                   id="tk-${i}"
-                   onpointerdown="pDown(${i}, event)" 
-                   onpointerenter="pEnter(${i})" 
-                   onpointerup="pUp()">${t.t}</span>` : t.t
+ function renderTokens() {
+  document.getElementById('tBox').innerHTML = tokens.map((t,i) => 
+    t.isW ? `<span class="token ${selected.includes(i)?'selected':''}" onclick="tgl(${i}, event)">${t.t}</span>` : t.t
   ).join('');
-}
+ }
+
   
 
-//function tgl(i, event) {
-//  if (event.shiftKey && lastIdx !== -1) {
- //   let start = Math.min(i, lastIdx), end = Math.max(i, lastIdx);
-    //for (let j = start; j <= end; j++) {
-    //  if (tokens[j].isW && !selected.includes(j)) selected.push(j);
-  //  }
- // } else {
-  //  selected.includes(i) ? selected.splice(selected.indexOf(i),1) : selected.push(i);
- // }
-  //lastIdx = i;
- // renderTokens();
-//}
-
-  // 替换原有的 tgl 函数
-function pDown(i, event) {
-  isDragging = true;
-  // 处理 Shift 连选逻辑
+function tgl(i, event) {
   if (event.shiftKey && lastIdx !== -1) {
     let start = Math.min(i, lastIdx), end = Math.max(i, lastIdx);
     for (let j = start; j <= end; j++) {
       if (tokens[j].isW && !selected.includes(j)) selected.push(j);
     }
   } else {
-    // 普通点击：切换选中状态
-    if (selected.includes(i)) {
-      selected.splice(selected.indexOf(i), 1);
-    } else {
-      selected.push(i);
-    }
+    selected.includes(i) ? selected.splice(selected.indexOf(i),1) : selected.push(i);
   }
   lastIdx = i;
   renderTokens();
-  // 阻止默认事件，防止移动端触发长按菜单
-  if(event.pointerType === 'touch') event.target.releasePointerCapture(event.pointerId);
 }
+
 
 function pEnter(i) {
   // 如果正在滑动划过，则直接添加为选中（ additive selection ）
