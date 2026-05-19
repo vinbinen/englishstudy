@@ -97,7 +97,7 @@ const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const sb = supabase.createClient(SB_URL, SB_KEY);
 const ADMIN_EMAIL = "3100925625@qq.com";
 
-let user = null, curId = null, tokens = [], selected = [], parts = [], lastIdx = -1, isDragging = false;;
+let user = null, curId = null, tokens = [], selected = [], parts = [], lastIdx = -1, isDragging = false;
 
 // 1. 权限控制
 async function checkUser() {
