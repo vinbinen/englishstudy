@@ -174,11 +174,23 @@ function makeTokens() {
   selected = []; lastIdx = -1; renderTokens();
 }
 
+// function renderTokens() {
+ // document.getElementById('tBox').innerHTML = tokens.map((t,i) => 
+ //   t.isW ? `<span class="token ${selected.includes(i)?'selected':''}" onclick="tgl(${i}, event)">${t.t}</span>` : t.t
+ // ).join('');
+// }
+
+  // 约第 142 行替换为以下代码
 function renderTokens() {
-  document.getElementById('tBox').innerHTML = tokens.map((t,i) => 
-    t.isW ? `<span class="token ${selected.includes(i)?'selected':''}" onclick="tgl(${i}, event)">${t.t}</span>` : t.t
+  document.getElementById('tBox').innerHTML = tokens.map((t, i) => 
+    t.isW ? `<span class="token ${selected.includes(i)?'selected':''}" 
+                   id="tk-${i}"
+                   onpointerdown="pDown(${i}, event)" 
+                   onpointerenter="pEnter(${i})" 
+                   onpointerup="pUp()">${t.t}</span>` : t.t
   ).join('');
 }
+  
 
 function tgl(i, event) {
   if (event.shiftKey && lastIdx !== -1) {
