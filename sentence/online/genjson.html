@@ -23,7 +23,7 @@
   button:hover { opacity: 0.9; transform: translateY(-1px); }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   .token-box { background: #f1f5f9; border-radius: 12px; padding: 15px; min-height: 50px; line-height: 2.2; }
-  .token { display: inline-block; padding: 2px 8px; border-radius: 6px; cursor: pointer; background: white; border: 1px solid #e2e8f0; margin-right: 4px; user-select: none; }
+  .token { display: inline-block; padding: 2px 8px; border-radius: 6px; cursor: pointer; background: white; border: 1px solid #e2e8f0; margin-right: 4px; user-select: none;  -webkit-user-select: none; /* 禁用系统长按选词 */  touch-action: none;        /* 关键：禁用浏览器触摸默认行为 */ }
   .token.selected { background: #fde047; border-color: #ca8a04; font-weight: bold; }
   #authStatus { font-size: 13px; color: #64748b; }
   table { width: 100%; border-collapse: collapse; margin-top: 20px; }
