@@ -192,18 +192,58 @@ function renderTokens() {
 }
   
 
-function tgl(i, event) {
+//function tgl(i, event) {
+//  if (event.shiftKey && lastIdx !== -1) {
+ //   let start = Math.min(i, lastIdx), end = Math.max(i, lastIdx);
+    //for (let j = start; j <= end; j++) {
+    //  if (tokens[j].isW && !selected.includes(j)) selected.push(j);
+  //  }
+ // } else {
+  //  selected.includes(i) ? selected.splice(selected.indexOf(i),1) : selected.push(i);
+ // }
+  //lastIdx = i;
+ // renderTokens();
+//}
+
+  // 替换原有的 tgl 函数
+function pDown(i, event) {
+  isDragging = true;
+  // 处理 Shift 连选逻辑
   if (event.shiftKey && lastIdx !== -1) {
     let start = Math.min(i, lastIdx), end = Math.max(i, lastIdx);
     for (let j = start; j <= end; j++) {
       if (tokens[j].isW && !selected.includes(j)) selected.push(j);
     }
   } else {
-    selected.includes(i) ? selected.splice(selected.indexOf(i),1) : selected.push(i);
+    // 普通点击：切换选中状态
+    if (selected.includes(i)) {
+      selected.splice(selected.indexOf(i), 1);
+    } else {
+      selected.push(i);
+    }
   }
   lastIdx = i;
   renderTokens();
+  // 阻止默认事件，防止移动端触发长按菜单
+  if(event.pointerType === 'touch') event.target.releasePointerCapture(event.pointerId);
 }
+
+function pEnter(i) {
+  // 如果正在滑动划过，则直接添加为选中（ additive selection ）
+  if (isDragging) {
+    if (tokens[i].isW && !selected.includes(i)) {
+      selected.push(i);
+      renderTokens();
+    }
+  }
+}
+
+function pUp() {
+  isDragging = false;
+}
+
+// 增加全局抬起监听，防止手指划出区域后状态卡死
+window.addEventListener('pointerup', () => { isDragging = false; });
 
 function addPart() {
   const title = prompt("该成分名称 (如: 主语):"), trans = prompt("该部分对应的中文:");
