@@ -186,65 +186,62 @@ function renderTokens() {
 }
 
   // 替换原有的 tgl 函数
-function pDown(i, event) {
+// 1. 手指/鼠标按下
+window.pDown = function(i, event) {
   isDragging = true;
-  // 处理 Shift 连选逻辑
-  if (event.shiftKey && lastIdx !== -1) {
+  lastIdx = i;
+
+  // 判断模式：如果点的是已选中的，则进入“取消模式”；否则进入“添加模式”
+  if (selected.includes(i)) {
+    dragMode = 'remove';
+    selected.splice(selected.indexOf(i), 1);
+  } else {
+    dragMode = 'add';
+    selected.push(i);
+  }
+
+  // 兼容电脑端的 Shift 连选逻辑
+  if (event && event.shiftKey && lastIdx !== -1) {
     let start = Math.min(i, lastIdx), end = Math.max(i, lastIdx);
     for (let j = start; j <= end; j++) {
       if (tokens[j].isW && !selected.includes(j)) selected.push(j);
     }
+  }
+
+  renderTokens();
+  // 防止手机端长按弹出菜单
+  if(event && event.pointerType === 'touch') event.target.releasePointerCapture(event.pointerId);
+};
+
+// 2. 手指/鼠标滑动经过
+window.pEnter = function(i) {
+  if (!isDragging) return;
+
+  if (dragMode === 'add') {
+    // 添加模式：抹过未选中的词则选中
+    if (tokens[i].isW && !selected.includes(i)) {
+      selected.push(i);
+      renderTokens();
+    }
   } else {
-    // 普通点击：切换选中状态
+    // 取消模式：抹过已选中的词则取消
     if (selected.includes(i)) {
       selected.splice(selected.indexOf(i), 1);
-    } else {
-      selected.push(i);
-    }
-  }
-  lastIdx = i;
-  renderTokens();
-  // 阻止默认事件，防止移动端触发长按菜单
-  if(event.pointerType === 'touch') event.target.releasePointerCapture(event.pointerId);
-}
-
-function pEnter(i) {
-  // 如果正在滑动划过，则直接添加为选中（ additive selection ）
-  if (isDragging) {
-    if (tokens[i].isW && !selected.includes(i)) {
-      selected.push(i);
       renderTokens();
     }
   }
-}
+};
 
-function pUp() {
+// 3. 停止操作
+window.pUp = function() {
   isDragging = false;
-}
+};
 
 // 增加全局抬起监听，防止手指划出区域后状态卡死
 window.addEventListener('pointerup', () => { isDragging = false; });
 
 
-
-
-function pEnter(i) {
-  // 如果正在滑动划过，则直接添加为选中（ additive selection ）
-  if (isDragging) {
-    if (tokens[i].isW && !selected.includes(i)) {
-      selected.push(i);
-      renderTokens();
-    }
-  }
-}
-
-function pUp() {
-  isDragging = false;
-}
-
-// 增加全局抬起监听，防止手指划出区域后状态卡死
-window.addEventListener('pointerup', () => { isDragging = false; });
-
+  
 function addPart() {
   const title = prompt("该成分名称 (如: 主语):"), trans = prompt("该部分对应的中文:");
   if(!title) return;
