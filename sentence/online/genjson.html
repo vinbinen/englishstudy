@@ -148,14 +148,10 @@ async function generateAI() {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: `你是一位深耕中国教育系统的英语专家。请严格遵守以下指令：
-           1. 针对句子 \"${s}\" (翻译: \"${t}\") 进行深度解析。
-           2. 【强制要求】：解析的所有具体内容（包括对语法点、词汇和结构的描述）必须全部使用中文。
-           3. 【严禁】：禁止在解释说明中使用英文，除非是引用原句中的单词。
-           4. 格式要求：
-              - ### 1. 语法要点 (用中文详细解释时态、从句等)
-              - ### 2. 核心词汇 (中文解释单词含义及用法)
-              - ### 3. 结构拆解 (中文说明主谓宾等成分)`, adminEmail: ADMIN_EMAIL })
+    body: JSON.stringify({ 
+  prompt: `请解析句子：\"${s}\" 翻译：\"${t}\"`, 
+  adminEmail: ADMIN_EMAIL 
+})
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
