@@ -150,16 +150,54 @@ function renderUserUI() {
     : `<span>🔒 你需要登录才能获取题库</span><button onclick="handleAuth()" style="padding:6px 14px; font-size:13px; background:#1f3f72; border-radius:999px; color:white; border:none; cursor:pointer;">登录 / 注册</button>`;
 }
 
-window.handleAuth = async () => {
-  const email = prompt("📧 请输入邮箱:"); if (!email) return;
-  const password = prompt("🔑 请输入密码(至少6位):"); if(!password) return;
-  const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) {
-    if(confirm(`账号不存在或密码错误，是否用此邮箱直接注册？`)) {
-      const { error: signUpError } = await window.supabaseClient.auth.signUp({ email, password });
-      if (signUpError) alert("❌ 注册失败: " + signUpError.message); else location.reload(); 
+// window.handleAuth = async () => {
+//   const email = prompt("📧 请输入邮箱:"); if (!email) return;
+//   const password = prompt("🔑 请输入密码(至少6位):"); if(!password) return;
+//   const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+//   if (error) {
+//     if(confirm(`账号不存在或密码错误，是否用此邮箱直接注册？`)) {
+//       const { error: signUpError } = await window.supabaseClient.auth.signUp({ email, password });
+//       if (signUpError) alert("❌ 注册失败: " + signUpError.message); else location.reload(); 
+//     }
+//   } else location.reload(); 
+// };
+
+  window.handleAuth = async () => {
+  const email = prompt("📧 请输入邮箱:"); 
+  if (!email) return;
+  const password = prompt("🔑 请输入密码 (至少6位):"); 
+  if (!password) return;
+
+  // 1. 尝试直接登录
+  const { data: loginData, error: loginError } = await window.supabaseClient.auth.signInWithPassword({ 
+    email, 
+    password 
+  });
+
+  if (loginError) {
+    // 2. 如果登录失败，尝试注册
+    const { data: signUpData, error: signUpError } = await window.supabaseClient.auth.signUp({ 
+      email, 
+      password 
+    });
+
+    if (signUpError) {
+      alert("❌ 登录/注册失败: " + signUpError.message);
+    } else {
+      // 3. 注册成功后的逻辑判断
+      // 如果 supabase 的 session 存在，说明不需要邮箱确认 (自动激活)
+      if (signUpData.session) {
+        alert("🎉 注册成功！已为您自动登录，欢迎开始练习。");
+        location.reload();
+      } else {
+        // 如果没有 session，说明开启了 confirm email，需要去邮箱确认
+        alert("✉️ 注册申请已提交！\n\n系统已向您的邮箱发送了一封确认链接。请前往邮箱点击链接激活账号，之后即可登录答题。");
+      }
     }
-  } else location.reload(); 
+  } else {
+    // 登录成功
+    location.reload();
+  }
 };
 
 window.handleLogout = async () => { await window.supabaseClient.auth.signOut(); location.reload(); };
